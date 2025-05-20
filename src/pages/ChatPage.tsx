@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageCircle, Send, User } from "lucide-react";
@@ -31,7 +32,7 @@ const ChatPage = () => {
   const [newMessage, setNewMessage] = useState("");
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
   // Mock data
@@ -114,7 +115,7 @@ const ChatPage = () => {
     
     // Focus the input field when a chat is selected
     setTimeout(() => {
-      inputRef.current?.focus();
+      textareaRef.current?.focus();
     }, 100);
   }, [activeChat]);
 
@@ -147,7 +148,7 @@ const ChatPage = () => {
     ));
     
     // Focus back on the input
-    inputRef.current?.focus();
+    textareaRef.current?.focus();
     
     // Simulate response (in a real app, this would come from a WebSocket or similar)
     setTimeout(() => {
@@ -257,17 +258,25 @@ const ChatPage = () => {
                     <div ref={messagesEndRef} />
                   </div>
                   <form onSubmit={handleSendMessage} className="p-4 border-t flex gap-2">
-                    <Input
+                    <Textarea
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       placeholder="Type your message..."
-                      className="flex-grow"
-                      ref={inputRef}
+                      className="flex-grow resize-none min-h-[50px] max-h-[150px]"
+                      ref={textareaRef}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (newMessage.trim()) {
+                            handleSendMessage(e);
+                          }
+                        }
+                      }}
                     />
                     <Button 
                       type="submit" 
                       variant="default" 
-                      className="bg-fem-terracotta hover:bg-fem-terracotta/90"
+                      className="bg-fem-terracotta hover:bg-fem-terracotta/90 self-end h-[50px]"
                       disabled={!newMessage.trim() || !activeChat}
                     >
                       <Send className="h-4 w-4" />
