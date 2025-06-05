@@ -1,18 +1,17 @@
-
 import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-
 interface ImageData {
   src: string;
   alt: string;
 }
-
 interface ImageCarouselProps {
   images: ImageData[];
   className?: string;
 }
-
-const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, className }) => {
+const ImageCarousel: React.FC<ImageCarouselProps> = ({
+  images,
+  className
+}) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
@@ -22,16 +21,13 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, className }) => {
   // Auto-scroll functionality
   useEffect(() => {
     if (!isAutoPlaying) return;
-    
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % displayImages.length);
+      setCurrentIndex(prev => (prev + 1) % displayImages.length);
     }, 5000); // Change image every 5 seconds
 
     return () => clearInterval(interval);
   }, [displayImages.length, isAutoPlaying]);
-
-  return (
-    <div className={cn("relative w-full max-w-5xl mx-auto", className)}>
+  return <div className={cn("relative w-full max-w-5xl mx-auto", className)}>
       {/* Main Carousel Container */}
       <div className="relative group">
         {/* Decorative Background Elements */}
@@ -43,75 +39,21 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, className }) => {
           {/* Dynamic Background Gradient Based on Current Image */}
           <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-transparent to-black/40 z-10" />
           
-          <img
-            src={displayImages[currentIndex].src}
-            alt={displayImages[currentIndex].alt}
-            className="w-full h-full object-cover transition-all duration-1000 ease-out"
-            draggable={false}
-          />
+          <img src={displayImages[currentIndex].src} alt={displayImages[currentIndex].alt} className="w-full h-full object-cover transition-all duration-1000 ease-out" draggable={false} />
         </div>
       </div>
 
       {/* Enhanced Thumbnail Strip with Better Spacing */}
-      <div className="flex justify-center gap-6 mt-12">
-        {displayImages.map((image, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentIndex(index)}
-            className={cn(
-              "relative group/thumb transition-all duration-500",
-              index === currentIndex 
-                ? "scale-110" 
-                : "opacity-60 hover:opacity-100 hover:scale-105"
-            )}
-          >
-            <div className={cn(
-              "relative w-24 h-24 rounded-2xl overflow-hidden border-3 transition-all duration-300",
-              index === currentIndex 
-                ? "border-fem-gold shadow-2xl shadow-fem-gold/25" 
-                : "border-white/20 hover:border-fem-gold/50"
-            )}>
-              <img
-                src={image.src}
-                alt={image.alt}
-                className="w-full h-full object-cover group-hover/thumb:scale-110 transition-transform duration-300"
-              />
-              {index === currentIndex && (
-                <div className="absolute inset-0 bg-gradient-to-t from-fem-gold/30 to-transparent" />
-              )}
-            </div>
-            
-            {/* Active indicator */}
-            {index === currentIndex && (
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-3 h-3 bg-fem-gold rounded-full shadow-lg" />
-            )}
-          </button>
-        ))}
-      </div>
+      
 
       {/* Enhanced Progress Indicator */}
       <div className="flex justify-center gap-4 mt-10">
-        {displayImages.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentIndex(index)}
-            className="relative group/progress"
-          >
-            <div className={cn(
-              "h-1.5 rounded-full transition-all duration-500 overflow-hidden",
-              index === currentIndex 
-                ? "w-16 bg-gradient-to-r from-fem-gold to-fem-terracotta shadow-lg" 
-                : "w-4 bg-white/30 hover:bg-white/50 group-hover/progress:w-8"
-            )}>
-              {index === currentIndex && isAutoPlaying && (
-                <div className="h-full bg-white/40 animate-pulse" />
-              )}
+        {displayImages.map((_, index) => <button key={index} onClick={() => setCurrentIndex(index)} className="relative group/progress">
+            <div className={cn("h-1.5 rounded-full transition-all duration-500 overflow-hidden", index === currentIndex ? "w-16 bg-gradient-to-r from-fem-gold to-fem-terracotta shadow-lg" : "w-4 bg-white/30 hover:bg-white/50 group-hover/progress:w-8")}>
+              {index === currentIndex && isAutoPlaying && <div className="h-full bg-white/40 animate-pulse" />}
             </div>
-          </button>
-        ))}
+          </button>)}
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default ImageCarousel;
