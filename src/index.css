@@ -153,17 +153,79 @@
   .backface-hidden {
     backface-visibility: hidden;
   }
+
+  /* Advanced glass morphism */
+  .glass-morphism {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  /* 3D text effects */
+  .text-3d {
+    text-shadow: 
+      0 1px 0 rgba(0, 0, 0, 0.1),
+      0 2px 0 rgba(0, 0, 0, 0.1),
+      0 3px 0 rgba(0, 0, 0, 0.1),
+      0 4px 0 rgba(0, 0, 0, 0.1),
+      0 5px 10px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Interactive hover states */
+  .hover-lift {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-8px) perspective(1000px) rotateX(5deg);
+    box-shadow: 
+      0 20px 40px rgba(0, 0, 0, 0.15),
+      0 10px 20px rgba(200, 75, 49, 0.1);
+  }
+
+  /* Particle effects */
+  .particle {
+    position: absolute;
+    pointer-events: none;
+    border-radius: 50%;
+    animation: particle-float 8s infinite ease-in-out;
+  }
 }
 
 @keyframes float {
-  0% {
-    transform: translateY(0px);
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-10px) rotate(1deg);
   }
   50% {
-    transform: translateY(-10px);
+    transform: translateY(-5px) rotate(-1deg);
   }
-  100% {
-    transform: translateY(0px);
+  75% {
+    transform: translateY(-15px) rotate(0.5deg);
+  }
+}
+
+@keyframes particle-float {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px) scale(1);
+    opacity: 0.3;
+  }
+  25% {
+    transform: translateY(-20px) translateX(10px) scale(1.1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(-10px) translateX(-5px) scale(0.9);
+    opacity: 0.8;
+  }
+  75% {
+    transform: translateY(-30px) translateX(-10px) scale(1.05);
+    opacity: 0.4;
   }
 }
 
@@ -224,6 +286,23 @@
   }
 }
 
+@keyframes depth-move {
+  0%, 100% {
+    transform: translateZ(0px);
+  }
+  50% {
+    transform: translateZ(50px);
+  }
+}
+
+@keyframes tilt-shaking {
+  0% { transform: perspective(1000px) rotateX(0deg) rotateY(0deg); }
+  25% { transform: perspective(1000px) rotateX(1deg) rotateY(1deg); }
+  50% { transform: perspective(1000px) rotateX(-1deg) rotateY(-1deg); }
+  75% { transform: perspective(1000px) rotateX(1deg) rotateY(-1deg); }
+  100% { transform: perspective(1000px) rotateX(0deg) rotateY(0deg); }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
@@ -239,6 +318,14 @@
   
   .animate-glow-pulse {
     animation: glow-pulse 3s ease-in-out infinite;
+  }
+
+  .animate-depth {
+    animation: depth-move 6s ease-in-out infinite;
+  }
+
+  .animate-tilt {
+    animation: tilt-shaking 0.8s ease-in-out infinite;
   }
 }
 
