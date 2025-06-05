@@ -129,6 +129,16 @@ export default {
 					  opacity: '1'
 					}
 				},
+				'slide-in-right': {
+					'0%': {
+					  transform: 'translateX(100%)',
+					  opacity: '0'
+					},
+					'100%': {
+					  transform: 'translateX(0)',
+					  opacity: '1'
+					}
+				},
 				'pulse-light': {
 					'0%, 100%': {
 					  opacity: '1',
@@ -152,6 +162,51 @@ export default {
 					'100%': {
 					  transform: 'translateY(-50px)',
 					}
+				},
+				'float': {
+					'0%, 100%': {
+					  transform: 'translateY(0px)',
+					},
+					'50%': {
+					  transform: 'translateY(-20px)',
+					}
+				},
+				'float-slow': {
+					'0%, 100%': {
+					  transform: 'translateY(0px) rotate(0deg)',
+					},
+					'50%': {
+					  transform: 'translateY(-15px) rotate(5deg)',
+					}
+				},
+				'float-fast': {
+					'0%, 100%': {
+					  transform: 'translateY(0px)',
+					},
+					'50%': {
+					  transform: 'translateY(-25px)',
+					}
+				},
+				'gradient-shift': {
+					'0%': {
+					  'background-position': '0% 50%',
+					},
+					'50%': {
+					  'background-position': '100% 50%',
+					},
+					'100%': {
+					  'background-position': '0% 50%',
+					}
+				},
+				'scale-in': {
+					'0%': {
+					  opacity: '0',
+					  transform: 'scale(0.8)',
+					},
+					'100%': {
+					  opacity: '1',
+					  transform: 'scale(1)',
+					}
 				}
 			},
 			animation: {
@@ -160,9 +215,15 @@ export default {
 				'fade-in': 'fade-in 0.3s ease-out forwards',
 				'fade-in-up': 'fade-in-up 0.6s ease-out forwards',
 				'slide-in-left': 'slide-in-left 0.6s ease-out forwards',
+				'slide-in-right': 'slide-in-right 0.6s ease-out forwards',
 				'pulse-light': 'pulse-light 2s ease-in-out infinite',
 				'slide-in': 'slide-in 0.3s ease-out forwards',
-				'parallax': 'parallax 20s ease-in-out infinite alternate'
+				'parallax': 'parallax 20s ease-in-out infinite alternate',
+				'float': 'float 6s ease-in-out infinite',
+				'float-slow': 'float-slow 8s ease-in-out infinite',
+				'float-fast': 'float-fast 4s ease-in-out infinite',
+				'gradient-shift': 'gradient-shift 4s ease infinite',
+				'scale-in': 'scale-in 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards'
 			}
 		}
 	},

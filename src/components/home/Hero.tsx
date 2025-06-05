@@ -9,12 +9,6 @@ import Typography3D from "@/components/3d/Typography3D";
 import Infographic3D from "@/components/3d/Infographic3D";
 
 export const Hero = () => {
-  const statsData = [
-    { label: "Active Jobs", value: 150, color: "#FFBD59", icon: <Briefcase className="w-5 h-5" /> },
-    { label: "Members", value: 500, color: "#C84B31", icon: <Users className="w-5 h-5" /> },
-    { label: "Success Rate", value: 98, color: "#FFD68A", icon: <Star className="w-5 h-5" /> }
-  ];
-
   return (
     <div className="relative section-full bg-gradient-to-br from-fem-navy via-fem-navy/98 to-fem-navy/95 overflow-hidden">
       {/* Sophisticated Background with Parallax */}
@@ -208,26 +202,6 @@ export const Hero = () => {
                 </div>
               </div>
             </FloatingCard>
-          </div>
-
-          {/* Modern Stats Section */}
-          <div className="mt-40 scroll-reveal" style={{ animationDelay: '1.2s' }}>
-            <div className="text-center mb-20">
-              <h2 className="text-section-title text-white mb-8 font-mont tracking-tight">
-                Community Impact & Growth
-              </h2>
-              <p className="text-body-large text-gray-300 max-w-4xl mx-auto leading-relaxed font-mont">
-                Transforming lives through meaningful faith-based connections and divine purpose alignment
-              </p>
-            </div>
-            
-            <div className="max-w-5xl mx-auto">
-              <Infographic3D 
-                data={statsData}
-                type="bar"
-                className="rounded-3xl glass-modern hover-card-modern"
-              />
-            </div>
           </div>
         </div>
       </div>
