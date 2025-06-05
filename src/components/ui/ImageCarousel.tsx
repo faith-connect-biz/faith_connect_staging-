@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react';
+import { Play, Pause } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ImageData {
@@ -31,43 +31,20 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, className }) => {
     return () => clearInterval(interval);
   }, [displayImages.length, isAutoPlaying]);
 
-  const nextImage = () => {
-    setCurrentIndex((prev) => (prev + 1) % displayImages.length);
-  };
-
-  const prevImage = () => {
-    setCurrentIndex((prev) => (prev - 1 + displayImages.length) % displayImages.length);
-  };
-
   const toggleAutoPlay = () => {
     setIsAutoPlaying(!isAutoPlaying);
   };
 
   return (
     <div className={cn("relative w-full max-w-5xl mx-auto", className)}>
-      {/* Header Section */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-fem-gold/20 to-fem-terracotta/20 rounded-full backdrop-blur-sm border border-white/20 mb-4">
-          <div className="w-2 h-2 bg-fem-gold rounded-full animate-pulse" />
-          <span className="text-white font-mont font-semibold tracking-wide">Our Leadership</span>
-          <div className="w-2 h-2 bg-fem-terracotta rounded-full animate-pulse" />
-        </div>
-        <h3 className="text-white text-2xl font-mont font-bold mb-2">
-          Spiritual Guidance & Vision
-        </h3>
-        <p className="text-gray-300 font-mont text-lg max-w-2xl mx-auto leading-relaxed">
-          Meet the dedicated leaders who guide our community with faith, wisdom, and unwavering commitment to God's calling.
-        </p>
-      </div>
-
       {/* Main Carousel Container */}
       <div className="relative group">
         {/* Decorative Background Elements */}
         <div className="absolute -inset-4 bg-gradient-to-r from-fem-gold/10 via-transparent to-fem-terracotta/10 rounded-[2rem] blur-xl opacity-50" />
         <div className="absolute -inset-2 bg-gradient-to-br from-fem-gold/5 to-fem-terracotta/5 rounded-[1.5rem]" />
         
-        {/* Main Image Container */}
-        <div className="relative w-full h-[600px] rounded-[1.5rem] overflow-hidden shadow-2xl border border-white/10">
+        {/* Main Image Container - More rectangular shape */}
+        <div className="relative w-full h-[400px] rounded-[1.5rem] overflow-hidden shadow-2xl border border-white/10">
           {/* Dynamic Background Gradient Based on Current Image */}
           <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-transparent to-black/40 z-10" />
           
@@ -77,23 +54,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, className }) => {
             className="w-full h-full object-cover transition-all duration-1000 ease-out"
             draggable={false}
           />
-          
-          {/* Elegant Navigation Controls */}
-          <button
-            onClick={prevImage}
-            className="absolute left-8 top-1/2 -translate-y-1/2 z-20 bg-black/20 hover:bg-black/40 backdrop-blur-xl rounded-full p-4 transition-all duration-300 hover:scale-110 border border-white/20 group/btn"
-            aria-label="Previous image"
-          >
-            <ChevronLeft className="w-6 h-6 text-white group-hover/btn:text-fem-gold transition-colors" />
-          </button>
-          
-          <button
-            onClick={nextImage}
-            className="absolute right-8 top-1/2 -translate-y-1/2 z-20 bg-black/20 hover:bg-black/40 backdrop-blur-xl rounded-full p-4 transition-all duration-300 hover:scale-110 border border-white/20 group/btn"
-            aria-label="Next image"
-          >
-            <ChevronRight className="w-6 h-6 text-white group-hover/btn:text-fem-gold transition-colors" />
-          </button>
 
           {/* Auto-play Control */}
           <button
@@ -107,19 +67,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, className }) => {
               <Play className="w-5 h-5 text-white group-hover/btn:text-fem-gold transition-colors" />
             )}
           </button>
-
-          {/* Image Counter with Enhanced Design */}
-          <div className="absolute top-8 left-8 z-20 bg-black/30 backdrop-blur-md rounded-full px-6 py-3 border border-white/20">
-            <div className="flex items-center gap-3">
-              <span className="text-white text-sm font-mont font-semibold">
-                {currentIndex + 1} of {displayImages.length}
-              </span>
-              <div className="w-1 h-1 bg-fem-gold rounded-full" />
-              <span className="text-gray-300 text-xs font-mont">
-                Leadership Gallery
-              </span>
-            </div>
-          </div>
 
           {/* Bottom Overlay with Quote/Message */}
           <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-8">
