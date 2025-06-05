@@ -11,8 +11,27 @@ import Infographic3D from "@/components/3d/Infographic3D";
 export const Hero = () => {
   return (
     <div className="relative section-full bg-gradient-to-br from-fem-navy via-fem-navy/98 to-fem-navy/95 overflow-hidden">
-      {/* Sophisticated Background with Parallax */}
+      {/* Background Images */}
       <div className="absolute inset-0">
+        {/* Church leader images as background */}
+        <div className="absolute top-0 left-0 w-full h-full opacity-10">
+          <img 
+            src="/lovable-uploads/96b9a54c-1f33-4912-8a15-81ef6ee611b1.png" 
+            alt="Church leader" 
+            className="absolute top-10 left-10 w-64 h-80 object-cover rounded-2xl shadow-2xl animate-float-slow parallax-bg"
+          />
+          <img 
+            src="/lovable-uploads/e9d4667b-2b87-49d2-8663-753539468e34.png" 
+            alt="Church leader" 
+            className="absolute top-32 right-20 w-56 h-72 object-cover rounded-2xl shadow-2xl animate-float parallax-bg"
+          />
+          <img 
+            src="/lovable-uploads/06b622e4-037d-4adb-95e9-2f4e2c861815.png" 
+            alt="Church leader" 
+            className="absolute bottom-20 left-1/3 w-60 h-76 object-cover rounded-2xl shadow-2xl animate-float-fast parallax-bg"
+          />
+        </div>
+        
         <ParticleField count={60} />
         
         {/* Elegant mesh gradient overlay with parallax */}
