@@ -7,8 +7,28 @@ import FloatingCard from "@/components/3d/FloatingCard";
 import ParticleField from "@/components/3d/ParticleField";
 import Typography3D from "@/components/3d/Typography3D";
 import Infographic3D from "@/components/3d/Infographic3D";
+import ImageCarousel from "@/components/ui/ImageCarousel";
 
 export const Hero = () => {
+  const carouselImages = [
+    {
+      src: "/lovable-uploads/541df702-f215-4b5f-bc60-d08161749258.png",
+      alt: "Church leader speaking at podium"
+    },
+    {
+      src: "/lovable-uploads/b392f8fd-6fc5-4bfe-96aa-dc60f6854ba2.png",
+      alt: "Church leader speaking"
+    },
+    {
+      src: "/lovable-uploads/2461e975-f920-4db9-8bb8-0fa2afe7fe8f.png",
+      alt: "Church leader preaching"
+    },
+    {
+      src: "/lovable-uploads/1d5eb230-3a20-497c-9b7c-e5d21ac111dc.png",
+      alt: "Church leader at podium"
+    }
+  ];
+
   return (
     <div className="relative section-full bg-gradient-to-br from-fem-navy via-fem-navy/98 to-fem-navy/95 overflow-hidden">
       {/* Wheat Field Background - Main Background */}
@@ -130,49 +150,10 @@ export const Hero = () => {
               </div>
             </div>
 
-            {/* Right Visual - 4 columns with Square Church Leader Photos */}
+            {/* Right Visual - 4 columns with Interactive Image Carousel */}
             <div className="lg:col-span-4 relative">
-              <div className="grid grid-cols-2 gap-6 scroll-reveal" style={{ animationDelay: '0.3s' }}>
-                
-                {/* Square Image 1 */}
-                <div className="relative aspect-square rounded-2xl overflow-hidden glass-modern hover-card-modern">
-                  <img 
-                    src="/lovable-uploads/b392f8fd-6fc5-4bfe-96aa-dc60f6854ba2.png" 
-                    alt="Church leader speaking" 
-                    className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent rounded-2xl" />
-                </div>
-
-                {/* Square Image 2 */}
-                <div className="relative aspect-square rounded-2xl overflow-hidden glass-modern hover-card-modern">
-                  <img 
-                    src="/lovable-uploads/2461e975-f920-4db9-8bb8-0fa2afe7fe8f.png" 
-                    alt="Church leader preaching" 
-                    className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent rounded-2xl" />
-                </div>
-
-                {/* Square Image 3 */}
-                <div className="relative aspect-square rounded-2xl overflow-hidden glass-modern hover-card-modern">
-                  <img 
-                    src="/lovable-uploads/1d5eb230-3a20-497c-9b7c-e5d21ac111dc.png" 
-                    alt="Church leader at podium" 
-                    className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent rounded-2xl" />
-                </div>
-
-                {/* Floating Stats Card */}
-                <div className="relative aspect-square flex items-center justify-center">
-                  <FloatingCard className="p-8 rounded-2xl glass-modern w-full h-full flex flex-col items-center justify-center" glassEffect>
-                    <Heart className="w-12 h-12 text-fem-gold mx-auto mb-4 animate-pulse" />
-                    <div className="text-3xl font-mont font-black text-white mb-2 tracking-tight">Faith</div>
-                    <div className="text-lg font-mont font-semibold text-white mb-1 tracking-tight">Based</div>
-                    <div className="text-sm text-gray-300 font-mont tracking-wide">Community</div>
-                  </FloatingCard>
-                </div>
+              <div className="scroll-reveal" style={{ animationDelay: '0.3s' }}>
+                <ImageCarousel images={carouselImages} />
               </div>
             </div>
           </div>
