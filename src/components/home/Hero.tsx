@@ -1,6 +1,6 @@
 
 import { Link } from "react-router-dom";
-import { Search, ArrowRight, Sparkles, Users, Briefcase, Target, Play, Globe, Zap } from "lucide-react";
+import { Search, ArrowRight, Sparkles, Users, Briefcase, Target, Play, Globe, Zap, Plus } from "lucide-react";
 import ThreeDModel from "@/components/3d/ThreeDModel";
 import Interactive3DButton from "@/components/3d/Interactive3DButton";
 import FloatingCard from "@/components/3d/FloatingCard";
