@@ -11,36 +11,18 @@ import Infographic3D from "@/components/3d/Infographic3D";
 export const Hero = () => {
   return (
     <div className="relative section-full bg-gradient-to-br from-fem-navy via-fem-navy/98 to-fem-navy/95 overflow-hidden">
-      {/* Wheat Field Background */}
+      {/* Wheat Field Background - Main Background */}
       <div className="absolute inset-0">
         <img 
-          src="https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2000&q=80" 
+          src="/lovable-uploads/18b2a2c2-8517-4194-b3af-fce8bf8b92c6.png" 
           alt="Wheat field background" 
-          className="w-full h-full object-cover opacity-20"
+          className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-fem-navy/80 via-fem-navy/60 to-fem-navy/80" />
+        {/* Light overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/30 to-black/50" />
       </div>
 
-      {/* Church leader images as background overlays */}
       <div className="absolute inset-0">
-        <div className="absolute top-0 left-0 w-full h-full opacity-15">
-          <img 
-            src="/lovable-uploads/96b9a54c-1f33-4912-8a15-81ef6ee611b1.png" 
-            alt="Church leader" 
-            className="absolute top-10 left-10 w-64 h-80 object-cover rounded-2xl shadow-2xl animate-float-slow parallax-bg"
-          />
-          <img 
-            src="/lovable-uploads/e9d4667b-2b87-49d2-8663-753539468e34.png" 
-            alt="Church leader" 
-            className="absolute top-32 right-20 w-56 h-72 object-cover rounded-2xl shadow-2xl animate-float parallax-bg"
-          />
-          <img 
-            src="/lovable-uploads/06b622e4-037d-4adb-95e9-2f4e2c861815.png" 
-            alt="Church leader" 
-            className="absolute bottom-20 left-1/3 w-60 h-76 object-cover rounded-2xl shadow-2xl animate-float-fast parallax-bg"
-          />
-        </div>
-        
         <ParticleField count={40} />
         
         {/* Elegant mesh gradient overlay with parallax */}
@@ -148,40 +130,47 @@ export const Hero = () => {
               </div>
             </div>
 
-            {/* Right Visual - 4 columns */}
+            {/* Right Visual - 4 columns with Square Church Leader Photos */}
             <div className="lg:col-span-4 relative">
-              <div className="relative h-[400px] lg:h-[500px] scroll-reveal hover-card-modern" style={{ animationDelay: '0.3s' }}>
+              <div className="grid grid-cols-2 gap-6 scroll-reveal" style={{ animationDelay: '0.3s' }}>
                 
-                {/* Featured Image Card - Similar to reference */}
-                <div className="absolute inset-0 rounded-3xl overflow-hidden glass-modern">
+                {/* Square Image 1 */}
+                <div className="relative aspect-square rounded-2xl overflow-hidden glass-modern hover-card-modern">
                   <img 
-                    src="/lovable-uploads/4a1c83b8-3c22-4e2f-bb68-4a2d39bbb994.png" 
-                    alt="Church service" 
+                    src="/lovable-uploads/b392f8fd-6fc5-4bfe-96aa-dc60f6854ba2.png" 
+                    alt="Church leader speaking" 
                     className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
                   />
-                  
-                  {/* Gradient overlay for depth */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-fem-navy/30 via-transparent to-transparent rounded-3xl" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent rounded-2xl" />
                 </div>
 
-                {/* Floating Stats Cards with Modern Design */}
-                <div className="absolute -top-6 -left-6 animate-float">
-                  <FloatingCard className="p-6 rounded-2xl glass-modern" glassEffect>
-                    <div className="text-center">
-                      <Heart className="w-8 h-8 text-fem-gold mx-auto mb-3" />
-                      <div className="text-2xl font-mont font-black text-white mb-1 tracking-tight">Faith</div>
-                      <div className="text-xs text-gray-300 font-mont tracking-wide">Based</div>
-                    </div>
-                  </FloatingCard>
+                {/* Square Image 2 */}
+                <div className="relative aspect-square rounded-2xl overflow-hidden glass-modern hover-card-modern">
+                  <img 
+                    src="/lovable-uploads/2461e975-f920-4db9-8bb8-0fa2afe7fe8f.png" 
+                    alt="Church leader preaching" 
+                    className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent rounded-2xl" />
                 </div>
 
-                <div className="absolute -bottom-6 -right-6 animate-float-slow">
-                  <FloatingCard className="p-6 rounded-2xl glass-modern" glassEffect>
-                    <div className="text-center">
-                      <Target className="w-8 h-8 text-fem-gold mx-auto mb-3" />
-                      <div className="text-2xl font-mont font-black text-white mb-1 tracking-tight">150+</div>
-                      <div className="text-xs text-gray-300 font-mont tracking-wide">Active Jobs</div>
-                    </div>
+                {/* Square Image 3 */}
+                <div className="relative aspect-square rounded-2xl overflow-hidden glass-modern hover-card-modern">
+                  <img 
+                    src="/lovable-uploads/1d5eb230-3a20-497c-9b7c-e5d21ac111dc.png" 
+                    alt="Church leader at podium" 
+                    className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent rounded-2xl" />
+                </div>
+
+                {/* Floating Stats Card */}
+                <div className="relative aspect-square flex items-center justify-center">
+                  <FloatingCard className="p-8 rounded-2xl glass-modern w-full h-full flex flex-col items-center justify-center" glassEffect>
+                    <Heart className="w-12 h-12 text-fem-gold mx-auto mb-4 animate-pulse" />
+                    <div className="text-3xl font-mont font-black text-white mb-2 tracking-tight">Faith</div>
+                    <div className="text-lg font-mont font-semibold text-white mb-1 tracking-tight">Based</div>
+                    <div className="text-sm text-gray-300 font-mont tracking-wide">Community</div>
                   </FloatingCard>
                 </div>
               </div>
