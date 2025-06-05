@@ -1,6 +1,6 @@
 
 import { Link } from "react-router-dom";
-import { Search, ArrowRight, Sparkles, Users, Briefcase, Target } from "lucide-react";
+import { Search, ArrowRight, Sparkles, Users, Briefcase, Target, Play, Globe, Zap } from "lucide-react";
 import ThreeDModel from "@/components/3d/ThreeDModel";
 import Interactive3DButton from "@/components/3d/Interactive3DButton";
 import FloatingCard from "@/components/3d/FloatingCard";
@@ -12,204 +12,190 @@ export const Hero = () => {
   const statsData = [
     { label: "Jobs", value: 150, color: "#FFBD59", icon: <Briefcase className="w-4 h-4" /> },
     { label: "Members", value: 500, color: "#C84B31", icon: <Users className="w-4 h-4" /> },
-    { label: "Success", value: 75, color: "#FFD68A", icon: <Target className="w-4 h-4" /> }
+    { label: "Success", value: 85, color: "#FFD68A", icon: <Target className="w-4 h-4" /> }
   ];
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-fem-navy via-fem-navy/98 to-fem-navy/90 text-white overflow-hidden">
-      {/* Enhanced 3D Background */}
-      <div className="absolute inset-0 z-0">
-        <ParticleField count={120} />
+    <div className="relative min-h-screen bg-gradient-to-br from-fem-navy via-fem-navy/95 to-fem-navy overflow-hidden">
+      {/* Sophisticated Background */}
+      <div className="absolute inset-0">
+        <ParticleField count={80} />
         
-        {/* Dynamic floating geometric shapes */}
-        <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-fem-terracotta/20 to-fem-gold/20 rounded-full blur-3xl animate-float-slow transform-3d" 
-             style={{ transform: 'perspective(1000px) rotateX(45deg)' }} />
-        <div className="absolute bottom-20 right-10 w-40 h-40 bg-gradient-to-br from-fem-gold/20 to-fem-terracotta/20 rounded-full blur-3xl animate-float transform-3d" 
-             style={{ transform: 'perspective(1000px) rotateY(45deg)' }} />
-        <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-fem-terracotta/10 rounded-full blur-2xl animate-float-fast transform-3d" 
-             style={{ transform: 'perspective(1000px) rotateZ(45deg)' }} />
+        {/* Elegant floating orbs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-radial from-fem-gold/10 via-fem-gold/5 to-transparent rounded-full blur-3xl animate-float-slow" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-radial from-fem-terracotta/15 via-fem-terracotta/8 to-transparent rounded-full blur-3xl animate-float" />
         
-        {/* Enhanced 3D Grid overlay */}
+        {/* Subtle grid pattern */}
         <div 
-          className="absolute inset-0 opacity-5"
+          className="absolute inset-0 opacity-[0.02]"
           style={{
             backgroundImage: `
-              linear-gradient(rgba(255, 189, 89, 0.3) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255, 189, 89, 0.3) 1px, transparent 1px)
+              linear-gradient(rgba(255, 189, 89, 0.1) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255, 189, 89, 0.1) 1px, transparent 1px)
             `,
-            backgroundSize: '60px 60px',
-            transform: 'perspective(1500px) rotateX(45deg) rotateY(5deg)',
+            backgroundSize: '80px 80px',
+            transform: 'perspective(1000px) rotateX(60deg)',
             transformOrigin: 'center bottom'
           }}
         />
       </div>
 
-      <div className="container mx-auto px-4 relative z-10 py-16 md:py-24">
-        <div className="grid lg:grid-cols-2 gap-12 items-center min-h-screen">
-          {/* Left Content - Enhanced 3D Typography */}
-          <div className="max-w-2xl">
-            {/* 3D Floating badge */}
-            <FloatingCard className="inline-block mb-8 px-4 py-2 rounded-full" glassEffect intensity={0.8}>
-              <div className="flex items-center gap-2 text-sm">
-                <Sparkles className="w-4 h-4 text-fem-gold animate-pulse" />
-                <span className="text-gray-300">Connect • Grow • Serve</span>
-              </div>
-            </FloatingCard>
+      <div className="container mx-auto px-4 relative z-10">
+        <div className="min-h-screen flex flex-col justify-center">
+          {/* Main Hero Content */}
+          <div className="grid lg:grid-cols-2 gap-16 items-center mb-20">
+            {/* Left: Content */}
+            <div className="space-y-8">
+              {/* Floating badge */}
+              <FloatingCard className="inline-block" glassEffect intensity={0.6}>
+                <div className="px-6 py-3 rounded-full">
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="w-2 h-2 bg-fem-gold rounded-full animate-pulse" />
+                    <span className="text-gray-300 font-medium">Connecting Faith & Purpose</span>
+                    <Sparkles className="w-4 h-4 text-fem-gold" />
+                  </div>
+                </div>
+              </FloatingCard>
 
-            {/* Enhanced 3D Typography */}
-            <Typography3D variant="hero" className="mb-8 leading-tight" animated>
-              <span className="block animate-fade-in" style={{ animationDelay: '0.1s' }}>
-                Find Your
-              </span>
-              <span className="block animate-fade-in" style={{ animationDelay: '0.3s' }}>
-                Purpose
-              </span>
-              <span className="block text-fem-gold animate-fade-in" style={{ animationDelay: '0.5s' }}>
-                Through Work
-              </span>
-            </Typography3D>
-            
-            <FloatingCard className="mb-10" glassEffect intensity={0.5}>
-              <p className="text-lg md:text-xl text-gray-300 p-6">
-                Connecting FEM Family Church members in Kenya with opportunities 
-                that align with their skills, values, and divine calling.
-              </p>
-            </FloatingCard>
-            
-            {/* Enhanced 3D Action buttons */}
-            <div className="flex flex-col sm:flex-row gap-6 justify-start mb-12">
-              <Link to="/jobs">
-                <Interactive3DButton variant="primary" size="lg" className="w-full sm:w-auto px-8 py-4 text-lg">
-                  <div className="flex items-center gap-2">
-                    Explore Jobs
-                    <ArrowRight className="w-5 h-5" />
+              {/* Main headline */}
+              <div className="space-y-4">
+                <Typography3D variant="hero" className="leading-tight" animated>
+                  <div className="space-y-2">
+                    <div className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
+                      Discover Your
+                    </div>
+                    <div className="animate-fade-in" style={{ animationDelay: '0.3s' }}>
+                      <span className="text-fem-gold">Divine Calling</span>
+                    </div>
+                    <div className="animate-fade-in text-4xl lg:text-5xl" style={{ animationDelay: '0.5s' }}>
+                      Through Meaningful Work
+                    </div>
                   </div>
-                </Interactive3DButton>
-              </Link>
-              <Link to="/post-job">
-                <Interactive3DButton variant="glass" size="lg" className="w-full sm:w-auto px-8 py-4 text-lg">
-                  Post Opportunity
-                </Interactive3DButton>
-              </Link>
+                </Typography3D>
+              </div>
+              
+              {/* Subtitle */}
+              <div className="animate-fade-in" style={{ animationDelay: '0.7s' }}>
+                <p className="text-xl text-gray-300 max-w-lg leading-relaxed">
+                  Connect with opportunities that align with your skills, values, and calling within the FEM Family Church community in Kenya.
+                </p>
+              </div>
+              
+              {/* Action buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 animate-fade-in" style={{ animationDelay: '0.9s' }}>
+                <Link to="/jobs">
+                  <Interactive3DButton variant="primary" size="lg" className="px-8 py-4 text-lg group">
+                    <div className="flex items-center gap-3">
+                      <Briefcase className="w-5 h-5" />
+                      Explore Opportunities
+                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </Interactive3DButton>
+                </Link>
+                <Link to="/post-job">
+                  <Interactive3DButton variant="glass" size="lg" className="px-8 py-4 text-lg group">
+                    <div className="flex items-center gap-3">
+                      <Plus className="w-5 h-5" />
+                      Post a Job
+                    </div>
+                  </Interactive3DButton>
+                </Link>
+              </div>
+
+              {/* Trust indicators */}
+              <div className="flex items-center gap-8 pt-8 animate-fade-in" style={{ animationDelay: '1.1s' }}>
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-2">
+                    {[1,2,3,4].map(i => (
+                      <div key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-fem-gold to-fem-terracotta border-2 border-white" />
+                    ))}
+                  </div>
+                  <span className="text-gray-300 text-sm">500+ Active Members</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-fem-gold" />
+                  <span className="text-gray-300 text-sm">Kenya-wide Network</span>
+                </div>
+              </div>
             </div>
             
-            {/* Enhanced 3D Search bar */}
-            <FloatingCard className="rounded-2xl" glassEffect intensity={0.7}>
-              <div className="p-6 flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-fem-gold/20 transform-3d" 
-                     style={{ transform: 'perspective(1000px) rotateY(15deg)' }}>
-                  <Search className="text-fem-gold h-6 w-6" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search for divine opportunities..."
-                  className="flex-1 border-0 focus:ring-0 focus:outline-none bg-transparent text-white placeholder:text-gray-400 text-lg"
+            {/* Right: 3D Visual */}
+            <div className="relative h-[500px] lg:h-[600px]">
+              <div className="absolute inset-0 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+                <ThreeDModel 
+                  type="city" 
+                  className="w-full h-full" 
+                  interactive={true} 
                 />
-                <Interactive3DButton variant="outline" className="px-6 py-3">
-                  Search
-                </Interactive3DButton>
               </div>
-            </FloatingCard>
-          </div>
-          
-          {/* Right Content - Enhanced 3D Model */}
-          <div className="h-[600px] relative perspective-1000">
-            <div className="absolute inset-0 transform-3d">
-              <ThreeDModel 
-                type="city" 
-                className="w-full h-full opacity-90" 
-                interactive={true} 
-              />
               
-              {/* Enhanced floating UI elements */}
-              <div className="absolute top-10 left-10 animate-float">
-                <FloatingCard className="p-4" glassEffect intensity={1.2}>
-                  <div className="text-center transform-3d" style={{ transform: 'perspective(1000px) rotateY(10deg)' }}>
-                    <div className="text-2xl font-bold text-fem-gold">150+</div>
-                    <div className="text-xs text-gray-300">Active Jobs</div>
+              {/* Floating stats */}
+              <div className="absolute top-16 -left-8 animate-float">
+                <FloatingCard className="p-4" glassEffect>
+                  <div className="text-center">
+                    <Zap className="w-6 h-6 text-fem-gold mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-white">98%</div>
+                    <div className="text-xs text-gray-300">Success Rate</div>
                   </div>
                 </FloatingCard>
               </div>
               
-              <div className="absolute bottom-20 right-10 animate-float-slow">
-                <FloatingCard className="p-4" glassEffect intensity={1.2}>
-                  <div className="text-center transform-3d" style={{ transform: 'perspective(1000px) rotateY(-10deg)' }}>
-                    <div className="text-2xl font-bold text-fem-gold">500+</div>
-                    <div className="text-xs text-gray-300">Members</div>
+              <div className="absolute bottom-20 -right-8 animate-float-slow">
+                <FloatingCard className="p-4" glassEffect>
+                  <div className="text-center">
+                    <Target className="w-6 h-6 text-fem-gold mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-white">150+</div>
+                    <div className="text-xs text-gray-300">Job Matches</div>
                   </div>
                 </FloatingCard>
               </div>
             </div>
           </div>
-        </div>
-        
-        {/* Enhanced 3D Statistics Section */}
-        <div className="mt-20">
-          <Typography3D variant="heading" className="text-center mb-12">
-            Platform Statistics
-          </Typography3D>
-          
-          <Infographic3D 
-            data={statsData}
-            type="bar"
-            className="max-w-4xl mx-auto"
-          />
-        </div>
-        
-        {/* Enhanced 3D Floating stats cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20">
-          {[
-            { 
-              label: "Success Stories", 
-              value: "75+", 
-              icon: "✨",
-              description: "Lives transformed through meaningful work"
-            },
-            { 
-              label: "Church Partners", 
-              value: "12+", 
-              icon: "⛪",
-              description: "Congregations actively participating"
-            },
-            { 
-              label: "Skill Areas", 
-              value: "25+", 
-              icon: "🎯",
-              description: "Professional categories available"
-            }
-          ].map((stat, index) => (
-            <FloatingCard 
-              key={index}
-              className="rounded-2xl"
-              glassEffect
-              intensity={1.0}
-            >
-              <div 
-                className="p-8 text-center animate-fade-in transform-3d"
-                style={{ 
-                  animationDelay: `${1.2 + index * 0.2}s`,
-                  transform: 'perspective(1000px) rotateX(5deg)'
-                }}
-              >
-                <div className="text-4xl mb-4 transform-3d" 
-                     style={{ transform: 'translateZ(20px)' }}>
-                  {stat.icon}
+
+          {/* Enhanced Search Section */}
+          <div className="max-w-4xl mx-auto animate-fade-in" style={{ animationDelay: '1.3s' }}>
+            <FloatingCard className="rounded-2xl" glassEffect intensity={0.8}>
+              <div className="p-8">
+                <div className="text-center mb-6">
+                  <h3 className="text-2xl font-bold text-white mb-2">Find Your Perfect Match</h3>
+                  <p className="text-gray-300">Search through divine opportunities tailored for you</p>
                 </div>
-                <div className="text-3xl font-bold text-fem-gold mb-2 transform-3d" 
-                     style={{ transform: 'translateZ(15px)' }}>
-                  {stat.value}
-                </div>
-                <div className="text-lg font-semibold text-white mb-2 transform-3d" 
-                     style={{ transform: 'translateZ(10px)' }}>
-                  {stat.label}
-                </div>
-                <div className="text-sm text-gray-400 transform-3d" 
-                     style={{ transform: 'translateZ(5px)' }}>
-                  {stat.description}
+                
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder="Search by role, skills, or calling..."
+                      className="w-full pl-12 pr-4 py-4 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-fem-gold/50"
+                    />
+                  </div>
+                  <Interactive3DButton variant="primary" className="px-8 py-4">
+                    <div className="flex items-center gap-2">
+                      Search Jobs
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
+                  </Interactive3DButton>
                 </div>
               </div>
             </FloatingCard>
-          ))}
+          </div>
+
+          {/* Stats Section */}
+          <div className="mt-24 animate-fade-in" style={{ animationDelay: '1.5s' }}>
+            <div className="text-center mb-12">
+              <Typography3D variant="heading" className="mb-4">
+                Platform Impact
+              </Typography3D>
+              <p className="text-gray-300 text-lg">Transforming lives through meaningful connections</p>
+            </div>
+            
+            <Infographic3D 
+              data={statsData}
+              type="bar"
+              className="max-w-3xl mx-auto"
+            />
+          </div>
         </div>
       </div>
     </div>
