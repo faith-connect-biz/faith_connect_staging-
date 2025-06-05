@@ -34,9 +34,9 @@ const Index = () => {
       const scrolled = window.pageYOffset;
       const parallaxElements = document.querySelectorAll('.parallax-bg');
       
-      parallaxElements.forEach(element => {
+      parallaxElements.forEach((element) => {
         const rate = scrolled * -0.5;
-        element.style.transform = `translateY(${rate}px)`;
+        (element as HTMLElement).style.transform = `translateY(${rate}px)`;
       });
     };
 
