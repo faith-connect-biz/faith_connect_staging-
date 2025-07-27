@@ -78,50 +78,50 @@ export const Hero = () => {
               {/* Main Headline with Church-focused Typography */}
               <div className="space-y-8 scroll-reveal" style={{ animationDelay: '0.2s' }}>
                 <div className="text-hero leading-none max-w-5xl font-mont">
-                  <div className="space-y-4">
-                    <div className="text-white/95 font-light tracking-tight">Welcome to</div>
-                    <div className="font-black bg-gradient-to-r from-fem-gold via-fem-terracotta to-fem-gold bg-clip-text text-transparent bg-300% animate-gradient-shift">
-                      FEM Family Church
-                    </div>
-                    <div className="text-white font-medium tracking-tight text-4xl">
-                      Career Connect
-                    </div>
-                    <div className="text-white/80 font-light text-2xl mt-6">
-                      A House of Prayer for all Nations
-                    </div>
-                  </div>
+                   <div className="space-y-4">
+                     <div className="text-white/95 font-light tracking-tight">Welcome to</div>
+                     <div className="font-black bg-gradient-to-r from-fem-gold via-fem-terracotta to-fem-gold bg-clip-text text-transparent bg-300% animate-gradient-shift">
+                       FaithConnect
+                     </div>
+                     <div className="text-white font-medium tracking-tight text-4xl">
+                       Business Directory
+                     </div>
+                     <div className="text-white/80 font-light text-2xl mt-6">
+                       Connecting Faith-Based Commerce
+                     </div>
+                   </div>
                 </div>
               </div>
 
               {/* Subtitle with Better Typography */}
               <div className="scroll-reveal max-w-3xl" style={{ animationDelay: '0.4s' }}>
-                <p className="text-body-large text-gray-200 font-mont font-light leading-relaxed">
-                  Discover meaningful career opportunities that align with your faith and calling within our thriving Kenya community. Connect with employers who share your values and commitment to divine purpose.
-                </p>
+                 <p className="text-body-large text-gray-200 font-mont font-light leading-relaxed">
+                   Discover trusted businesses owned by fellow believers in our church community. Support local commerce while building meaningful relationships grounded in shared faith and values.
+                 </p>
               </div>
 
               {/* Modern Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-6 scroll-reveal" style={{ animationDelay: '0.6s' }}>
-                <Link to="/jobs" className="group">
-                  <button className="btn-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
-                    <div className="flex items-center gap-3">
-                      <Briefcase className="w-6 h-6" />
-                      <span className="font-mont font-semibold tracking-wide">Explore Opportunities</span>
-                      <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" />
-                    </div>
-                  </button>
-                </Link>
-                
-                <Link to="/post-job" className="group">
-                  <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
-                    <div className="flex items-center gap-3">
-                      <Plus className="w-6 h-6" />
-                      <span className="font-mont font-semibold tracking-wide">Become a Partner</span>
-                      <ArrowRight className="w-6 h-6 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
-                    </div>
-                  </button>
-                </Link>
-              </div>
+               <div className="flex flex-col sm:flex-row gap-6 scroll-reveal" style={{ animationDelay: '0.6s' }}>
+                 <Link to="/directory" className="group">
+                   <button className="btn-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+                     <div className="flex items-center gap-3">
+                       <Briefcase className="w-6 h-6" />
+                       <span className="font-mont font-semibold tracking-wide">Browse Directory</span>
+                       <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" />
+                     </div>
+                   </button>
+                 </Link>
+                 
+                 <Link to="/register" className="group">
+                   <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+                     <div className="flex items-center gap-3">
+                       <Plus className="w-6 h-6" />
+                       <span className="font-mont font-semibold tracking-wide">List Your Business</span>
+                       <ArrowRight className="w-6 h-6 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
+                     </div>
+                   </button>
+                 </Link>
+               </div>
 
               {/* Enhanced Trust Indicators */}
               <div className="flex flex-wrap items-center gap-12 pt-12 scroll-reveal" style={{ animationDelay: '0.8s' }}>
@@ -163,26 +163,26 @@ export const Hero = () => {
             <FloatingCard className="rounded-3xl hover-card-modern" glassEffect intensity={0.9}>
               <div className="p-12 lg:p-16 glass-modern rounded-3xl">
                 <div className="text-center mb-12">
-                  <h2 className="text-section-title text-white mb-6 font-mont tracking-tight">
-                    Find Your Divine Calling
-                  </h2>
-                  <p className="text-body-large text-gray-300 font-mont leading-relaxed">Discover opportunities that align with your faith and purpose</p>
+                   <h2 className="text-section-title text-white mb-6 font-mont tracking-tight">
+                     Find Trusted Businesses
+                   </h2>
+                   <p className="text-body-large text-gray-300 font-mont leading-relaxed">Connect with faith-based businesses in your community</p>
                 </div>
                 
                 <div className="flex flex-col lg:flex-row gap-8">
                   <div className="flex-1 relative group">
                     <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-gray-400 w-6 h-6 group-focus-within:text-fem-gold transition-colors" />
-                    <input
-                      type="text"
-                      placeholder="Search by role, ministry, or divine calling..."
-                      className="w-full pl-16 pr-6 py-6 bg-white/10 border border-white/20 rounded-2xl text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-fem-gold/50 focus:border-fem-gold/50 transition-all text-lg font-mont backdrop-blur-xl"
-                    />
+                     <input
+                       type="text"
+                       placeholder="Search businesses, services, or categories..."
+                       className="w-full pl-16 pr-6 py-6 bg-white/10 border border-white/20 rounded-2xl text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-fem-gold/50 focus:border-fem-gold/50 transition-all text-lg font-mont backdrop-blur-xl"
+                     />
                   </div>
                   <button className="btn-modern">
-                    <div className="flex items-center gap-3">
-                      <span className="font-mont font-semibold tracking-wide">Search Opportunities</span>
-                      <ArrowRight className="w-5 h-5" />
-                    </div>
+                     <div className="flex items-center gap-3">
+                       <span className="font-mont font-semibold tracking-wide">Search Directory</span>
+                       <ArrowRight className="w-5 h-5" />
+                     </div>
                   </button>
                 </div>
               </div>

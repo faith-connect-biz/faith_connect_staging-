@@ -41,23 +41,18 @@ export const Navbar = () => {
             className="h-12 w-auto" 
           />
           <div className="hidden sm:flex flex-col">
-            <span className="font-heading font-semibold text-fem-navy">FEM Family Church</span>
-            <span className="text-xs text-fem-darkgray">Careers Connect</span>
+            <span className="font-heading font-semibold text-fem-navy">FaithConnect</span>
+            <span className="text-xs text-fem-darkgray">Business Directory</span>
           </div>
         </Link>
         
         <div className="hidden md:flex items-center gap-6">
-          <Link to="/jobs" className="text-fem-navy hover:text-fem-terracotta transition-colors">
-            Find Jobs
+          <Link to="/directory" className="text-fem-navy hover:text-fem-terracotta transition-colors">
+            Business Directory
           </Link>
-          {isLoggedIn && userType === "job-poster" && (
-            <Link to="/post-job" className="text-fem-navy hover:text-fem-terracotta transition-colors">
-              Post a Job
-            </Link>
-          )}
-          {!isLoggedIn && (
-            <Link to="/register-job-poster" className="text-fem-navy hover:text-fem-terracotta transition-colors">
-              Register as Job Poster
+          {isLoggedIn && (
+            <Link to="/profile" className="text-fem-navy hover:text-fem-terracotta transition-colors">
+              My Business
             </Link>
           )}
           <Link to="/about" className="text-fem-navy hover:text-fem-terracotta transition-colors">

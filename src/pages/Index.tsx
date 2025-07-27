@@ -2,10 +2,9 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/home/Hero";
-import { JobCategories } from "@/components/home/JobCategories";
-import { FeaturedJobs } from "@/components/home/FeaturedJobs";
-import { HowItWorks } from "@/components/home/HowItWorks";
-import { Testimonials } from "@/components/home/Testimonials";
+import { BusinessCategories } from "@/components/home/BusinessCategories";
+import { FeaturedBusinesses } from "@/components/home/FeaturedBusinesses";
+import { CommunityStats } from "@/components/home/CommunityStats";
 import { CallToAction } from "@/components/home/CallToAction";
 import { useEffect } from "react";
 
@@ -104,16 +103,13 @@ const Index = () => {
       <main className="flex-grow">
         <Hero />
         <div className="section-full-auto">
-          <JobCategories />
+          <BusinessCategories />
         </div>
         <div className="section-full-auto">
-          <FeaturedJobs />
+          <FeaturedBusinesses />
         </div>
         <div className="section-full-auto">
-          <HowItWorks />
-        </div>
-        <div className="section-full-auto">
-          <Testimonials />
+          <CommunityStats />
         </div>
         <div className="section-full-auto">
           <CallToAction />
