@@ -29,7 +29,9 @@ import {
   Users,
   Building2,
   Eye,
-  MessageSquare
+  MessageSquare,
+  Grid3X3,
+  List
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
@@ -43,6 +45,8 @@ const DirectoryPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState("services");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [filters, setFilters] = useState({
     county: "",
     category: "",
@@ -177,66 +181,66 @@ const DirectoryPage = () => {
   const mockBusinesses = [
     {
       id: 1,
-      name: "Grace Family Restaurant",
+      name: "Nyama Choma Paradise",
       category: "Food & Dining",
       county: "Nairobi",
       rating: 4.8,
       verified: true,
-      description: "Family-owned restaurant serving authentic Kenyan cuisine",
+      description: "Authentic Kenyan nyama choma and traditional dishes in a warm, family-friendly atmosphere",
       services: [
         {
           name: "Catering Services",
-          description: "Full-service catering for events and gatherings",
+          description: "Traditional Kenyan catering for events, weddings, and celebrations",
           duration: "Flexible"
         },
         {
           name: "Private Dining",
-          description: "Intimate private dining experiences",
+          description: "Intimate dining experiences with authentic Kenyan cuisine",
           duration: "2-3 hours"
         }
       ],
       products: [
         {
           id: 1,
-          name: "Homemade Chapati",
-          description: "Fresh baked chapati made daily with local ingredients",
-          price: "KSH 50",
+          name: "Nyama Choma Plate",
+          description: "Tender grilled goat meat served with ugali, kachumbari, and sukuma wiki",
+          price: "KSH 800",
           photo: "/lovable-uploads/f1a3f2a4-bbe7-46e5-be66-1ad39e35defa.png"
         },
         {
           id: 2,
-          name: "Signature Pilau",
-          description: "Traditional Kenyan pilau with aromatic spices",
-          price: "KSH 350",
+          name: "Pilau Special",
+          description: "Aromatic rice cooked with tender meat, spices, and fresh herbs",
+          price: "KSH 450",
           photo: "/lovable-uploads/b392f8fd-6fc5-4bfe-96aa-dc60f6854ba2.png"
         }
       ]
     },
     {
       id: 2,
-      name: "Tech Solutions Kenya",
+      name: "TechSavvy Kenya",
       category: "Technology",
       county: "Nairobi",
       rating: 4.6,
       verified: true,
-      description: "Professional IT services and computer repair",
+      description: "Professional IT services and computer repair in Nairobi",
       services: [
         {
           name: "Computer Repair",
-          description: "Fast and reliable computer repair services",
+          description: "Fast and reliable computer repair services for all brands",
           duration: "1-2 hours"
         },
         {
           name: "Network Setup",
-          description: "Professional network installation and configuration",
+          description: "Professional network installation and configuration for homes and offices",
           duration: "2-4 hours"
         }
       ],
       products: [
         {
           id: 3,
-          name: "Laptop Screen",
-          description: "High-quality replacement laptop screens",
+          name: "Laptop Screen Replacement",
+          description: "High-quality replacement laptop screens for all major brands",
           price: "KSH 15,000",
           photo: "/lovable-uploads/placeholder.svg"
         }
@@ -244,21 +248,21 @@ const DirectoryPage = () => {
     },
     {
       id: 3,
-      name: "AutoCare Center",
+      name: "Mombasa AutoCare",
       category: "Automotive",
       county: "Mombasa",
       rating: 4.7,
       verified: true,
-      description: "Complete automotive repair and maintenance services",
+      description: "Complete automotive repair and maintenance services in Mombasa",
       services: [
         {
           name: "Oil Change Service",
-          description: "Complete oil change with premium quality oil",
+          description: "Complete oil change with premium quality oil for all vehicle types",
           duration: "30 minutes"
         },
         {
           name: "Brake System Repair",
-          description: "Comprehensive brake system inspection and repair",
+          description: "Comprehensive brake system inspection and repair services",
           duration: "2-3 hours"
         }
       ],
@@ -266,9 +270,106 @@ const DirectoryPage = () => {
         {
           id: 4,
           name: "Premium Motor Oil",
-          description: "High-performance motor oil for all vehicle types",
+          description: "High-performance motor oil suitable for all Kenyan road conditions",
           price: "KSH 2,500",
           photo: "/lovable-uploads/placeholder.svg"
+        }
+      ]
+    },
+    {
+      id: 4,
+      name: "Kisumu Fresh Market",
+      category: "Food & Dining",
+      county: "Kisumu",
+      rating: 4.5,
+      verified: true,
+      description: "Fresh local produce and traditional Luo cuisine",
+      services: [
+        {
+          name: "Fresh Produce Delivery",
+          description: "Daily delivery of fresh vegetables and fruits from local farms",
+          duration: "Same day"
+        },
+        {
+          name: "Traditional Cooking Classes",
+          description: "Learn to cook authentic Luo dishes and traditional Kenyan meals",
+          duration: "3-4 hours"
+        }
+      ],
+      products: [
+        {
+          id: 5,
+          name: "Fresh Sukuma Wiki",
+          description: "Fresh collard greens harvested daily from local farms",
+          price: "KSH 50",
+          photo: ""
+        },
+        {
+          id: 6,
+          name: "Organic Tomatoes",
+          description: "Sweet, ripe tomatoes grown without pesticides",
+          price: "KSH 120",
+          photo: ""
+        }
+      ]
+    },
+    {
+      id: 5,
+      name: "Nakuru Beauty Salon",
+      category: "Health & Beauty",
+      county: "Nakuru",
+      rating: 4.4,
+      verified: true,
+      description: "Professional beauty services and hair care in Nakuru",
+      services: [
+        {
+          name: "Hair Styling",
+          description: "Professional hair styling, braiding, and treatment services",
+          duration: "1-3 hours"
+        },
+        {
+          name: "Facial Treatments",
+          description: "Rejuvenating facial treatments using natural Kenyan ingredients",
+          duration: "1-2 hours"
+        }
+      ],
+      products: [
+        {
+          id: 7,
+          name: "Natural Hair Oil",
+          description: "Organic hair oil made from Kenyan aloe vera and coconut",
+          price: "KSH 800",
+          photo: ""
+        }
+      ]
+    },
+    {
+      id: 6,
+      name: "Eldoret Sports Equipment",
+      category: "Sports & Fitness",
+      county: "Eldoret",
+      rating: 4.3,
+      verified: true,
+      description: "Quality sports equipment and fitness gear for athletes",
+      services: [
+        {
+          name: "Equipment Rental",
+          description: "Rent sports equipment for events and training sessions",
+          duration: "Daily/Weekly"
+        },
+        {
+          name: "Fitness Training",
+          description: "Personal training sessions for all fitness levels",
+          duration: "1 hour"
+        }
+      ],
+      products: [
+        {
+          id: 8,
+          name: "Running Shoes",
+          description: "Professional running shoes suitable for Kenyan terrain",
+          price: "KSH 8,500",
+          photo: ""
         }
       ]
     }
@@ -317,7 +418,7 @@ const DirectoryPage = () => {
       <main className="flex-grow">
         <div className="container mx-auto px-4 py-8">
           
-          {/* Enhanced Header */}
+          {/* Header */}
           <motion.div 
             ref={headerRef}
             initial={{ y: -50, opacity: 0 }}
@@ -378,22 +479,33 @@ const DirectoryPage = () => {
 
           <div className="flex flex-col lg:flex-row gap-8">
             
-            {/* Enhanced Sidebar */}
+            {/* Mobile Filter Button */}
+            <div className="lg:hidden mb-4">
+              <Button 
+                onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+                className="w-full bg-gradient-to-r from-fem-navy to-fem-terracotta text-white hover:from-fem-terracotta hover:to-fem-navy"
+              >
+                <Filter className="w-4 h-4 mr-2" />
+                {isMobileSidebarOpen ? "Hide Filters" : "Show Filters"}
+              </Button>
+            </div>
+            
+            {/* Sidebar */}
             <motion.div 
               ref={sidebarRef}
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className="lg:w-1/4"
+              className={`lg:w-1/4 ${isMobileSidebarOpen ? 'block' : 'hidden lg:block'}`}
             >
-              <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl sticky top-8">
+              <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl lg:sticky lg:top-8">
                 <CardHeader className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white rounded-t-lg">
                   <CardTitle className="flex items-center gap-2">
                     <Filter className="w-5 h-5" />
                     Filter Businesses
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-6 space-y-6">
+                <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-6">
                   
                   {/* Search */}
                   <motion.div variants={itemVariants}>
@@ -407,7 +519,7 @@ const DirectoryPage = () => {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         onKeyPress={handleKeyPress}
-                        className="pl-10 bg-white/50 backdrop-blur-sm border-gray-200 focus:border-fem-terracotta"
+                        className="pl-10 bg-white/50 backdrop-blur-sm border-gray-200 focus:border-fem-terracotta text-sm"
                       />
                     </div>
                   </motion.div>
@@ -418,7 +530,7 @@ const DirectoryPage = () => {
                       County
                     </Label>
                     <Select value={filters.county} onValueChange={(value) => setFilters(prev => ({ ...prev, county: value }))}>
-                      <SelectTrigger className="bg-white/50 backdrop-blur-sm border-gray-200">
+                      <SelectTrigger className="bg-white/50 backdrop-blur-sm border-gray-200 text-sm">
                         <SelectValue placeholder="Select County" />
                       </SelectTrigger>
                       <SelectContent>
@@ -435,7 +547,7 @@ const DirectoryPage = () => {
                       Category
                     </Label>
                     <Select value={filters.category} onValueChange={(value) => setFilters(prev => ({ ...prev, category: value }))}>
-                      <SelectTrigger className="bg-white/50 backdrop-blur-sm border-gray-200">
+                      <SelectTrigger className="bg-white/50 backdrop-blur-sm border-gray-200 text-sm">
                         <SelectValue placeholder="Select Category" />
                       </SelectTrigger>
                       <SelectContent>
@@ -514,7 +626,7 @@ const DirectoryPage = () => {
               </Card>
             </motion.div>
 
-            {/* Enhanced Main Content */}
+            {/* Main Content */}
             <motion.div 
               ref={contentRef}
               variants={containerVariants}
@@ -536,104 +648,205 @@ const DirectoryPage = () => {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   
-                  {/* Enhanced Tabs */}
+                  {/* Tabs */}
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 bg-gray-100 p-1 rounded-xl mb-8">
+                    <TabsList className="grid w-full grid-cols-2 bg-gray-100 p-1 rounded-xl mb-6 sm:mb-8">
                       <TabsTrigger 
                         value="services" 
-                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-fem-terracotta data-[state=active]:to-fem-gold data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 rounded-lg"
+                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-fem-terracotta data-[state=active]:to-fem-gold data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 rounded-lg text-xs sm:text-sm"
                       >
-                        <Settings className="w-4 h-4 mr-2" />
+                        <Settings className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                         Services
                       </TabsTrigger>
                       <TabsTrigger 
                         value="products" 
-                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-fem-terracotta data-[state=active]:to-fem-gold data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 rounded-lg"
+                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-fem-terracotta data-[state=active]:to-fem-gold data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 rounded-lg text-xs sm:text-sm"
                       >
-                        <Package className="w-4 h-4 mr-2" />
+                        <Package className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                         Products
                       </TabsTrigger>
                     </TabsList>
 
                     {/* Services Tab Content */}
-                    <TabsContent value="services" className="mt-6">
+                    <TabsContent value="services" className="mt-4 sm:mt-6">
                       <motion.div 
                         variants={itemVariants}
-                        className="space-y-6"
+                        className="space-y-4 sm:space-y-6"
                       >
-                        <div className="text-center mb-8">
-                          <h3 className="text-2xl font-bold text-fem-navy mb-2">Professional Services</h3>
-                          <p className="text-gray-600">Discover trusted service providers in our community</p>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8">
+                          <div className="text-center sm:text-left mb-4 sm:mb-0">
+                            <h3 className="text-xl sm:text-2xl font-bold text-fem-navy mb-2">Professional Services</h3>
+                            <p className="text-gray-600 text-sm sm:text-base">Discover trusted service providers in our community</p>
+                          </div>
+                          
+                          {/* View Toggle for Services */}
+                          <div className="flex items-center justify-center sm:justify-end gap-2 bg-gray-100 p-1 rounded-lg">
+                            <Button
+                              variant={viewMode === "grid" ? "default" : "ghost"}
+                              size="sm"
+                              onClick={() => setViewMode("grid")}
+                              className={`${
+                                viewMode === "grid" 
+                                  ? "bg-gradient-to-r from-fem-terracotta to-fem-gold text-white shadow-lg" 
+                                  : "text-gray-600 hover:text-gray-900"
+                              } transition-all duration-300 text-xs`}
+                            >
+                              <Grid3X3 className="w-3 h-3 sm:w-4 sm:h-4" />
+                            </Button>
+                            <Button
+                              variant={viewMode === "list" ? "default" : "ghost"}
+                              size="sm"
+                              onClick={() => setViewMode("list")}
+                              className={`${
+                                viewMode === "list" 
+                                  ? "bg-gradient-to-r from-fem-terracotta to-fem-gold text-white shadow-lg" 
+                                  : "text-gray-600 hover:text-gray-900"
+                              } transition-all duration-300 text-xs`}
+                            >
+                              <List className="w-3 h-3 sm:w-4 sm:h-4" />
+                            </Button>
+                          </div>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {filteredBusinesses.map((business: any) => 
-                            business.services?.map((service: any, index: number) => (
-                              <motion.div 
-                                key={`${business.id}-${index}`}
-                                variants={itemVariants}
-                                className="group relative"
-                              >
-                                <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-100">
-                                  <div className="p-6">
-                                    <div className="flex items-start justify-between mb-4">
-                                      <div className="flex-1">
-                                        <h4 className="text-lg font-semibold text-fem-navy mb-2 group-hover:text-fem-terracotta transition-colors duration-300">
-                                          {service.name}
-                                        </h4>
-                                        <p className="text-gray-600 text-sm leading-relaxed mb-3">
-                                          {service.description}
-                                        </p>
+                        {/* Services Grid View */}
+                        {viewMode === "grid" && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {filteredBusinesses.map((business: any) => 
+                              business.services?.map((service: any, index: number) => (
+                                <motion.div 
+                                  key={`${business.id}-${index}`}
+                                  variants={itemVariants}
+                                  className="group relative"
+                                >
+                                  <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-100">
+                                    <div className="p-6">
+                                      <div className="flex items-start justify-between mb-4">
+                                        <div className="flex-1">
+                                          <h4 className="text-lg font-semibold text-fem-navy mb-2 group-hover:text-fem-terracotta transition-colors duration-300">
+                                            {service.name}
+                                          </h4>
+                                          <p className="text-gray-600 text-sm leading-relaxed mb-3">
+                                            {service.description}
+                                          </p>
+                                        </div>
+                                        <div className="ml-4">
+                                          <Badge variant="outline" className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white border-0">
+                                            {business.category}
+                                          </Badge>
+                                        </div>
                                       </div>
-                                      <div className="ml-4">
-                                        <Badge variant="outline" className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white border-0">
-                                          {business.category}
-                                        </Badge>
+                                      
+                                      <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-2">
+                                          <Clock className="w-4 h-4 text-fem-terracotta" />
+                                          <span className="text-sm text-gray-600">{service.duration}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                                          <span className="text-sm text-gray-600">{business.rating}</span>
+                                        </div>
                                       </div>
-                                    </div>
-                                    
-                                    <div className="flex items-center justify-between mb-4">
-                                      <div className="flex items-center gap-2">
-                                        <Clock className="w-4 h-4 text-fem-terracotta" />
-                                        <span className="text-sm text-gray-600">{service.duration}</span>
+                                      
+                                      <div className="flex gap-3">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="flex-1 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white transition-all duration-300"
+                                          onClick={() => navigate(`/business/${business.id}`)}
+                                        >
+                                          <Eye className="w-4 h-4 mr-2" />
+                                          View Details
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          className="flex-1 bg-gradient-to-r from-fem-terracotta to-fem-gold text-white hover:from-fem-gold hover:to-fem-terracotta transition-all duration-300"
+                                          onClick={() => navigate(`/chat?business=${business.id}`)}
+                                        >
+                                          <MessageSquare className="w-4 h-4 mr-2" />
+                                          Contact
+                                        </Button>
                                       </div>
-                                      <div className="flex items-center gap-1">
-                                        <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                                        <span className="text-sm text-gray-600">{business.rating}</span>
-                                      </div>
-                                    </div>
-                                    
-                                    <div className="flex gap-3">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="flex-1 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white transition-all duration-300"
-                                        onClick={() => navigate(`/business/${business.id}`)}
-                                      >
-                                        <Eye className="w-4 h-4 mr-2" />
-                                        View Details
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        className="flex-1 bg-gradient-to-r from-fem-terracotta to-fem-gold text-white hover:from-fem-gold hover:to-fem-terracotta transition-all duration-300"
-                                        onClick={() => navigate(`/chat?business=${business.id}`)}
-                                      >
-                                        <MessageSquare className="w-4 h-4 mr-2" />
-                                        Contact
-                                      </Button>
                                     </div>
                                   </div>
-                                </div>
-                                
-                                {/* Decorative Elements */}
-                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                                <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-gradient-to-br from-fem-gold to-fem-terracotta rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100"></div>
-                              </motion.div>
-                            ))
-                          )}
-                        </div>
+                                  
+                                  {/* Decorative Elements */}
+                                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                  <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-gradient-to-br from-fem-gold to-fem-terracotta rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100"></div>
+                                </motion.div>
+                              ))
+                            )}
+                          </div>
+                        )}
+
+                        {/* Services List View */}
+                        {viewMode === "list" && (
+                          <div className="space-y-4">
+                            {filteredBusinesses.map((business: any) => 
+                              business.services?.map((service: any, index: number) => (
+                                <motion.div 
+                                  key={`${business.id}-${index}`}
+                                  variants={itemVariants}
+                                  className="group"
+                                >
+                                  <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
+                                    <div className="p-6">
+                                      <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-3 mb-3">
+                                            <h4 className="text-xl font-semibold text-fem-navy group-hover:text-fem-terracotta transition-colors duration-300">
+                                              {service.name}
+                                            </h4>
+                                            <Badge variant="outline" className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white border-0">
+                                              {business.category}
+                                            </Badge>
+                                          </div>
+                                          <p className="text-gray-600 mb-4 leading-relaxed">
+                                            {service.description}
+                                          </p>
+                                          <div className="flex items-center gap-6 text-sm text-gray-500">
+                                            <div className="flex items-center gap-1">
+                                              <Clock className="w-4 h-4 text-fem-terracotta" />
+                                              <span>{service.duration}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                              <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                                              <span>{business.rating}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                              <Building2 className="w-4 h-4 text-fem-terracotta" />
+                                              <span>{business.name}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="flex gap-3 ml-6">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white transition-all duration-300"
+                                            onClick={() => navigate(`/business/${business.id}`)}
+                                          >
+                                            <Eye className="w-4 h-4 mr-2" />
+                                            View Details
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white hover:from-fem-gold hover:to-fem-terracotta transition-all duration-300"
+                                            onClick={() => navigate(`/chat?business=${business.id}`)}
+                                          >
+                                            <MessageSquare className="w-4 h-4 mr-2" />
+                                            Contact
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              ))
+                            )}
+                          </div>
+                        )}
                         
                         {/* Empty State for Services */}
                         {filteredBusinesses.filter((business: any) => business.services?.length > 0).length === 0 && (
@@ -652,126 +865,103 @@ const DirectoryPage = () => {
                     </TabsContent>
 
                     {/* Products Tab Content */}
-                    <TabsContent value="products" className="mt-6">
+                    <TabsContent value="products" className="mt-4 sm:mt-6">
                       <motion.div 
                         variants={itemVariants}
-                        className="space-y-8"
+                        className="space-y-6 sm:space-y-8"
                       >
-                        <div className="text-center mb-8">
-                          <h3 className="text-3xl font-bold text-fem-navy mb-3">Discover Amazing Products</h3>
-                          <p className="text-gray-600 text-lg">Explore products from our trusted business community</p>
+                        <div className="text-center mb-6 sm:mb-8">
+                          <h3 className="text-xl sm:text-3xl font-bold text-fem-navy mb-2 sm:mb-3">Discover Amazing Products</h3>
+                          <p className="text-gray-600 text-sm sm:text-lg">Explore products from our trusted business community</p>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                        {/* Products List View Only */}
+                        <div className="space-y-4">
                           {filteredBusinesses.map((business: any) => 
                             business.products?.map((product: any) => (
                               <motion.div 
                                 key={`${business.id}-${product.id}`}
                                 variants={itemVariants}
-                                className="group relative"
+                                className="group"
                               >
-                                {/* Enhanced Product Card */}
-                                <div className="bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden border-0 transform hover:-translate-y-2">
-                                  {/* Product Image Container */}
-                                  <div className="relative h-56 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
-                                    {product.photo ? (
-                                      <img 
-                                        src={product.photo} 
-                                        alt={product.name}
-                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center">
-                                        <div className="w-20 h-20 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center">
-                                          <Package className="w-10 h-10 text-white" />
+                                <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
+                                  <div className="p-4 sm:p-6">
+                                    <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
+                                      {/* Product Image */}
+                                      <div className="relative w-full sm:w-24 h-32 sm:h-24 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                                        {product.photo ? (
+                                          <img 
+                                            src={product.photo} 
+                                            alt={product.name}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full flex items-center justify-center">
+                                            <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center">
+                                              <Package className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+                                            </div>
+                                          </div>
+                                        )}
+                                        <div className="absolute top-1 right-1">
+                                          <div className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white rounded-full px-2 py-1 text-xs font-bold">
+                                            {product.price}
+                                          </div>
                                         </div>
                                       </div>
-                                    )}
-                                    
-                                    {/* Business Badge */}
-                                    <div className="absolute top-4 left-4">
-                                      <div className="bg-white/95 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg border border-gray-100">
-                                        <span className="text-xs font-semibold text-fem-navy">{business.name}</span>
+                                      
+                                      {/* Product Info */}
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
+                                          <div className="flex-1">
+                                            <h4 className="text-lg sm:text-xl font-bold text-fem-navy group-hover:text-fem-terracotta transition-colors duration-300 mb-2">
+                                              {product.name}
+                                            </h4>
+                                            <p className="text-gray-600 leading-relaxed text-sm sm:text-base mb-3">
+                                              {product.description}
+                                            </p>
+                                          </div>
+                                          <Badge variant="outline" className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white border-0 self-start sm:self-auto mt-2 sm:mt-0">
+                                            {business.category}
+                                          </Badge>
+                                        </div>
+                                        
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-xs sm:text-sm text-gray-500 mb-4">
+                                          <div className="flex items-center gap-1">
+                                            <Star className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400 fill-current" />
+                                            <span>{business.rating}</span>
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            <Building2 className="w-3 h-3 sm:w-4 sm:h-4 text-fem-terracotta" />
+                                            <span className="truncate">{business.name}</span>
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                            <span>In Stock</span>
+                                          </div>
+                                        </div>
+                                        
+                                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white transition-all duration-300 text-xs sm:text-sm h-8 sm:h-9"
+                                          >
+                                            <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                                            Photos
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            className="flex-1 bg-gradient-to-r from-fem-terracotta to-fem-gold text-white hover:from-fem-gold hover:to-fem-terracotta transition-all duration-300 text-xs sm:text-sm h-8 sm:h-9"
+                                            onClick={() => navigate(`/chat?business=${business.id}`)}
+                                          >
+                                            <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                                            Contact
+                                          </Button>
+                                        </div>
                                       </div>
-                                    </div>
-                                    
-                                    {/* Price Badge */}
-                                    <div className="absolute top-4 right-4">
-                                      <div className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white rounded-full px-4 py-2 shadow-lg">
-                                        <span className="text-sm font-bold">{product.price}</span>
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Hover Overlay */}
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
-                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-4 group-hover:translate-y-0">
-                                        <Button
-                                          size="sm"
-                                          className="bg-white/95 backdrop-blur-sm text-fem-navy hover:bg-white shadow-lg"
-                                          onClick={() => navigate(`/business/${business.id}`)}
-                                        >
-                                          <Eye className="w-4 h-4 mr-2" />
-                                          View Details
-                                        </Button>
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Category Badge */}
-                                    <div className="absolute bottom-4 left-4">
-                                      <div className="bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 shadow-lg">
-                                        <span className="text-xs text-gray-600">{business.category}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Product Info */}
-                                  <div className="p-6">
-                                    <div className="mb-4">
-                                      <h4 className="text-lg font-bold text-fem-navy mb-2 group-hover:text-fem-terracotta transition-colors duration-300 line-clamp-1">
-                                        {product.name}
-                                      </h4>
-                                      <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
-                                        {product.description}
-                                      </p>
-                                    </div>
-                                    
-                                    {/* Product Features */}
-                                    <div className="flex items-center justify-between mb-4">
-                                      <div className="flex items-center gap-1">
-                                        <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                                        <span className="text-sm font-medium text-gray-600">{business.rating}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                        <span className="text-xs text-gray-500">In Stock</span>
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Action Buttons */}
-                                    <div className="flex gap-3">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="flex-1 text-sm border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white transition-all duration-300 rounded-xl"
-                                      >
-                                        <Eye className="w-4 h-4 mr-2" />
-                                        Photos
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        className="flex-1 text-sm bg-gradient-to-r from-fem-terracotta to-fem-gold text-white hover:from-fem-gold hover:to-fem-terracotta transition-all duration-300 rounded-xl shadow-lg"
-                                        onClick={() => navigate(`/chat?business=${business.id}`)}
-                                      >
-                                        <MessageSquare className="w-4 h-4 mr-2" />
-                                        Contact
-                                      </Button>
                                     </div>
                                   </div>
                                 </div>
-                                
-                                {/* Decorative Elements */}
-                                <div className="absolute -top-2 -right-2 w-4 h-4 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                                <div className="absolute -bottom-2 -left-2 w-3 h-3 bg-gradient-to-br from-fem-gold to-fem-terracotta rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100"></div>
                               </motion.div>
                             ))
                           )}
