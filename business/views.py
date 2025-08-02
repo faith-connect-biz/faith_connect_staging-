@@ -3,9 +3,9 @@ from rest_framework import generics, filters
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
-from business.models import Business
+from business.models import Business, Category
 from business.permissions import IsBusinessUser
-from business.serializers import BusinessSerializer
+from business.serializers import BusinessSerializer, CategorySerializer
 from core import settings
 from user_auth.utils import success_response, error_response
 
@@ -60,6 +60,12 @@ class BusinessUpdateView(generics.UpdateAPIView):
     serializer_class = BusinessSerializer
     permission_classes = [IsBusinessUser]
     lookup_field = 'id'
+
+class CategoryListAPIView(generics.ListAPIView):
+    queryset = Category.objects.all().order_by('name')
+    serializer_class = CategorySerializer
+    permission_classes = [IsAuthenticated]
+
 
 # class GenerateSASToken(APIView):
 #     permission_classes = [IsAuthenticated]

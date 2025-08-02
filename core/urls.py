@@ -23,5 +23,5 @@ urlpatterns = [
 
     path('api/users/', include('user_auth.user_management.urls')),
 
-    path('api/business', include('business.urls')),
+    path('api/business/', include('business.urls')),
 ]

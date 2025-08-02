@@ -1,4 +1,4 @@
-from business.models import BusinessHour, Service, Review, Business
+from business.models import BusinessHour, Service, Review, Business, Category
 
 from rest_framework import serializers
 
@@ -52,6 +52,11 @@ class BusinessSerializer(serializers.ModelSerializer):
             Service.objects.create(business=business, **service)
 
         return business
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['id', 'name', 'slug']
 
 
 
