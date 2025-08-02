@@ -15,31 +15,31 @@ export const Footer = () => {
               />
               <div className="flex flex-col">
                 <span className="font-heading font-semibold">FEM Family Church</span>
-                <span className="text-xs text-gray-300">Careers Connect</span>
+                <span className="text-xs text-gray-300">Business Connect</span>
               </div>
             </Link>
             <p className="text-xs text-gray-300">
-              Connecting our church community with meaningful employment opportunities.
+              Connecting our church community with trusted businesses and services.
             </p>
           </div>
           
           <div>
             <h3 className="font-heading font-semibold mb-2 text-fem-gold text-sm">For Community Members</h3>
             <ul className="space-y-1 text-xs text-gray-300">
-              <li><Link to="/jobs" className="hover:text-fem-gold transition-colors">Browse Jobs</Link></li>
+              <li><Link to="/directory" className="hover:text-fem-gold transition-colors">Explore Services</Link></li>
               <li><Link to="/profile" className="hover:text-fem-gold transition-colors">Create Profile</Link></li>
-              <li><Link to="/saved-jobs" className="hover:text-fem-gold transition-colors">Saved Jobs</Link></li>
-              <li><Link to="/applications" className="hover:text-fem-gold transition-colors">My Applications</Link></li>
+              <li><Link to="/chat" className="hover:text-fem-gold transition-colors">Connect with Businesses</Link></li>
+              <li><Link to="/about" className="hover:text-fem-gold transition-colors">Learn More</Link></li>
             </ul>
           </div>
           
           <div>
-            <h3 className="font-heading font-semibold mb-2 text-fem-gold text-sm">For Employers</h3>
+            <h3 className="font-heading font-semibold mb-2 text-fem-gold text-sm">For Business Directories</h3>
             <ul className="space-y-1 text-xs text-gray-300">
-              <li><Link to="/post-job" className="hover:text-fem-gold transition-colors">Post a Job</Link></li>
-              <li><Link to="/employer-dashboard" className="hover:text-fem-gold transition-colors">Employer Dashboard</Link></li>
-              <li><Link to="/applicants" className="hover:text-fem-gold transition-colors">Manage Applicants</Link></li>
-              <li><Link to="/pricing" className="hover:text-fem-gold transition-colors">Pricing</Link></li>
+              <li><Link to="/register-business" className="hover:text-fem-gold transition-colors">List Your Business</Link></li>
+              <li><Link to="/profile" className="hover:text-fem-gold transition-colors">Manage Profile</Link></li>
+              <li><Link to="/chat" className="hover:text-fem-gold transition-colors">Connect with Community</Link></li>
+              <li><Link to="/about" className="hover:text-fem-gold transition-colors">Learn More</Link></li>
             </ul>
           </div>
           

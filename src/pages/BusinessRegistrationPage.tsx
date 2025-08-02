@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { OnboardingCheck } from "@/components/OnboardingCheck";
 import { 
   Building2, 
   Upload, 
@@ -21,13 +22,31 @@ import {
   Phone,
   Mail,
   Globe,
-  Camera
+  Camera,
+  Settings,
+  Package,
+  Tag,
+  Users,
+  Sparkles,
+  Award,
+  TrendingUp,
+  Heart,
+  Star
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+// Register GSAP plugins
+gsap.registerPlugin(ScrollTrigger);
 
 const BusinessRegistrationPage = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({
     // Basic Information
     businessName: "",
@@ -55,8 +74,9 @@ const BusinessRegistrationPage = () => {
       sunday: { open: "", close: "", closed: false }
     },
     
-    // Services & Features
+    // Services & Products
     services: [] as string[],
+    products: [] as Array<{name: string, price: string, description: string, photo?: string}>,
     features: [] as string[],
     tags: [] as string[],
     
@@ -71,6 +91,58 @@ const BusinessRegistrationPage = () => {
     photoRequestNotes: ""
   });
 
+  // GSAP Animations
+  useEffect(() => {
+    if (headerRef.current) {
+      gsap.fromTo(headerRef.current, 
+        { y: -50, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, ease: "power2.out" }
+      );
+    }
+
+    if (progressRef.current) {
+      gsap.fromTo(progressRef.current,
+        { scale: 0.8, opacity: 0 },
+        { 
+          scale: 1, 
+          opacity: 1, 
+          duration: 0.8, 
+          delay: 0.2,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: progressRef.current,
+            start: "top 80%",
+            end: "bottom 20%",
+            toggleActions: "play none none reverse"
+          }
+        }
+      );
+    }
+
+    if (formRef.current) {
+      gsap.fromTo(formRef.current,
+        { y: 50, opacity: 0 },
+        { 
+          y: 0, 
+          opacity: 1, 
+          duration: 0.8, 
+          delay: 0.4,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: formRef.current,
+            start: "top 80%",
+            end: "bottom 20%",
+            toggleActions: "play none none reverse"
+          }
+        }
+      );
+    }
+
+    return () => {
+      ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+    };
+  }, []);
+
   const categories = [
     "Restaurant", "Retail", "Services", "Health & Wellness", 
     "Automotive", "Real Estate", "Education", "Technology",
@@ -82,36 +154,41 @@ const BusinessRegistrationPage = () => {
   const availableServices = [
     "Dine-in", "Takeout", "Delivery", "Catering", "Private Events",
     "Consultation", "Installation", "Maintenance", "Repair", "Training",
-    "Online Services", "In-Person Services", "Mobile Services"
+    "Custom Work", "Rental", "Membership", "Subscription", "One-time Service"
   ];
 
   const availableFeatures = [
-    "Wheelchair Accessible", "Free Wi-Fi", "Parking Available", 
-    "Kid-Friendly", "Gluten-Free Options", "Vegan Options",
-    "Credit Cards Accepted", "Cash Only", "Appointment Required",
-    "Walk-ins Welcome", "Emergency Services", "24/7 Available"
+    "Free Wi-Fi", "Parking Available", "Wheelchair Accessible", "Credit Cards Accepted",
+    "Cash Only", "Appointment Required", "Walk-ins Welcome", "Emergency Services",
+    "24/7 Service", "Mobile Service", "Online Booking", "Gift Cards Available"
   ];
 
   const availableTags = [
-    "Family-Friendly", "Local Ingredients", "Eco-Friendly", "Veteran-Owned",
-    "Woman-Owned", "Minority-Owned", "Faith-Based", "Community Focused",
-    "Premium Quality", "Affordable", "Luxury", "Budget-Friendly"
+    "Family-Friendly", "Eco-Friendly", "Veteran-Owned", "Woman-Owned", "Local Business",
+    "Christian-Owned", "Community-Focused", "Quality Service", "Affordable", "Premium",
+    "Fast Service", "Professional", "Reliable", "Trusted", "Innovative"
+  ];
+
+  const steps = [
+    { id: 1, title: "Basic Info", icon: Building2 },
+    { id: 2, title: "Contact Details", icon: Phone },
+    { id: 3, title: "Services & Products", icon: Settings },
+    { id: 4, title: "Final Details", icon: CheckCircle }
   ];
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleArrayToggle = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: prev[field as keyof typeof prev].includes(value)
-        ? (prev[field as keyof typeof prev] as string[]).filter(item => item !== value)
-        : [...(prev[field as keyof typeof prev] as string[]), value]
-    }));
+    setFormData(prev => {
+      const currentArray = prev[field as keyof typeof prev] as string[];
+      if (currentArray.includes(value)) {
+        return { ...prev, [field]: currentArray.filter(item => item !== value) };
+      } else {
+        return { ...prev, [field]: [...currentArray, value] };
+      }
+    });
   };
 
   const handleHoursChange = (day: string, field: string, value: string | boolean) => {
@@ -140,375 +217,667 @@ const BusinessRegistrationPage = () => {
   };
 
   const handleSubmit = () => {
-    // Mock submission
-    console.log("Business registration submitted:", formData);
     toast({
-      title: "Business registration submitted!",
-      description: "Your business listing has been submitted for review. We'll notify you once it's approved.",
+      title: "Business registered successfully!",
+      description: "Your business has been added to the directory. Welcome to the FaithConnect community!",
     });
-    navigate("/business-registration-success");
+    navigate("/directory");
+  };
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.6,
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut"
+      }
+    }
   };
 
   const renderStep1 = () => (
-    <div className="space-y-6">
-      <div>
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+      <motion.div variants={itemVariants}>
         <Label htmlFor="businessName">Business Name *</Label>
         <Input
           id="businessName"
           value={formData.businessName}
           onChange={(e) => handleInputChange("businessName", e.target.value)}
           placeholder="Enter your business name"
+          className="mt-1"
+          required
         />
-      </div>
+      </motion.div>
 
-      <div>
-        <Label>Business Category *</Label>
+      <motion.div variants={itemVariants}>
+        <Label htmlFor="category">Business Category *</Label>
         <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
-          <SelectTrigger>
+          <SelectTrigger className="mt-1">
             <SelectValue placeholder="Select a category" />
           </SelectTrigger>
           <SelectContent>
             {categories.map((category) => (
-              <SelectItem key={category} value={category}>
-                {category}
-              </SelectItem>
+              <SelectItem key={category} value={category}>{category}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </motion.div>
 
-      <div>
-        <Label htmlFor="description">Brief Description *</Label>
-        <Textarea
+      <motion.div variants={itemVariants}>
+        <Label htmlFor="description">Short Description *</Label>
+        <Input
           id="description"
           value={formData.description}
           onChange={(e) => handleInputChange("description", e.target.value)}
-          placeholder="Brief description of your business (2-3 sentences)"
-          rows={3}
+          placeholder="Brief description of your business"
+          className="mt-1"
+          required
         />
-      </div>
+      </motion.div>
 
-      <div>
+      <motion.div variants={itemVariants}>
         <Label htmlFor="longDescription">Detailed Description</Label>
         <Textarea
           id="longDescription"
           value={formData.longDescription}
           onChange={(e) => handleInputChange("longDescription", e.target.value)}
-          placeholder="Tell us more about your business, mission, and values..."
-          rows={5}
+          placeholder="Tell us more about your business, services, and what makes you unique"
+          rows={4}
+          className="mt-1"
         />
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 
   const renderStep2 = () => (
-    <div className="space-y-6">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
+        <motion.div variants={itemVariants}>
           <Label htmlFor="phone">Phone Number *</Label>
           <Input
             id="phone"
             value={formData.phone}
             onChange={(e) => handleInputChange("phone", e.target.value)}
-            placeholder="(555) 123-4567"
+            placeholder="+254 XXX XXX XXX"
+            className="mt-1"
+            required
           />
-        </div>
+        </motion.div>
 
-        <div>
+        <motion.div variants={itemVariants}>
           <Label htmlFor="email">Email Address *</Label>
           <Input
             id="email"
             type="email"
             value={formData.email}
             onChange={(e) => handleInputChange("email", e.target.value)}
-            placeholder="business@email.com"
+            placeholder="business@example.com"
+            className="mt-1"
+            required
           />
-        </div>
+        </motion.div>
+      </div>
 
-        <div>
-          <Label htmlFor="website">Website</Label>
-          <Input
-            id="website"
-            value={formData.website}
-            onChange={(e) => handleInputChange("website", e.target.value)}
-            placeholder="www.yourbusiness.com"
-          />
-        </div>
+      <motion.div variants={itemVariants}>
+        <Label htmlFor="website">Website (Optional)</Label>
+        <Input
+          id="website"
+          value={formData.website}
+          onChange={(e) => handleInputChange("website", e.target.value)}
+          placeholder="https://www.yourbusiness.com"
+        />
+      </motion.div>
 
-        <div>
-          <Label htmlFor="address">Street Address *</Label>
-          <Input
-            id="address"
-            value={formData.address}
-            onChange={(e) => handleInputChange("address", e.target.value)}
-            placeholder="123 Business St"
-          />
-        </div>
+      <motion.div variants={itemVariants}>
+        <Label htmlFor="address">Street Address *</Label>
+        <Input
+          id="address"
+          value={formData.address}
+          onChange={(e) => handleInputChange("address", e.target.value)}
+          placeholder="123 Main Street"
+          required
+        />
+      </motion.div>
 
-        <div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <motion.div variants={itemVariants}>
           <Label htmlFor="city">City *</Label>
           <Input
             id="city"
             value={formData.city}
             onChange={(e) => handleInputChange("city", e.target.value)}
-            placeholder="Atlanta"
+            placeholder="Nairobi"
+            required
           />
-        </div>
+        </motion.div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <Label htmlFor="state">State *</Label>
-            <Input
-              id="state"
-              value={formData.state}
-              onChange={(e) => handleInputChange("state", e.target.value)}
-              placeholder="GA"
-            />
-          </div>
-          <div>
-            <Label htmlFor="zipCode">ZIP Code *</Label>
-            <Input
-              id="zipCode"
-              value={formData.zipCode}
-              onChange={(e) => handleInputChange("zipCode", e.target.value)}
-              placeholder="30309"
-            />
-          </div>
-        </div>
+        <motion.div variants={itemVariants}>
+          <Label htmlFor="state">County *</Label>
+          <Input
+            id="state"
+            value={formData.state}
+            onChange={(e) => handleInputChange("state", e.target.value)}
+            placeholder="Nairobi"
+            required
+          />
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <Label htmlFor="zipCode">Postal Code</Label>
+          <Input
+            id="zipCode"
+            value={formData.zipCode}
+            onChange={(e) => handleInputChange("zipCode", e.target.value)}
+            placeholder="00100"
+          />
+        </motion.div>
       </div>
 
-      <div>
-        <Label className="flex items-center gap-2">
-          <Clock className="w-4 h-4" />
-          Business Hours
-        </Label>
-        <div className="space-y-3 mt-3">
+      {/* Business Hours */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <Label className="text-lg font-semibold">Business Hours</Label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.entries(formData.hours).map(([day, hours]) => (
-            <div key={day} className="flex items-center gap-3">
-              <div className="w-20 text-sm font-medium capitalize">{day}</div>
-              <Checkbox
-                checked={hours.closed}
-                onCheckedChange={(checked) => handleHoursChange(day, "closed", checked as boolean)}
-              />
-              <span className="text-sm">Closed</span>
+            <div key={day} className="border rounded-lg p-4 bg-white/50 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-3">
+                <Label className="capitalize font-medium">{day}</Label>
+                <Checkbox
+                  checked={hours.closed}
+                  onCheckedChange={(checked) => handleHoursChange(day, "closed", checked as boolean)}
+                />
+              </div>
               {!hours.closed && (
-                <>
-                  <Input
-                    type="time"
-                    value={hours.open}
-                    onChange={(e) => handleHoursChange(day, "open", e.target.value)}
-                    className="w-24"
-                  />
-                  <span className="text-sm">to</span>
-                  <Input
-                    type="time"
-                    value={hours.close}
-                    onChange={(e) => handleHoursChange(day, "close", e.target.value)}
-                    className="w-24"
-                  />
-                </>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-sm">Open</Label>
+                    <Input
+                      type="time"
+                      value={hours.open}
+                      onChange={(e) => handleHoursChange(day, "open", e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Close</Label>
+                    <Input
+                      type="time"
+                      value={hours.close}
+                      onChange={(e) => handleHoursChange(day, "close", e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
               )}
             </div>
           ))}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 
   const renderStep3 = () => (
-    <div className="space-y-6">
-      <div>
-        <Label>Services Offered</Label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
+      {/* Services Offered */}
+      <motion.div variants={itemVariants} className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200 shadow-sm">
+        <h3 className="text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2">
+          <Settings className="w-5 h-5" />
+          Services Offered
+        </h3>
+        <p className="text-sm text-blue-700 mb-4">
+          Select the services you provide to your customers
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {availableServices.map((service) => (
-            <div key={service} className="flex items-center space-x-2">
+            <div key={service} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-blue-100 transition-colors">
               <Checkbox
+                id={service}
                 checked={formData.services.includes(service)}
                 onCheckedChange={() => handleArrayToggle("services", service)}
               />
-              <Label className="text-sm">{service}</Label>
+              <Label htmlFor={service} className="text-sm cursor-pointer">{service}</Label>
             </div>
           ))}
         </div>
-      </div>
+      </motion.div>
 
-      <div>
-        <Label>Features & Amenities</Label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+      {/* Products */}
+      <motion.div variants={itemVariants} className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200 shadow-sm">
+        <h3 className="text-lg font-semibold text-green-900 mb-4 flex items-center gap-2">
+          <Package className="w-5 h-5" />
+          Products You Sell
+        </h3>
+        <p className="text-sm text-green-700 mb-4">
+          Add the products you sell with descriptions, pricing, and photos
+        </p>
+        
+        {/* Product List */}
+        <div className="space-y-4 mb-4">
+          {formData.products.map((product, index) => (
+            <div key={index} className="bg-white p-4 rounded-lg border border-green-200 shadow-sm">
+              <div className="flex items-start justify-between mb-3">
+                <h4 className="font-medium text-green-900">Product {index + 1}</h4>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const newProducts = formData.products.filter((_, i) => i !== index);
+                    setFormData(prev => ({ ...prev, products: newProducts }));
+                  }}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  Remove
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor={`product-name-${index}`}>Product Name *</Label>
+                  <Input
+                    id={`product-name-${index}`}
+                    placeholder="e.g., Handmade Jewelry, Organic Soap"
+                    value={product.name}
+                    onChange={(e) => {
+                      const newProducts = [...formData.products];
+                      newProducts[index].name = e.target.value;
+                      setFormData(prev => ({ ...prev, products: newProducts }));
+                    }}
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor={`product-price-${index}`}>Price (KSH) *</Label>
+                  <Input
+                    id={`product-price-${index}`}
+                    placeholder="e.g., 500, 1,200"
+                    value={product.price}
+                    onChange={(e) => {
+                      const newProducts = [...formData.products];
+                      newProducts[index].price = e.target.value;
+                      setFormData(prev => ({ ...prev, products: newProducts }));
+                    }}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              
+              {/* Product Photo Upload */}
+              <div className="mt-4">
+                <Label className="text-sm font-medium text-green-900 mb-2 block">
+                  Product Photo
+                </Label>
+                <div className="border-2 border-dashed border-green-300 rounded-lg p-4 text-center hover:border-green-400 transition-colors">
+                  <Camera className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                  <p className="text-sm text-green-600 mb-2">
+                    Click to upload product photo
+                  </p>
+                  <p className="text-xs text-green-500">
+                    JPG, PNG up to 5MB
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    id={`product-photo-${index}`}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          const newProducts = [...formData.products];
+                          newProducts[index] = {
+                            ...newProducts[index],
+                            photo: event.target?.result as string
+                          };
+                          setFormData(prev => ({ ...prev, products: newProducts }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById(`product-photo-${index}`)?.click()}
+                    className="mt-2 border-green-300 text-green-700 hover:bg-green-50"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Choose Photo
+                  </Button>
+                </div>
+                
+                {/* Display uploaded photo */}
+                {product.photo && (
+                  <div className="mt-3">
+                    <div className="relative inline-block">
+                      <img
+                        src={product.photo}
+                        alt={`${product.name} photo`}
+                        className="w-24 h-24 object-cover rounded-lg border border-green-200"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newProducts = [...formData.products];
+                          newProducts[index] = {
+                            ...newProducts[index],
+                            photo: ""
+                          };
+                          setFormData(prev => ({ ...prev, products: newProducts }));
+                        }}
+                        className="absolute -top-2 -right-2 w-6 h-6 p-0 bg-red-500 text-white hover:bg-red-600 border-red-500"
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-3">
+                <Label htmlFor={`product-description-${index}`}>Description</Label>
+                <Textarea
+                  id={`product-description-${index}`}
+                  placeholder="Describe your product, its features, materials, etc."
+                  value={product.description}
+                  onChange={(e) => {
+                    const newProducts = [...formData.products];
+                    newProducts[index].description = e.target.value;
+                    setFormData(prev => ({ ...prev, products: newProducts }));
+                  }}
+                  rows={3}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Add Product Button */}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setFormData(prev => ({
+              ...prev,
+              products: [...prev.products, { name: "", price: "", description: "", photo: "" }]
+            }));
+          }}
+          className="w-full border-green-300 text-green-700 hover:bg-green-50 hover:text-green-800"
+        >
+          <Package className="w-4 h-4 mr-2" />
+          Add Another Product
+        </Button>
+      </motion.div>
+
+      {/* Features & Amenities */}
+      <motion.div variants={itemVariants} className="bg-gradient-to-br from-purple-50 to-violet-50 p-6 rounded-xl border border-purple-200 shadow-sm">
+        <h3 className="text-lg font-semibold text-purple-900 mb-4 flex items-center gap-2">
+          <CheckCircle className="w-5 h-5" />
+          Features & Amenities
+        </h3>
+        <p className="text-sm text-purple-700 mb-4">
+          Select the features and amenities your business offers
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {availableFeatures.map((feature) => (
-            <div key={feature} className="flex items-center space-x-2">
+            <div key={feature} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-purple-100 transition-colors">
               <Checkbox
+                id={feature}
                 checked={formData.features.includes(feature)}
                 onCheckedChange={() => handleArrayToggle("features", feature)}
               />
-              <Label className="text-sm">{feature}</Label>
+              <Label htmlFor={feature} className="text-sm cursor-pointer">{feature}</Label>
             </div>
           ))}
         </div>
-      </div>
+      </motion.div>
 
-      <div>
-        <Label>Business Tags</Label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+      {/* Business Tags */}
+      <motion.div variants={itemVariants} className="bg-gradient-to-br from-orange-50 to-amber-50 p-6 rounded-xl border border-orange-200 shadow-sm">
+        <h3 className="text-lg font-semibold text-orange-900 mb-4 flex items-center gap-2">
+          <Tag className="w-5 h-5" />
+          Business Tags
+        </h3>
+        <p className="text-sm text-orange-700 mb-4">
+          Help customers find your business by selecting relevant tags
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {availableTags.map((tag) => (
-            <div key={tag} className="flex items-center space-x-2">
+            <div key={tag} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-orange-100 transition-colors">
               <Checkbox
+                id={tag}
                 checked={formData.tags.includes(tag)}
                 onCheckedChange={() => handleArrayToggle("tags", tag)}
               />
-              <Label className="text-sm">{tag}</Label>
+              <Label htmlFor={tag} className="text-sm cursor-pointer">{tag}</Label>
             </div>
           ))}
         </div>
-      </div>
-    </div>
+      </motion.div>
+
+      {/* Creative Summary */}
+      <motion.div variants={itemVariants} className="bg-gradient-to-br from-gray-50 to-slate-50 p-6 rounded-xl border border-gray-200 shadow-sm">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Users className="w-5 h-5" />
+          Your Business Summary
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div className="text-center p-3 bg-blue-100 rounded-lg">
+            <div className="font-semibold text-blue-900">{formData.services.length}</div>
+            <div className="text-blue-700">Services</div>
+          </div>
+          <div className="text-center p-3 bg-green-100 rounded-lg">
+            <div className="font-semibold text-green-900">{formData.products.length}</div>
+            <div className="text-green-700">Products</div>
+          </div>
+          <div className="text-center p-3 bg-purple-100 rounded-lg">
+            <div className="font-semibold text-purple-900">{formData.features.length}</div>
+            <div className="text-purple-700">Features</div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 
   const renderStep4 = () => (
-    <div className="space-y-6">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
+        <motion.div variants={itemVariants}>
           <Label htmlFor="ownerName">Owner Name *</Label>
           <Input
             id="ownerName"
             value={formData.ownerName}
             onChange={(e) => handleInputChange("ownerName", e.target.value)}
-            placeholder="Your full name"
+            placeholder="Full name of business owner"
+            className="mt-1"
+            required
           />
-        </div>
+        </motion.div>
 
-        <div>
+        <motion.div variants={itemVariants}>
           <Label htmlFor="ownerEmail">Owner Email *</Label>
           <Input
             id="ownerEmail"
             type="email"
             value={formData.ownerEmail}
             onChange={(e) => handleInputChange("ownerEmail", e.target.value)}
-            placeholder="owner@email.com"
+            placeholder="owner@business.com"
+            className="mt-1"
+            required
           />
-        </div>
-
-        <div>
-          <Label htmlFor="ownerPhone">Owner Phone</Label>
-          <Input
-            id="ownerPhone"
-            value={formData.ownerPhone}
-            onChange={(e) => handleInputChange("ownerPhone", e.target.value)}
-            placeholder="(555) 123-4567"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="memberSince">Church Member Since</Label>
-          <Input
-            id="memberSince"
-            value={formData.memberSince}
-            onChange={(e) => handleInputChange("memberSince", e.target.value)}
-            placeholder="2020"
-          />
-        </div>
+        </motion.div>
       </div>
 
-      <div className="bg-gradient-to-r from-fem-gold/10 to-fem-terracotta/10 p-6 rounded-lg">
-        <div className="flex items-center gap-3 mb-4">
-          <Camera className="w-6 h-6 text-fem-terracotta" />
-          <h3 className="font-semibold text-fem-navy">Professional Photography Services</h3>
-        </div>
-        <p className="text-gray-700 mb-4">
-          Get professional photos for your business listing to attract more customers and build trust with our community.
-        </p>
-        <div className="flex items-center space-x-2 mb-4">
-          <Checkbox
-            checked={formData.photoRequest}
-            onCheckedChange={(checked) => handleInputChange("photoRequest", checked)}
+      <motion.div variants={itemVariants}>
+        <Label htmlFor="ownerPhone">Owner Phone</Label>
+        <Input
+          id="ownerPhone"
+          value={formData.ownerPhone}
+          onChange={(e) => handleInputChange("ownerPhone", e.target.value)}
+          placeholder="+254 XXX XXX XXX"
+        />
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <Label htmlFor="memberSince">Member Since</Label>
+        <Input
+          id="memberSince"
+          type="date"
+          value={formData.memberSince}
+          onChange={(e) => handleInputChange("memberSince", e.target.value)}
+        />
+      </motion.div>
+
+      <motion.div variants={itemVariants} className="flex items-center space-x-2">
+        <Checkbox
+          id="photoRequest"
+          checked={formData.photoRequest}
+          onCheckedChange={(checked) => handleInputChange("photoRequest", checked)}
+        />
+        <Label htmlFor="photoRequest">Request professional photos</Label>
+      </motion.div>
+
+      {formData.photoRequest && (
+        <motion.div variants={itemVariants}>
+          <Label htmlFor="photoRequestNotes">Photo Request Notes</Label>
+          <Textarea
+            id="photoRequestNotes"
+            value={formData.photoRequestNotes}
+            onChange={(e) => handleInputChange("photoRequestNotes", e.target.value)}
+            placeholder="Any specific requirements or notes for the photo session"
+            rows={3}
           />
-          <Label>Request professional photography service</Label>
-        </div>
-        {formData.photoRequest && (
-          <div>
-            <Label htmlFor="photoRequestNotes">Additional Notes</Label>
-            <Textarea
-              id="photoRequestNotes"
-              value={formData.photoRequestNotes}
-              onChange={(e) => handleInputChange("photoRequestNotes", e.target.value)}
-              placeholder="Any specific requirements or preferences for the photo session..."
-              rows={3}
-            />
-          </div>
-        )}
-      </div>
-    </div>
+        </motion.div>
+      )}
+    </motion.div>
   );
 
-  const steps = [
-    { number: 1, title: "Basic Information", icon: Building2 },
-    { number: 2, title: "Contact & Hours", icon: Phone },
-    { number: 3, title: "Services & Features", icon: CheckCircle },
-    { number: 4, title: "Owner Details", icon: Camera }
-  ];
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        return renderStep1();
+      case 2:
+        return renderStep2();
+      case 3:
+        return renderStep3();
+      case 4:
+        return renderStep4();
+      default:
+        return renderStep1();
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex flex-col">
       <Navbar />
+      <OnboardingCheck userType="business" />
       <main className="flex-grow">
         <div className="container mx-auto px-4 py-8">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-4 mb-4">
-              <Button variant="outline" onClick={() => navigate(-1)}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
-              </Button>
-              <h1 className="text-3xl font-bold text-fem-navy">Register Your Business</h1>
+          
+          {/* Enhanced Header */}
+          <motion.div 
+            ref={headerRef}
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="mb-8 text-center"
+          >
+            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-fem-navy to-fem-terracotta text-white px-6 py-3 rounded-full shadow-lg mb-4">
+              <Sparkles className="w-5 h-5" />
+              <h1 className="text-2xl font-bold">Register Your Business</h1>
+              <Sparkles className="w-5 h-5" />
             </div>
-            <p className="text-gray-600">
-              Join our faith-based business directory and connect with fellow church members
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Join our faith community directory and connect with customers who share your values
             </p>
-          </div>
+          </motion.div>
 
-          {/* Progress Steps */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              {steps.map((step, index) => (
-                <div key={step.number} className="flex items-center">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                    currentStep >= step.number 
-                      ? 'bg-fem-terracotta border-fem-terracotta text-white' 
-                      : 'bg-white border-gray-300 text-gray-500'
-                  }`}>
-                    {currentStep > step.number ? (
-                      <CheckCircle className="w-5 h-5" />
-                    ) : (
-                      <step.icon className="w-5 h-5" />
-                    )}
+          <div className="max-w-4xl mx-auto">
+            
+            {/* Enhanced Progress Steps */}
+            <motion.div 
+              ref={progressRef}
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="mb-8"
+            >
+              <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    {steps.map((step, index) => {
+                      const StepIcon = step.icon;
+                      return (
+                        <div key={step.id} className="flex items-center">
+                          <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                            currentStep >= step.id 
+                              ? 'bg-fem-terracotta border-fem-terracotta text-white' 
+                              : 'bg-white border-gray-300 text-gray-500'
+                          }`}>
+                            {currentStep > step.id ? (
+                              <CheckCircle className="w-5 h-5" />
+                            ) : (
+                              <StepIcon className="w-5 h-5" />
+                            )}
+                          </div>
+                          <div className="ml-3">
+                            <p className={`text-sm font-medium ${
+                              currentStep >= step.id ? 'text-fem-terracotta' : 'text-gray-500'
+                            }`}>
+                              {step.title}
+                            </p>
+                          </div>
+                          {index < steps.length - 1 && (
+                            <div className={`flex-1 h-0.5 mx-4 ${
+                              currentStep > step.id ? 'bg-fem-terracotta' : 'bg-gray-300'
+                            }`} />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="ml-3">
-                    <p className={`text-sm font-medium ${
-                      currentStep >= step.number ? 'text-fem-navy' : 'text-gray-500'
-                    }`}>
-                      {step.title}
-                    </p>
-                  </div>
-                  {index < steps.length - 1 && (
-                    <div className={`w-16 h-0.5 mx-4 ${
-                      currentStep > step.number ? 'bg-fem-terracotta' : 'bg-gray-300'
-                    }`} />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-          {/* Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Step {currentStep} of 4: {steps[currentStep - 1].title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {currentStep === 1 && renderStep1()}
-              {currentStep === 2 && renderStep2()}
-              {currentStep === 3 && renderStep3()}
-              {currentStep === 4 && renderStep4()}
+            {/* Enhanced Form */}
+            <motion.div 
+              ref={formRef}
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl">
+                <CardHeader className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white rounded-t-lg">
+                  <CardTitle className="flex items-center gap-2">
+                    {(() => {
+                      const StepIcon = steps[currentStep - 1].icon;
+                      return <StepIcon className="w-5 h-5" />;
+                    })()}
+                    Step {currentStep} of 4: {steps[currentStep - 1].title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {renderCurrentStep()}
+                </CardContent>
+              </Card>
 
               {/* Navigation Buttons */}
               <div className="flex justify-between mt-8">
@@ -516,25 +885,45 @@ const BusinessRegistrationPage = () => {
                   variant="outline"
                   onClick={prevStep}
                   disabled={currentStep === 1}
+                  className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Previous
                 </Button>
 
-                {currentStep < 4 ? (
-                  <Button onClick={nextStep} className="bg-fem-terracotta hover:bg-fem-terracotta/90">
-                    Next
-                    <ArrowRight className="w-4 h-4 ml-2" />
+                <div className="flex gap-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      toast({
+                        title: "Delegate Account",
+                        description: "Account delegation feature coming soon!",
+                      });
+                    }}
+                    className="border-fem-gold text-fem-gold hover:bg-fem-gold hover:text-white"
+                  >
+                    <Users className="w-4 h-4 mr-2" />
+                    Delegate Account
                   </Button>
-                ) : (
-                  <Button onClick={handleSubmit} className="bg-fem-terracotta hover:bg-fem-terracotta/90">
-                    Submit Registration
-                    <CheckCircle className="w-4 h-4 ml-2" />
-                  </Button>
-                )}
+
+                  {currentStep === 4 ? (
+                    <Button 
+                      onClick={handleSubmit}
+                      className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white"
+                    >
+                      <Award className="w-4 h-4 mr-2" />
+                      Complete Registration
+                    </Button>
+                  ) : (
+                    <Button onClick={nextStep} className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white">
+                      Next
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  )}
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            </motion.div>
+          </div>
         </div>
       </main>
       <Footer />

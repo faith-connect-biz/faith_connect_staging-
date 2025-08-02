@@ -2,55 +2,55 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ChevronLeft, Play, Pause, SkipForward } from "lucide-react";
+import { ChevronRight, ChevronLeft, Play, Pause, SkipForward, Building2, Users, MessageCircle, CheckCircle } from "lucide-react";
 
 const steps = [
   {
-    title: "Welcome to Faith Connect!",
-    subtitle: "Your journey begins here",
-    content: "We're excited to have you join our community. Faith Connect helps you discover and connect with trusted businesses within our church family and beyond.",
+    title: "Welcome Business Owner!",
+    subtitle: "Your business journey begins here",
+    content: "We're excited to have your business join our community. Faith Connect helps you showcase your services and products to our trusted church community.",
     color: "from-fem-navy to-fem-terracotta"
   },
   {
-    title: "What is Faith Connect?",
-    subtitle: "Connecting hearts and services",
-    content: "Faith Connect is a platform that connects community members with trusted businesses in our faith community. You can explore services, view products, and connect directly with business owners.",
+    title: "What is Faith Connect for Businesses?",
+    subtitle: "Connecting businesses with our community",
+    content: "Faith Connect is a platform that connects business owners with our faith community. You can create a business profile, list your services and products, and connect directly with potential customers.",
     color: "from-fem-terracotta to-fem-gold"
   },
   {
-    title: "Step 1: Complete Your Profile",
-    subtitle: "Build your community presence",
-    content: "Start by filling out your profile. This helps businesses get to know you and provide personalized service recommendations.",
+    title: "Step 1: Create Your Business Profile",
+    subtitle: "Showcase your business",
+    content: "Start by creating your business profile with contact information, services, and photos. This helps community members discover and trust your business.",
     color: "from-fem-gold to-fem-navy"
   },
   {
-    title: "Step 2: Explore Business Directory",
-    subtitle: "Discover trusted services",
-    content: "Browse our curated directory of faith-based businesses. Find services and products that match your needs and values.",
+    title: "Step 2: List Your Services & Products",
+    subtitle: "Display what you offer",
+    content: "Add your services and products with pricing information. Community members can browse and find exactly what they need.",
     color: "from-fem-navy to-fem-terracotta"
   },
   {
-    title: "Step 3: Connect with Businesses",
+    title: "Step 3: Connect with Community",
     subtitle: "Build meaningful relationships",
-    content: "Use our built-in chat to communicate with business owners, ask questions, and schedule appointments.",
+    content: "Use our built-in chat to communicate with community members, answer questions, and schedule appointments.",
     color: "from-fem-terracotta to-fem-gold"
   },
   {
     title: "You're Ready!",
-    subtitle: "Let's begin your journey",
-    content: "You're all set to start your journey with Faith Connect. Click 'Get Started' to begin exploring our business directory!",
+    subtitle: "Let's grow your business",
+    content: "You're all set to start your business journey with Faith Connect. Click 'Get Started' to begin creating your business profile!",
     color: "from-fem-gold to-fem-navy"
   }
 ];
 
-const WelcomePage = () => {
+const BusinessOnboardingPage = () => {
   const [step, setStep] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   
-  console.log("WelcomePage rendered - step:", step);
+  console.log("BusinessOnboardingPage rendered - step:", step);
   
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -87,12 +87,12 @@ const WelcomePage = () => {
     if (step < steps.length - 1) {
       setStep(step + 1);
     } else {
-      // Mark onboarding as complete and navigate with animation
-      localStorage.setItem("hasSeenOnboarding", "true");
+      // Mark business onboarding as complete and navigate with animation
+      localStorage.setItem("hasSeenBusinessOnboarding", "true");
       
       // Animate out before navigation
       await new Promise(resolve => setTimeout(resolve, 800));
-      navigate("/");
+      navigate("/register-business");
     }
     
     setTimeout(() => setIsTransitioning(false), 500);
@@ -111,7 +111,7 @@ const WelcomePage = () => {
   };
 
   const handleSkip = () => {
-    setStep(steps.length - 1); // Navigate to the last step (step 5 - "You're Ready!")
+    setStep(steps.length - 1); // Navigate to the last step
   };
 
   return (
@@ -169,7 +169,7 @@ const WelcomePage = () => {
               animate={{ opacity: 1 }}
               transition={{ duration: 1, delay: 0.5 }}
             >
-              Connecting our community through faith and opportunity
+              Business Directory Platform
             </motion.p>
           </motion.div>
 
@@ -333,4 +333,4 @@ const WelcomePage = () => {
   );
 };
 
-export default WelcomePage; 
+export default BusinessOnboardingPage; 

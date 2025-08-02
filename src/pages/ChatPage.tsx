@@ -6,8 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageCircle, Send, User } from "lucide-react";
+import { MessageCircle, Send, User, Sparkles, MessageSquare, Clock, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import Lottie from "lottie-react";
+import { Badge } from "@/components/ui/badge";
+
+// Register GSAP plugins
+gsap.registerPlugin(ScrollTrigger);
 
 // Types for our messages
 interface Message {
@@ -22,8 +30,8 @@ interface Chat {
   name: string;
   lastMessage: string;
   unread: number;
-  jobTitle?: string;
-  salary?: string;
+  serviceType?: string;
+  pricing?: string;
 }
 
 const ChatPage = () => {
@@ -33,6 +41,9 @@ const ChatPage = () => {
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const chatListRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Mock data
@@ -41,31 +52,64 @@ const ChatPage = () => {
     const mockChats: Chat[] = [
       {
         id: "1",
-        name: "ABC Company",
-        lastMessage: "Thanks for your application!",
+        name: "ABC Painting Services",
+        lastMessage: "Thanks for your inquiry!",
         unread: 2,
-        jobTitle: "Senior Painter",
-        salary: "KSH 25,000 - KSH 35,000 per month"
+        serviceType: "Painting Services",
+        pricing: "KSH 25,000 - KSH 35,000 per project"
       },
       {
         id: "2",
-        name: "XYZ Corporation",
-        lastMessage: "When can you start?",
+        name: "XYZ Tech Solutions",
+        lastMessage: "When can we schedule a consultation?",
         unread: 0,
-        jobTitle: "Software Engineer",
-        salary: "KSH 85,000 - KSH 110,000 per month"
+        serviceType: "Software Development",
+        pricing: "KSH 85,000 - KSH 110,000 per project"
       },
       {
         id: "3",
-        name: "123 Enterprises",
-        lastMessage: "We'd like to schedule an interview.",
+        name: "123 Cleaning Services",
+        lastMessage: "We'd like to schedule a site visit.",
         unread: 1,
-        jobTitle: "Administrative Assistant",
-        salary: "KSH 18,000 - KSH 22,000 per month"
+        serviceType: "Cleaning Services",
+        pricing: "KSH 18,000 - KSH 22,000 per month"
       },
     ];
 
     setChats(mockChats);
+  }, []);
+
+  // GSAP Animations
+  useEffect(() => {
+    if (headerRef.current) {
+      gsap.fromTo(headerRef.current, 
+        { y: -50, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, ease: "power2.out" }
+      );
+    }
+
+    if (chatListRef.current) {
+      gsap.fromTo(chatListRef.current.children,
+        { x: -100, opacity: 0 },
+        { 
+          x: 0, 
+          opacity: 1, 
+          duration: 0.6, 
+          stagger: 0.1,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: chatListRef.current,
+            start: "top 80%",
+            end: "bottom 20%",
+            toggleActions: "play none none reverse"
+          }
+        }
+      );
+    }
+
+    return () => {
+      ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+    };
   }, []);
 
   // Fetch messages when a chat is selected
@@ -75,51 +119,61 @@ const ChatPage = () => {
     // Simulate loading messages from an API
     const mockMessages: Message[] = [
       {
-        id: "m1",
-        content: "Hello! Thanks for your interest in our position.",
-        sender: "client",
-        timestamp: new Date(Date.now() - 50000000),
-      },
-      {
-        id: "m2",
-        content: "I'm very interested in the role. When can we discuss more details?",
+        id: "1",
+        content: "Hello! I'm interested in your services.",
         sender: "user",
-        timestamp: new Date(Date.now() - 40000000),
+        timestamp: new Date(Date.now() - 3600000) // 1 hour ago
       },
       {
-        id: "m3",
-        content: "Would you be available for an interview next week?",
+        id: "2",
+        content: "Hi there! Thanks for reaching out. How can I help you today?",
         sender: "client",
-        timestamp: new Date(Date.now() - 30000000),
+        timestamp: new Date(Date.now() - 3500000) // 58 minutes ago
       },
       {
-        id: "m4",
-        content: "Yes, I'm available on Tuesday afternoon or Thursday morning.",
+        id: "3",
+        content: "I'd like to know more about your pricing and availability.",
         sender: "user",
-        timestamp: new Date(Date.now() - 20000000),
+        timestamp: new Date(Date.now() - 3000000) // 50 minutes ago
       },
       {
-        id: "m5",
-        content: "Great! Let's schedule for Tuesday at 2 PM. The job offers KSH 85,000 - KSH 110,000 per month depending on experience.",
+        id: "4",
+        content: "Of course! Let me send you our current rates and schedule.",
         sender: "client",
-        timestamp: new Date(Date.now() - 10000000),
+        timestamp: new Date(Date.now() - 2900000) // 48 minutes ago
       },
+      {
+        id: "5",
+        content: "That sounds great. Can you also tell me about your experience with similar projects?",
+        sender: "user",
+        timestamp: new Date(Date.now() - 2800000) // 47 minutes ago
+      },
+      {
+        id: "6",
+        content: "Absolutely! We've completed over 50 similar projects in the last year. Would you like to see some examples?",
+        sender: "client",
+        timestamp: new Date(Date.now() - 2700000) // 45 minutes ago
+      }
     ];
 
     setMessages(mockMessages);
 
-    // Mark messages as read
-    setChats(chats.map(chat => 
-      chat.id === activeChat ? { ...chat, unread: 0 } : chat
-    ));
-    
-    // Focus the input field when a chat is selected
-    setTimeout(() => {
-      textareaRef.current?.focus();
-    }, 100);
+    // Animate messages entrance
+    if (messagesRef.current) {
+      gsap.fromTo(messagesRef.current.children,
+        { y: 50, opacity: 0 },
+        { 
+          y: 0, 
+          opacity: 1, 
+          duration: 0.5, 
+          stagger: 0.1,
+          ease: "power2.out"
+        }
+      );
+    }
   }, [activeChat]);
 
-  // Scroll to bottom when new messages come in
+  // Scroll to bottom when new messages are added
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -128,163 +182,277 @@ const ChatPage = () => {
     e.preventDefault();
     
     if (!newMessage.trim() || !activeChat) return;
-    
-    // Add new message to the conversation
-    const newMsg: Message = {
-      id: `new-${Date.now()}`,
+
+    const message: Message = {
+      id: Date.now().toString(),
       content: newMessage,
       sender: "user",
-      timestamp: new Date(),
+      timestamp: new Date()
     };
-    
-    setMessages([...messages, newMsg]);
+
+    setMessages(prev => [...prev, message]);
     setNewMessage("");
-    
-    // Update the last message in the chat list
-    setChats(chats.map(chat => 
-      chat.id === activeChat 
-        ? { ...chat, lastMessage: newMessage } 
-        : chat
-    ));
-    
-    // Focus back on the input
-    textareaRef.current?.focus();
-    
-    // Simulate response (in a real app, this would come from a WebSocket or similar)
+
+    // Simulate response after 1-2 seconds
     setTimeout(() => {
       const response: Message = {
-        id: `resp-${Date.now()}`,
-        content: "Thanks for your message! I'll get back to you soon.",
+        id: (Date.now() + 1).toString(),
+        content: "Thanks for your message! We'll get back to you soon.",
         sender: "client",
-        timestamp: new Date(),
+        timestamp: new Date()
       };
-      
       setMessages(prev => [...prev, response]);
-      
-      toast({
-        title: "New message",
-        description: "You've received a new message",
-      });
-    }, 1000);
+    }, 1000 + Math.random() * 1000);
+
+    toast({
+      title: "Message sent",
+      description: "Your message has been delivered.",
+    });
   };
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const handleChatSelect = (chatId: string) => {
+    setActiveChat(chatId);
+    
+    // Update unread count
+    setChats(prev => prev.map(chat => 
+      chat.id === chatId ? { ...chat, unread: 0 } : chat
+    ));
+  };
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.6,
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut"
+      }
+    }
+  };
+
+  const messageVariants = {
+    hidden: { x: -50, opacity: 0 },
+    visible: {
+      x: 0,
+      opacity: 1,
+      transition: {
+        duration: 0.4,
+        ease: "easeOut"
+      }
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex flex-col">
       <Navbar />
-      <div className="container mx-auto py-6 flex-grow flex flex-col">
-        <h1 className="text-2xl font-bold mb-6 text-fem-navy">Messages</h1>
-        <div className="flex flex-1 gap-4 min-h-0">
-          {/* Chat list */}
-          <Card className="w-full md:w-1/4 flex-shrink-0 flex flex-col overflow-hidden">
-            <CardHeader className="p-4">
-              <CardTitle className="text-lg">Conversations</CardTitle>
-            </CardHeader>
-            <div className="overflow-y-auto flex-1">
-              {chats.map((chat) => (
-                <div
-                  key={chat.id}
-                  className={`p-4 border-b cursor-pointer hover:bg-gray-100 flex items-start ${activeChat === chat.id ? "bg-gray-100" : ""}`}
-                  onClick={() => setActiveChat(chat.id)}
-                >
-                  <div className="bg-fem-navy text-white rounded-full w-10 h-10 flex items-center justify-center mr-3">
-                    <User className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center">
-                      <h3 className="font-medium truncate">{chat.name}</h3>
-                      {chat.unread > 0 && (
-                        <span className="bg-fem-terracotta text-white text-xs rounded-full px-2 py-1 ml-2">
-                          {chat.unread}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs font-medium text-fem-terracotta">{chat.jobTitle}</p>
-                    {chat.salary && (
-                      <p className="text-xs text-gray-600">{chat.salary}</p>
-                    )}
-                    <p className="text-sm text-gray-500 truncate mt-1">{chat.lastMessage}</p>
-                  </div>
-                </div>
-              ))}
+      <main className="flex-grow">
+        <div className="container mx-auto px-4 py-8">
+          
+          {/* Enhanced Header */}
+          <motion.div 
+            ref={headerRef}
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="mb-8 text-center"
+          >
+            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-fem-navy to-fem-terracotta text-white px-6 py-3 rounded-full shadow-lg mb-4">
+              <Sparkles className="w-5 h-5" />
+              <h1 className="text-2xl font-bold">FaithConnect Chat</h1>
+              <Sparkles className="w-5 h-5" />
             </div>
-          </Card>
-          {/* Chat window */}
-          <Card className="w-full md:w-3/4 flex flex-col h-full">
-            {activeChat ? (
-              <>
-                <CardHeader className="p-4 border-b">
-                  <CardTitle>
-                    {chats.find((chat) => chat.id === activeChat)?.name || "Chat"}
+            <p className="text-gray-600 max-w-md mx-auto">
+              Connect with trusted businesses in our faith community through secure messaging
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Chat List */}
+            <motion.div 
+              ref={chatListRef}
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="lg:col-span-1"
+            >
+              <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl">
+                <CardHeader className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white rounded-t-lg">
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5" />
+                    Conversations
                   </CardTitle>
-                  {chats.find((chat) => chat.id === activeChat)?.jobTitle && (
-                    <p className="text-sm text-gray-600">
-                      {chats.find((chat) => chat.id === activeChat)?.jobTitle} - {chats.find((chat) => chat.id === activeChat)?.salary}
-                    </p>
-                  )}
                 </CardHeader>
-                <div className="flex flex-col flex-1 min-h-0">
-                  <CardContent className="flex-1 p-0 overflow-hidden flex flex-col min-h-0">
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-                      {messages.map((message) => (
-                        <div
-                          key={message.id}
-                          className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
-                        >
-                          <div
-                            className={`max-w-[70%] rounded-lg p-3 ${message.sender === "user" ? "bg-fem-terracotta text-white" : "bg-white border"}`}
-                          >
-                            <p>{message.content}</p>
-                            <p className={`text-xs mt-1 text-right ${message.sender === "user" ? "text-white/70" : "text-gray-500"}`}>
-                              {formatTime(message.timestamp)}
-                            </p>
+                <CardContent className="p-0">
+                  <div className="space-y-1">
+                    {chats.map((chat) => (
+                      <motion.div
+                        key={chat.id}
+                        variants={itemVariants}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className={`p-4 cursor-pointer transition-all duration-200 ${
+                          activeChat === chat.id
+                            ? "bg-gradient-to-r from-fem-terracotta/10 to-fem-gold/10 border-l-4 border-fem-terracotta"
+                            : "hover:bg-gray-50"
+                        }`}
+                        onClick={() => handleChatSelect(chat.id)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold text-fem-navy">{chat.name}</h3>
+                              {chat.unread > 0 && (
+                                <Badge className="bg-fem-terracotta text-white text-xs">
+                                  {chat.unread}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600 truncate">{chat.lastMessage}</p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Clock className="w-3 h-3 text-gray-400" />
+                              <span className="text-xs text-gray-500">2 hours ago</span>
+                            </div>
                           </div>
                         </div>
-                      ))}
-                      <div ref={messagesEndRef} />
+                        {chat.serviceType && (
+                          <div className="mt-2">
+                            <Badge variant="outline" className="text-xs">
+                              {chat.serviceType}
+                            </Badge>
+                          </div>
+                        )}
+                      </motion.div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Messages Area */}
+            <motion.div 
+              className="lg:col-span-2"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl h-[600px] flex flex-col">
+                {activeChat ? (
+                  <>
+                    {/* Chat Header */}
+                    <CardHeader className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white rounded-t-lg">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                          <User className="w-5 h-5" />
+                          {chats.find(c => c.id === activeChat)?.name}
+                        </CardTitle>
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
+                            <Phone className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    {/* Messages */}
+                    <CardContent className="flex-1 p-4 overflow-y-auto space-y-4">
+                      <div ref={messagesRef} className="space-y-4">
+                        <AnimatePresence>
+                          {messages.map((message) => (
+                            <motion.div
+                              key={message.id}
+                              variants={messageVariants}
+                              initial="hidden"
+                              animate="visible"
+                              className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                            >
+                              <div
+                                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                                  message.sender === "user"
+                                    ? "bg-gradient-to-r from-fem-terracotta to-fem-gold text-white"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                <p className="text-sm">{message.content}</p>
+                                <p className={`text-xs mt-1 ${
+                                  message.sender === "user" ? "text-white/70" : "text-gray-500"
+                                }`}>
+                                  {formatTime(message.timestamp)}
+                                </p>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                        <div ref={messagesEndRef} />
+                      </div>
+                    </CardContent>
+
+                    {/* Message Input */}
+                    <div className="p-4 border-t border-gray-200">
+                      <form onSubmit={handleSendMessage} className="flex gap-2">
+                        <Textarea
+                          ref={textareaRef}
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          placeholder="Type your message..."
+                          className="flex-1 resize-none"
+                          rows={2}
+                        />
+                        <motion.div
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <Button 
+                            type="submit" 
+                            className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white px-6"
+                            disabled={!newMessage.trim()}
+                          >
+                            <Send className="w-4 h-4" />
+                          </Button>
+                        </motion.div>
+                      </form>
                     </div>
-                    <form onSubmit={handleSendMessage} className="p-3 border-t flex gap-2 bg-white shadow rounded-b-lg">
-                      <Textarea
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Type your message..."
-                        className="flex-grow resize-none min-h-[44px] max-h-[120px] rounded-lg border focus:ring-2 focus:ring-fem-terracotta"
-                        ref={textareaRef}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            if (newMessage.trim()) {
-                              handleSendMessage(e);
-                            }
-                          }
-                        }}
-                      />
-                      <Button 
-                        type="submit" 
-                        variant="default" 
-                        className="bg-fem-terracotta hover:bg-fem-terracotta/90 self-end h-[44px] rounded-lg px-4"
-                        disabled={!newMessage.trim() || !activeChat}
-                      >
-                        <Send className="h-4 w-4" />
-                        <span className="sr-only">Send</span>
-                      </Button>
-                    </form>
-                  </CardContent>
-                </div>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center flex-col p-6 text-center text-gray-500">
-                <MessageCircle className="h-16 w-16 mb-4 text-gray-300" />
-                <h3 className="text-lg font-medium mb-1">No conversation selected</h3>
-                <p className="text-sm">Choose a conversation from the list to start chatting</p>
-              </div>
-            )}
-          </Card>
+                  </>
+                ) : (
+                  /* Empty State */
+                  <div className="flex-1 flex items-center justify-center">
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6 }}
+                      className="text-center"
+                    >
+                      <div className="w-24 h-24 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center mx-auto mb-4">
+                        <MessageCircle className="w-12 h-12 text-white" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-fem-navy mb-2">Start a Conversation</h3>
+                      <p className="text-gray-600 max-w-sm">
+                        Select a business from the list to start chatting and get your questions answered.
+                      </p>
+                    </motion.div>
+                  </div>
+                )}
+              </Card>
+            </motion.div>
+          </div>
         </div>
-      </div>
+      </main>
       <Footer />
     </div>
   );

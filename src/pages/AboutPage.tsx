@@ -11,13 +11,13 @@ const AboutPage = () => {
       <main className="flex-grow">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold text-fem-navy mb-6">About FEM Family Church Careers Connect</h1>
+            <h1 className="text-4xl font-bold text-fem-navy mb-6">About FEM Family Church Business Connect</h1>
             
             <div className="bg-white rounded-lg shadow-md p-8 mb-8">
               <h2 className="text-2xl font-bold text-fem-terracotta mb-4">Our Mission</h2>
               <p className="text-gray-700 mb-6">
-                FEM Family Church Careers Connect is dedicated to connecting our church community with meaningful employment opportunities across Kenya. 
-                We believe that by supporting each other professionally, we strengthen our bonds as a church family and contribute 
+                FEM Family Church Business Connect is dedicated to connecting our church community with trusted businesses and services across Kenya. 
+                We believe that by supporting each other through meaningful business relationships, we strengthen our bonds as a church family and contribute 
                 to economic growth within our community.
               </p>
               
@@ -31,15 +31,15 @@ const AboutPage = () => {
               
               <h2 className="text-2xl font-bold text-fem-terracotta mb-4">What We Do</h2>
               <p className="text-gray-700 mb-4">
-                Our platform serves as a bridge between job seekers and employers within our Kenyan church community, offering:
+                Our platform serves as a bridge between community members and trusted businesses within our Kenyan church community, offering:
               </p>
               
               <ul className="list-disc pl-6 mb-6 space-y-2 text-gray-700">
-                <li>A trusted marketplace for job postings from vetted employers</li>
-                <li>Free profile creation for church members seeking employment</li>
-                <li>Direct connections between employers and qualified candidates</li>
-                <li>Support for both professional and trade occupations</li>
-                <li>Resources for career development and growth</li>
+                <li>A trusted directory of services and products from vetted businesses</li>
+                <li>Free profile creation for church members to discover services</li>
+                <li>Direct connections between community members and business owners</li>
+                <li>Support for both services and product-based businesses</li>
+                <li>Resources for community engagement and business growth</li>
               </ul>
               
               <h2 className="text-2xl font-bold text-fem-terracotta mb-4">Our Values</h2>
@@ -63,31 +63,34 @@ const AboutPage = () => {
                 <div className="flex gap-4">
                   <div className="w-12 h-12 bg-fem-gold/20 rounded-full flex items-center justify-center text-fem-navy font-bold flex-shrink-0">1</div>
                   <div>
-                    <h3 className="text-xl font-semibold text-fem-navy mb-1">Create a Profile</h3>
-                    <p className="text-gray-600">Church members can create a free profile showcasing their skills and experience</p>
+                    <h3 className="text-xl font-semibold text-fem-navy mb-1">Business Directories Create Profiles</h3>
+                    <p className="text-gray-600">Business owners create profiles to list their services and products with pricing information</p>
                   </div>
                 </div>
                 
                 <div className="flex gap-4">
                   <div className="w-12 h-12 bg-fem-gold/20 rounded-full flex items-center justify-center text-fem-navy font-bold flex-shrink-0">2</div>
                   <div>
-                    <h3 className="text-xl font-semibold text-fem-navy mb-1">Browse Opportunities</h3>
-                    <p className="text-gray-600">Find suitable job openings across Kenya posted by trusted employers</p>
+                    <h3 className="text-xl font-semibold text-fem-navy mb-1">Community Members Explore</h3>
+                    <p className="text-gray-600">Community members search, filter, and discover trusted businesses within our faith community</p>
                   </div>
                 </div>
                 
                 <div className="flex gap-4">
                   <div className="w-12 h-12 bg-fem-gold/20 rounded-full flex items-center justify-center text-fem-navy font-bold flex-shrink-0">3</div>
                   <div>
-                    <h3 className="text-xl font-semibold text-fem-navy mb-1">Apply & Connect</h3>
-                    <p className="text-gray-600">Submit applications and connect directly with potential employers</p>
+                    <h3 className="text-xl font-semibold text-fem-navy mb-1">Connect & Engage</h3>
+                    <p className="text-gray-600">View photos, get contact information, and connect directly with business owners</p>
                   </div>
                 </div>
               </div>
               
-              <div className="flex justify-center">
+              <div className="flex justify-center gap-4">
                 <Button asChild className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white">
-                  <Link to="/jobs">Browse Available Jobs</Link>
+                  <Link to="/directory">Explore Business Directory</Link>
+                </Button>
+                <Button asChild variant="outline" className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white">
+                  <Link to="/register-business">List Your Business</Link>
                 </Button>
               </div>
             </div>
@@ -95,7 +98,7 @@ const AboutPage = () => {
             <div className="bg-white rounded-lg shadow-md p-8">
               <h2 className="text-2xl font-bold text-fem-terracotta mb-4">Contact Information</h2>
               <p className="text-gray-700 mb-4">
-                If you have any questions about FEM Family Church Careers Connect, please don't hesitate to contact us:
+                If you have any questions about FEM Family Church Business Connect, please don't hesitate to contact us:
               </p>
               
               <div className="space-y-4 text-gray-700">

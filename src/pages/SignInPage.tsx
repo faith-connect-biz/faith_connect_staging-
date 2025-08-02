@@ -9,6 +9,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { useOnboarding } from "@/contexts/OnboardingContext";
 
 const SignInPage = () => {
   const [password, setPassword] = useState("");
@@ -18,6 +19,7 @@ const SignInPage = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { showOnboarding } = useOnboarding();
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,28 +33,46 @@ const SignInPage = () => {
       
       // For demo purposes, accept any non-empty password with partnership number
       if (password && partnershipNumber) {
-        // Check if this is an admin (for demo, any partnership number containing "admin")
-        const isAdmin = partnershipNumber.includes("admin");
-        
         localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("userEmail", "user@faithconnect.com"); // Default email for demo
-        localStorage.setItem("userType", isAdmin ? "admin" : userType);
+        localStorage.setItem("userType", userType);
         localStorage.setItem("partnershipNumber", partnershipNumber);
+        
+        // For testing: Clear onboarding flags to ensure onboarding shows
+        localStorage.removeItem("hasSeenOnboarding");
+        localStorage.removeItem("hasSeenBusinessOnboarding");
+        localStorage.removeItem("isFirstTimeLogin");
+        
+        // Check if this is the first time logging in
+        const hasLoggedInBefore = localStorage.getItem("hasLoggedInBefore");
+        if (!hasLoggedInBefore) {
+          localStorage.setItem("isFirstTimeLogin", "true");
+          localStorage.setItem("hasLoggedInBefore", "true");
+        }
         
         toast({
           title: "Sign in successful",
           description: "Welcome to FaithConnect!",
         });
         
-        // Redirect based on user type
-        if (isAdmin) {
-          navigate("/admin");
-        } else {
-          // For testing: always show onboarding for new users
-          // if (localStorage.getItem("hasSeenOnboarding") !== "true") {
-          if (true) { // Temporarily force onboarding for testing
-            navigate("/welcome");
+        // Check if user has seen onboarding before
+        const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
+        const hasSeenBusinessOnboarding = localStorage.getItem("hasSeenBusinessOnboarding");
+        
+        if (userType === "business") {
+          if (hasSeenBusinessOnboarding !== "true") {
+            // Show onboarding modal for first-time business users
+            showOnboarding("business");
           } else {
+            // Navigate directly to business registration
+            navigate("/register-business");
+          }
+        } else {
+          if (hasSeenOnboarding !== "true") {
+            // Show onboarding modal for first-time community users
+            showOnboarding("community");
+          } else {
+            // Navigate directly to home page
             navigate("/");
           }
         }

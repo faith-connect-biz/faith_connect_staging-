@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,140 +7,214 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Star, 
   Phone, 
-  Globe, 
   MapPin, 
   Shield, 
   Heart, 
   Grid3X3, 
   List,
-  Clock
+  Settings,
+  Package,
+  Clock,
+  ExternalLink,
+  Camera,
+  Eye,
+  ShoppingCart,
+  MessageCircle,
+  TrendingUp,
+  Award,
+  X
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { MotionWrapper, HoverCard, GlassmorphismCard, GlowingCard } from "@/components/ui/MotionWrapper";
+import { scrollAnimations, hoverAnimations } from "@/utils/animation";
+
+// Register GSAP plugins
+gsap.registerPlugin(ScrollTrigger);
 
 interface BusinessListProps {
   filters: any;
+  viewType?: "services" | "products";
 }
 
-// Mock business data
+// Mock business data with Kenyan context
 const businesses = [
   {
     id: 1,
     name: "Grace Family Restaurant",
     category: "Restaurant",
-    description: "Family-owned restaurant serving homestyle meals with a warm, welcoming atmosphere. All ingredients sourced locally with love.",
+    description: "Family-owned restaurant serving authentic Kenyan cuisine with a warm, welcoming atmosphere.",
     rating: 4.8,
     reviewCount: 42,
-    phone: "(555) 123-4567",
-    website: "gracefamilyrest.com",
-    address: "123 Faith Ave, Atlanta, GA 30309",
+    phone: "+254 700 123 456",
+    address: "Westlands, Nairobi, Kenya",
+    county: "Nairobi",
     verified: true,
     image: "/lovable-uploads/f1a3f2a4-bbe7-46e5-be66-1ad39e35defa.png",
     hours: "Mon-Sat 7AM-9PM, Sun 8AM-8PM",
-    tags: ["Family-Friendly", "Local Ingredients", "Catering"],
-    dateAdded: "2024-01-15"
+    services: [
+      {
+        name: "Catering Services",
+        description: "Full-service catering for events and gatherings",
+        price: "Starting at KSH 1,500/person",
+        duration: "Flexible"
+      },
+      {
+        name: "Private Dining",
+        description: "Intimate private dining experiences",
+        price: "Contact for pricing",
+        duration: "2-3 hours"
+      }
+    ],
+    products: [
+      {
+        name: "Homemade Chapati",
+        description: "Fresh baked chapati made daily with local ingredients",
+        price: "KSH 50",
+        image: "/lovable-uploads/f1a3f2a4-bbe7-46e5-be66-1ad39e35defa.png",
+        photos: [
+          "/lovable-uploads/f1a3f2a4-bbe7-46e5-be66-1ad39e35defa.png",
+          "/lovable-uploads/541df702-f215-4b5f-bc60-d08161749258.png"
+        ]
+      },
+      {
+        name: "Signature Pilau",
+        description: "Traditional Kenyan pilau with aromatic spices",
+        price: "KSH 350",
+        image: "/lovable-uploads/f1a3f2a4-bbe7-46e5-be66-1ad39e35defa.png",
+        photos: [
+          "/lovable-uploads/f1a3f2a4-bbe7-46e5-be66-1ad39e35defa.png",
+          "/lovable-uploads/b392f8fd-6fc5-4bfe-96aa-dc60f6854ba2.png"
+        ]
+      }
+    ]
   },
   {
     id: 2,
     name: "Covenant Auto Repair",
     category: "Automotive",
-    description: "Honest and reliable auto repair services. We treat your car like our own with transparent pricing and quality work.",
+    description: "Honest and reliable auto repair services with transparent pricing.",
     rating: 4.9,
     reviewCount: 38,
-    phone: "(555) 987-6543",
-    website: "covenantauto.com",
-    address: "456 Service St, Atlanta, GA 30308",
+    phone: "+254 733 987 654",
+    address: "Industrial Area, Nairobi, Kenya",
+    county: "Nairobi",
     verified: true,
     image: "/lovable-uploads/f1a3f2a4-bbe7-46e5-be66-1ad39e35defa.png",
     hours: "Mon-Fri 8AM-6PM, Sat 9AM-4PM",
-    tags: ["Certified Mechanics", "Warranty", "Towing"],
-    dateAdded: "2024-01-10"
+    services: [
+      {
+        name: "Oil Change Service",
+        description: "Complete oil change with premium quality oil",
+        price: "KSH 2,500",
+        duration: "30 minutes"
+      },
+      {
+        name: "Brake System Repair",
+        description: "Comprehensive brake system inspection and repair",
+        price: "KSH 8,000",
+        duration: "2-3 hours"
+      }
+    ],
+    products: [
+      {
+        name: "Premium Motor Oil",
+        description: "High-quality motor oil for all vehicle types",
+        price: "KSH 1,200",
+        image: "/lovable-uploads/f1a3f2a4-bbe7-46e5-be66-1ad39e35defa.png",
+        photos: [
+          "/lovable-uploads/f1a3f2a4-bbe7-46e5-be66-1ad39e35defa.png",
+          "/lovable-uploads/541df702-f215-4b5f-bc60-d08161749258.png"
+        ]
+      }
+    ]
   },
   {
     id: 3,
-    name: "Faith Tech Solutions",
+    name: "Faithful Tech Solutions",
     category: "Technology",
-    description: "IT support and web development services for businesses and individuals. Helping our community embrace technology.",
+    description: "Professional IT services and computer repair with integrity.",
     rating: 4.7,
-    reviewCount: 29,
-    phone: "(555) 456-7890",
-    website: "faithtech.com",
-    address: "789 Digital Dr, Atlanta, GA 30307",
+    reviewCount: 25,
+    phone: "+254 722 456 789",
+    address: "Upperhill, Nairobi, Kenya",
+    county: "Nairobi",
     verified: true,
     image: "/lovable-uploads/f1a3f2a4-bbe7-46e5-be66-1ad39e35defa.png",
-    hours: "Mon-Fri 9AM-5PM",
-    tags: ["Web Development", "IT Support", "Cloud Services"],
-    dateAdded: "2024-01-20"
-  },
-  {
-    id: 4,
-    name: "Blessed Beauty Salon",
-    category: "Beauty & Personal Care",
-    description: "Full-service beauty salon offering hair, nails, and skincare services in a relaxing Christian environment.",
-    rating: 4.6,
-    reviewCount: 56,
-    phone: "(555) 321-0987",
-    website: "blessedbeauty.com",
-    address: "321 Style Blvd, Atlanta, GA 30306",
-    verified: false,
+    hours: "Mon-Fri 9AM-6PM, Sat 10AM-4PM",
+    services: [
+      {
+        name: "Computer Repair",
+        description: "Fast and reliable computer repair services",
+        price: "KSH 1,500",
+        duration: "1-2 hours"
+      },
+      {
+        name: "Network Setup",
+        description: "Professional network installation and configuration",
+        price: "KSH 5,000",
+        duration: "2-4 hours"
+      }
+    ],
+    products: [
+      {
+        name: "Gaming Laptop",
+        description: "High-performance gaming laptop with warranty",
+        price: "KSH 85,000",
     image: "/lovable-uploads/f1a3f2a4-bbe7-46e5-be66-1ad39e35defa.png",
-    hours: "Tue-Sat 9AM-7PM",
-    tags: ["Hair Styling", "Manicure", "Skincare"],
-    dateAdded: "2024-01-25"
-  },
-  {
-    id: 5,
-    name: "Cornerstone Legal Services",
-    category: "Legal Services",
-    description: "Comprehensive legal services with a focus on family law, estate planning, and business formation.",
-    rating: 4.8,
-    reviewCount: 23,
-    phone: "(555) 654-3210",
-    website: "cornerstonelegal.com",
-    address: "987 Justice Way, Atlanta, GA 30305",
-    verified: true,
-    image: "/lovable-uploads/f1a3f2a4-bbe7-46e5-be66-1ad39e35defa.png",
-    hours: "Mon-Fri 9AM-5PM",
-    tags: ["Family Law", "Estate Planning", "Business Law"],
-    dateAdded: "2024-01-08"
+        photos: [
+          "/lovable-uploads/f1a3f2a4-bbe7-46e5-be66-1ad39e35defa.png",
+          "/lovable-uploads/b392f8fd-6fc5-4bfe-96aa-dc60f6854ba2.png"
+        ]
+      }
+    ]
   }
 ];
 
-export const BusinessList = ({ filters }: BusinessListProps) => {
+export const BusinessList = ({ filters, viewType = "services" }: BusinessListProps) => {
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isLoading, setIsLoading] = useState(false);
   const [favorites, setFavorites] = useState<number[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
 
-  // Filter and sort businesses based on filters
-  const filteredBusinesses = businesses.filter((business) => {
-    // If no filters are applied, show all businesses
-    if (!filters || Object.keys(filters).length === 0) {
-      return true;
+  // GSAP Scroll Animations
+  useEffect(() => {
+    if (listRef.current) {
+      scrollAnimations.staggerFadeInOnScroll(listRef.current, 0.1);
     }
+
+    return () => {
+      ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+    };
+  }, [viewType]);
+
+  // Filter businesses based on viewType and filters
+  const filteredBusinesses = businesses.filter(business => {
+    // Filter by viewType
+    if (viewType === "services" && business.services.length === 0) return false;
+    if (viewType === "products" && business.products.length === 0) return false;
     
-    if (filters.searchTerm && filters.searchTerm.trim() !== "" && 
-        !business.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) &&
-        !business.description.toLowerCase().includes(filters.searchTerm.toLowerCase())) {
-      return false;
-    }
-    if (filters.category && filters.category !== "" && business.category !== filters.category) {
-      return false;
-    }
-    if (filters.verifiedOnly && !business.verified) {
-      return false;
-    }
+    // Filter by search term
+    if (filters.searchTerm && !business.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) &&
+        !business.description.toLowerCase().includes(filters.searchTerm.toLowerCase())) return false;
+    
+    // Filter by category
+    if (filters.category && filters.category !== "All Categories" && business.category !== filters.category) return false;
+    
+    // Filter by county
+    if (filters.county && business.county !== filters.county) return false;
+    
+    // Filter by rating
+    if (business.rating < filters.rating[0] || business.rating > filters.rating[1]) return false;
+    
+    // Filter by verified only
+    if (filters.verifiedOnly && !business.verified) return false;
+    
     return true;
-  }).sort((a, b) => {
-    if (!filters || !filters.sortBy) return 0;
-    
-    switch (filters.sortBy) {
-      case "newest":
-        return new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime();
-      case "rating":
-        return b.rating - a.rating;
-      case "name":
-        return a.name.localeCompare(b.name);
-      default:
-        return 0;
-    }
   });
 
   const toggleFavorite = (businessId: number) => {
@@ -151,221 +225,240 @@ export const BusinessList = ({ filters }: BusinessListProps) => {
     );
   };
 
-  const BusinessCard = ({ business, isListView = false }: { business: any, isListView?: boolean }) => (
-    <Card 
-      key={business.id} 
-      className={`hover-card-effect cursor-pointer transition-all duration-300 hover:shadow-lg ${
-        isListView ? 'w-full' : ''
-      }`}
-    >
-      <CardContent className={`p-6 ${isListView ? 'flex gap-6' : ''}`}>
-        <div className={`${isListView ? 'w-24 h-24 flex-shrink-0' : 'flex items-start gap-4 mb-4'}`}>
-          <div className={`${isListView ? 'w-full h-full' : 'w-12 h-12'} rounded-lg overflow-hidden flex-shrink-0`}>
-            <img 
-              src={business.image} 
-              alt={`${business.name} logo`} 
-              className="w-full h-full object-cover"
-            />
+  const ServiceCard = ({ business, service }: { business: any, service: any }) => (
+    <MotionWrapper animation="fadeIn" delay={0.1}>
+      <HoverCard className="h-full">
+        <Card className="h-full bg-white/90 backdrop-blur-sm border-2 border-fem-navy/10 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-fem-navy mb-2">{service.name}</h3>
+                <p className="text-sm text-gray-600 mb-3">{service.description}</p>
+                
+                <div className="flex items-center justify-end text-sm">
+                  <div className="flex items-center gap-1 text-gray-500">
+                    <Clock className="w-3 h-3" />
+                    <span>{service.duration}</span>
           </div>
-          
-          {!isListView && (
-            <div className="flex-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-lg text-fem-navy">{business.name}</h3>
-                  {business.verified && (
-                    <Shield className="w-4 h-4 text-green-600" />
-                  )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => toggleFavorite(business.id)}
-                  className="p-1"
-                >
-                  <Heart 
-                    className={`w-4 h-4 ${
-                      favorites.includes(business.id) 
-                        ? 'fill-red-500 text-red-500' 
-                        : 'text-gray-400'
-                    }`} 
-                  />
-                </Button>
               </div>
-              <Badge variant="outline" className="bg-fem-gold/10 text-fem-navy border-fem-gold/20 mb-2">
-                {business.category}
-              </Badge>
-            </div>
-          )}
         </div>
         
-        <div className={`${isListView ? 'flex-1' : ''}`}>
-          {isListView && (
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-lg text-fem-navy">{business.name}</h3>
-                {business.verified && (
-                  <Shield className="w-4 h-4 text-green-600" />
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleFavorite(business.id)}
-                className="p-1"
+            <div className="flex gap-2 mt-4">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="flex-1 border-fem-navy text-fem-navy hover:bg-fem-navy hover:text-white"
               >
-                <Heart 
-                  className={`w-4 h-4 ${
-                    favorites.includes(business.id) 
-                      ? 'fill-red-500 text-red-500' 
-                      : 'text-gray-400'
-                  }`} 
-                />
+                <ExternalLink className="w-4 h-4 mr-2" />
+                <Link to={`/business/${business.id}`}>View Details</Link>
+              </Button>
+              <Button
+                size="sm"
+                className="flex-1 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white shadow-lg"
+                onClick={() => navigate(`/chat?business=${business.id}`)}
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Contact
               </Button>
             </div>
-          )}
+          </CardContent>
+        </Card>
+      </HoverCard>
+    </MotionWrapper>
+  );
+
+  const ProductCard = ({ business, product }: { business: any, product: any }) => (
+    <MotionWrapper animation="fadeIn" delay={0.1}>
+      <HoverCard className="h-full">
+        <Card className="h-full bg-white/90 backdrop-blur-sm border-2 border-fem-navy/10 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
+          <div className="relative">
+            <img 
+              src={product.image} 
+              alt={product.name}
+              className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute bottom-4 left-4 right-4 flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex-1 bg-white/90 text-gray-800 hover:bg-white"
+                  onClick={() => {
+                    setSelectedProduct(product);
+                    setShowPhotoModal(true);
+                  }}
+                >
+                  <Camera className="w-4 h-4 mr-1" />
+                  View Photos
+                </Button>
+                <Button 
+                  size="sm" 
+                  className="flex-1 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white shadow-lg"
+                  onClick={() => navigate(`/chat?business=${business.id}`)}
+                >
+                  <ShoppingCart className="w-4 h-4 mr-1" />
+                  Inquire
+                </Button>
+              </div>
+            </div>
+          </div>
           
-          {isListView && (
-            <Badge variant="outline" className="bg-fem-gold/10 text-fem-navy border-fem-gold/20 mb-3">
-              {business.category}
-            </Badge>
-          )}
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-fem-navy mb-2">{product.name}</h3>
+                <p className="text-sm text-gray-600 mb-3">{product.description}</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-bold text-fem-terracotta">{product.price}</span>
+                  <div className="flex items-center gap-1 text-sm text-gray-500">
+                    <MapPin className="w-3 h-3" />
+                    <span>{business.county}</span>
+                  </div>
+            </div>
+            </div>
+            </div>
+            
+            <div className="flex gap-2 mt-4">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="flex-1 border-fem-navy text-fem-navy hover:bg-fem-navy hover:text-white"
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                <Link to={`/business/${business.id}`}>View Details</Link>
+              </Button>
+              <Button 
+                size="sm" 
+                className="flex-1 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white shadow-lg"
+                onClick={() => navigate(`/chat?business=${business.id}`)}
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Contact
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </HoverCard>
+    </MotionWrapper>
+  );
+
+  const ProductPhotoModal = ({ product, onClose }: { product: any, onClose: () => void }) => (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.8, opacity: 0 }}
+          className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold text-fem-navy">{product.name}</h3>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
           
-          <p className="text-sm text-gray-600 mb-4 line-clamp-2">{business.description}</p>
-          
-          <div className="flex items-center gap-1 mb-3">
-            <div className="flex items-center">
-              {[...Array(5)].map((_, i) => (
-                <Star 
-                  key={i} 
-                  className={`w-4 h-4 ${i < Math.floor(business.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} 
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            {product.photos.map((photo: string, index: number) => (
+              <div key={index} className="aspect-square rounded-lg overflow-hidden">
+                <img 
+                  src={photo} 
+                  alt={`${product.name} photo ${index + 1}`}
+                  className="w-full h-full object-cover"
                 />
-              ))}
-            </div>
-            <span className="text-sm font-medium text-fem-navy">{business.rating}</span>
-            <span className="text-xs text-gray-500">({business.reviewCount} reviews)</span>
-          </div>
-          
-          <div className={`space-y-2 text-xs text-gray-600 mb-4 ${isListView ? 'grid grid-cols-2 gap-2' : ''}`}>
-            <div className="flex items-center gap-2">
-              <Phone className="w-3 h-3" />
-              <span>{business.phone}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="w-3 h-3" />
-              <span>{business.address}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Globe className="w-3 h-3" />
-              <span>{business.website}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-3 h-3" />
-              <span>{business.hours}</span>
-            </div>
-          </div>
-          
-          <div className="flex flex-wrap gap-1 mb-4">
-            {business.tags.map((tag: string) => (
-              <Badge key={tag} variant="outline" className="text-xs bg-gray-50 text-gray-600">
-                {tag}
-              </Badge>
+              </div>
             ))}
           </div>
           
-          <div className="flex gap-3">
-            <Button asChild variant="outline" size="sm" className="flex-1 border-fem-navy text-fem-navy hover:bg-fem-navy hover:text-white">
-              <Link to={`/business/${business.id}`}>View Details</Link>
-            </Button>
-            <Button size="sm" className="flex-1 bg-fem-terracotta hover:bg-fem-terracotta/90 text-white">
-              Contact
-            </Button>
+          <div className="space-y-2">
+            <p className="text-gray-600">{product.description}</p>
+            <p className="text-lg font-bold text-fem-terracotta">{product.price}</p>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[...Array(6)].map((_, i) => (
+          <Card key={i} className="h-64">
+            <CardContent className="p-6">
+              <Skeleton className="h-4 w-3/4 mb-2" />
+              <Skeleton className="h-4 w-1/2 mb-4" />
+              <Skeleton className="h-20 w-full mb-4" />
           <div className="flex gap-2">
-            <Skeleton className="h-10 w-24" />
-            <Skeleton className="h-10 w-24" />
-          </div>
-          <Skeleton className="h-6 w-32" />
+                <Skeleton className="h-8 flex-1" />
+                <Skeleton className="h-8 flex-1" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <Skeleton className="h-40 w-full mb-4" />
-                <Skeleton className="h-6 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-full mb-4" />
-                <Skeleton className="h-8 w-full" />
               </CardContent>
             </Card>
           ))}
-        </div>
       </div>
     );
   }
 
+  if (filteredBusinesses.length === 0) {
   return (
-    <div className="space-y-6">
-      {/* Header with view controls */}
-      <div className="flex justify-between items-center">
-        <div className="flex gap-2">
+      <MotionWrapper animation="fadeIn" delay={0.2}>
+        <div className="text-center py-12">
+          <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-r from-fem-gold/20 to-fem-terracotta/20 rounded-full flex items-center justify-center">
+            <Package className="w-12 h-12 text-fem-terracotta" />
+          </div>
+          <h3 className="text-xl font-semibold text-fem-navy mb-2">
+            No {viewType === "services" ? "services" : "products"} found
+          </h3>
+          <p className="text-gray-600 mb-4">
+            Try adjusting your filters or search terms
+          </p>
           <Button
-            variant={viewMode === "grid" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("grid")}
-            className={viewMode === "grid" ? "bg-fem-terracotta hover:bg-fem-terracotta/90" : "border-fem-navy text-fem-navy hover:bg-fem-navy hover:text-white"}
+            onClick={() => window.location.reload()}
+            className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
           >
-            <Grid3X3 className="w-4 h-4 mr-2" />
-            Grid
-          </Button>
-          <Button
-            variant={viewMode === "list" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("list")}
-            className={viewMode === "list" ? "bg-fem-terracotta hover:bg-fem-terracotta/90" : "border-fem-navy text-fem-navy hover:bg-fem-navy hover:text-white"}
-          >
-            <List className="w-4 h-4 mr-2" />
-            List
+            Clear Filters
           </Button>
         </div>
-        <p className="text-sm text-gray-600">
-          {filteredBusinesses.length} business{filteredBusinesses.length !== 1 ? 'es' : ''} found
-        </p>
-      </div>
+      </MotionWrapper>
+    );
+  }
 
-      {/* Business listings */}
-      {filteredBusinesses.length === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <div className="text-gray-400 mb-4">
-              <MapPin className="w-16 h-16 mx-auto" />
+  return (
+    <div ref={listRef}>
+      {viewType === "services" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredBusinesses.map(business => 
+            business.services.map((service: any, index: number) => (
+              <ServiceCard key={`${business.id}-${index}`} business={business} service={service} />
+            ))
+          )}
             </div>
-            <h3 className="text-lg font-semibold text-fem-navy mb-2">No businesses found</h3>
-            <p className="text-gray-600">Try adjusting your filters or search terms.</p>
-          </CardContent>
-        </Card>
       ) : (
-        <div className={
-          viewMode === "grid" 
-            ? "grid grid-cols-1 md:grid-cols-2 gap-6"
-            : "space-y-4"
-        }>
-          {filteredBusinesses.map((business) => (
-            <BusinessCard 
-              key={business.id} 
-              business={business} 
-              isListView={viewMode === "list"}
-            />
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredBusinesses.map(business => 
+            business.products.map((product: any, index: number) => (
+              <ProductCard key={`${business.id}-${index}`} business={business} product={product} />
+            ))
+          )}
         </div>
+      )}
+
+      {showPhotoModal && selectedProduct && (
+        <ProductPhotoModal 
+          product={selectedProduct} 
+          onClose={() => {
+            setShowPhotoModal(false);
+            setSelectedProduct(null);
+          }} 
+        />
       )}
     </div>
   );

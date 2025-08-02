@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { 
   Utensils, 
   ShoppingBag, 
-  Wrench, 
+  Settings, 
   Heart, 
   Car, 
   Home, 
@@ -14,7 +14,7 @@ import { Link } from "react-router-dom";
 const categories = [
   { name: "Restaurant", icon: Utensils, count: 24, color: "text-orange-600" },
   { name: "Retail", icon: ShoppingBag, count: 18, color: "text-blue-600" },
-  { name: "Services", icon: Wrench, count: 32, color: "text-green-600" },
+  { name: "Services", icon: Settings, count: 32, color: "text-green-600" },
   { name: "Health & Wellness", icon: Heart, count: 15, color: "text-red-600" },
   { name: "Automotive", icon: Car, count: 12, color: "text-purple-600" },
   { name: "Real Estate", icon: Home, count: 9, color: "text-yellow-600" },

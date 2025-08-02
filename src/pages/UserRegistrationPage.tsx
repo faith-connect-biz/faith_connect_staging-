@@ -12,7 +12,8 @@ import {
   Lock, 
   Building2, 
   ArrowLeft,
-  CheckCircle
+  CheckCircle,
+  Phone
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -22,6 +23,7 @@ const UserRegistrationPage = () => {
     firstName: "",
     lastName: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
     userType: "community", // 'community' or 'business'
@@ -116,6 +118,19 @@ const UserRegistrationPage = () => {
                       placeholder="john@email.com"
                       required
                     />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="phone">Phone Number *</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange("phone", e.target.value)}
+                      placeholder="+254 700 123 456"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Enter your Kenyan phone number</p>
                   </div>
 
                   <div>

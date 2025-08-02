@@ -7,31 +7,31 @@ export const HowItWorks = () => {
   const steps = [
     {
       title: "Create Your Profile",
-      description: "Build your professional profile with skills, experience, and church membership details for authentic connections.",
+      description: "Build your community profile with your interests, needs, and church membership details for authentic connections.",
       icon: User,
       link: "/register",
       color: "from-blue-500/10 to-cyan-500/10",
       iconBg: "bg-blue-500/10 text-blue-600"
     },
     {
-      title: "Discover Opportunities",
-      description: "Browse curated job listings from faith-aligned businesses within our church community network.",
+      title: "Explore Services",
+      description: "Browse curated business listings from faith-aligned businesses within our church community network.",
       icon: Search,
-      link: "/jobs",
+      link: "/directory",
       color: "from-green-500/10 to-emerald-500/10",
       iconBg: "bg-green-500/10 text-green-600"
     },
     {
-      title: "Apply with Purpose",
-      description: "Submit meaningful applications with your profile and receive real-time notifications on your status.",
+      title: "Discover Products",
+      description: "Find trusted products and services with pricing information and connect directly with business owners.",
       icon: FileText,
-      link: "/jobs",
+      link: "/directory",
       color: "from-purple-500/10 to-violet-500/10",
       iconBg: "bg-purple-500/10 text-purple-600"
     },
     {
       title: "Connect Securely",
-      description: "Communicate with employers through our secure platform while maintaining your privacy and personal safety.",
+      description: "Communicate with business owners through our secure platform while maintaining your privacy and personal safety.",
       icon: MessageCircle,
       link: "/chat",
       color: "from-orange-500/10 to-red-500/10",

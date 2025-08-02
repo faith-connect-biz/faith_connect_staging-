@@ -50,7 +50,7 @@ const BusinessRegistrationSuccessPage = () => {
                     <Shield className="w-5 h-5 text-green-600" />
                     <div className="text-left">
                       <h3 className="font-semibold text-fem-navy">Verification</h3>
-                      <p className="text-sm text-gray-600">Your business will be verified by our admin team</p>
+                      <p className="text-sm text-gray-600">Your business will be reviewed and verified</p>
                     </div>
                   </div>
                   

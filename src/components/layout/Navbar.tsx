@@ -55,11 +55,7 @@ export const Navbar = () => {
               List Business
             </Link>
           )}
-          {isLoggedIn && userType === "admin" && (
-            <Link to="/admin" className="text-fem-navy hover:text-fem-terracotta transition-colors">
-              Admin
-            </Link>
-          )}
+
           <Link to="/about" className="text-fem-navy hover:text-fem-terracotta transition-colors">
             About
           </Link>

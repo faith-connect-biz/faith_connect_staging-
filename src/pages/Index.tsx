@@ -6,10 +6,32 @@ import { BusinessCategories } from "@/components/home/BusinessCategories";
 import { FeaturedBusinesses } from "@/components/home/FeaturedBusinesses";
 import { CommunityStats } from "@/components/home/CommunityStats";
 import { CallToAction } from "@/components/home/CallToAction";
+import { OnboardingCheck } from "@/components/OnboardingCheck";
 import { useEffect } from "react";
 
 const Index = () => {
   useEffect(() => {
+    // Smooth scroll behavior for navigation links
+    const handleSmoothScroll = (e: Event) => {
+      const target = e.target as HTMLAnchorElement;
+      if (target.hash) {
+        e.preventDefault();
+        const element = document.querySelector(target.hash);
+        if (element) {
+          element.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      }
+    };
+
+    // Add smooth scroll to all internal links
+    const internalLinks = document.querySelectorAll('a[href^="#"]');
+    internalLinks.forEach(link => {
+      link.addEventListener('click', handleSmoothScroll);
+    });
+
     // Enhanced scroll reveal animation with staggered delays
     const observerOptions = {
       threshold: 0.15,
@@ -34,7 +56,6 @@ const Index = () => {
     // Enhanced parallax effect for multiple background elements
     const handleParallax = () => {
       const scrolled = window.pageYOffset;
-      const rate = scrolled * -0.3;
       
       // Different parallax rates for layered effect
       const parallaxElements = document.querySelectorAll('.parallax-bg');
@@ -52,27 +73,6 @@ const Index = () => {
         (element as HTMLElement).style.transform = `translateY(${yPos}px)`;
       });
     };
-
-    // Smooth scroll behavior for navigation links
-    const handleSmoothScroll = (e: Event) => {
-      const target = e.target as HTMLAnchorElement;
-      if (target.hash) {
-        e.preventDefault();
-        const element = document.querySelector(target.hash);
-        if (element) {
-          element.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-          });
-        }
-      }
-    };
-
-    // Add smooth scroll to all internal links
-    const internalLinks = document.querySelectorAll('a[href^="#"]');
-    internalLinks.forEach(link => {
-      link.addEventListener('click', handleSmoothScroll);
-    });
 
     // Throttled scroll event for performance
     let ticking = false;
@@ -98,22 +98,15 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-mont">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
+      <OnboardingCheck userType="community" />
       <main className="flex-grow">
         <Hero />
-        <div className="section-full-auto">
-          <BusinessCategories />
-        </div>
-        <div className="section-full-auto">
-          <FeaturedBusinesses />
-        </div>
-        <div className="section-full-auto">
-          <CommunityStats />
-        </div>
-        <div className="section-full-auto">
-          <CallToAction />
-        </div>
+        <BusinessCategories />
+        <FeaturedBusinesses />
+        <CommunityStats />
+        <CallToAction />
       </main>
       <Footer />
     </div>

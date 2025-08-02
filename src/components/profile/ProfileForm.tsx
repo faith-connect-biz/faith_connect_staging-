@@ -98,7 +98,7 @@ export const ProfileForm = () => {
               className="mt-1"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Your number will be kept private and masked when contacting employers.
+              Your number will be kept private and masked when contacting businesses.
             </p>
           </div>
         </div>
@@ -217,8 +217,8 @@ export const ProfileForm = () => {
           <div className="rounded-lg bg-fem-gold/10 p-4 border border-fem-gold/20 mb-6">
             <h3 className="font-semibold text-fem-navy mb-2">Privacy Notice</h3>
             <p className="text-sm text-gray-600">
-              Your contact information will be masked when communicating with employers.
-              Your profile will only be visible to verified church community members and employers.
+              Your contact information will be masked when communicating with businesses.
+              Your profile will only be visible to verified church community members and businesses.
             </p>
           </div>
           
