@@ -16,5 +16,4 @@ urlpatterns = [
     path('verify-email-confirm', ConfirmEmailVerificationView.as_view(),name='confirm_email'),
     path('verify-phone', SendPhoneOTPView.as_view(), name='verify_phone'),
     path('verify-phone-confirm', ConfirmPhoneOTPView.as_view(), name='confirm_phone'),
-
 ]

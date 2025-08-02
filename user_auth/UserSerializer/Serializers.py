@@ -76,3 +76,4 @@ class ResetPasswordWithOTPSerializer(serializers.Serializer):
     phone_number = serializers.CharField()
     otp = serializers.CharField()
     new_password = serializers.CharField(min_length=6)
+

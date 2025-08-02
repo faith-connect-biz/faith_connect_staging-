@@ -204,3 +204,4 @@ class ConfirmPhoneOTPView(APIView):
             user.save()
             return success_response(message="Phone number verified successfully.")
         return error_response(message="Invalid OTP.")
+
