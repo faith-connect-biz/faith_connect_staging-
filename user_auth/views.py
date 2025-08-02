@@ -12,6 +12,7 @@ from rest_framework_simplejwt.serializers import (
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
+from utils.communication import send_email_verification_code
 from .UserSerializer.Serializers import RegisterSerializer, LoginSerializer, ForgotPasswordOTPSerializer, \
     ResetPasswordWithOTPSerializer
 from .utils import success_response, error_response
@@ -132,3 +133,74 @@ class ResetPasswordWithOTPView(APIView):
 
             return success_response(message="Password reset successful.")
         return error_response(message="Reset failed.", errors=serializer.errors)
+
+class SendEmailVerificationView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        if not email:
+            return error_response("Email is required")
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return error_response("User with this email does not exist")
+
+        token = str(random.randint(100000, 999999))
+        user.email_token = token
+        user.save()
+
+        send_email_verification_code(email, token)
+        return success_response("Verification token sent to email")
+
+class SendPhoneOTPView(APIView):
+    def post(self, request):
+        phone = request.data.get("phone_number")
+        if not phone:
+            return error_response("Phone number is required")
+
+        try:
+            user = User.objects.get(phone=phone)
+        except User.DoesNotExist:
+            return error_response("User with this phone number does not exist")
+
+        otp = str(random.randint(100000, 999999))
+        user.otp = otp
+        user.save()
+
+        send_sms(phone, otp)
+        return success_response("OTP sent to phone number")
+
+
+class ConfirmEmailVerificationView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        token = request.data.get("token")
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return error_response(message="User not found")
+
+        if user.email_token == token:
+            user.email_verified = True
+            user.email_token = None
+            user.save()
+            return success_response(message="Email verified successfully.")
+        return error_response(message="Invalid verification token.")
+
+class ConfirmPhoneOTPView(APIView):
+    def post(self, request):
+        phone = request.data.get("phone_number")
+        otp = request.data.get("otp")
+
+        try:
+            user = User.objects.get(phone=phone)
+        except User.DoesNotExist:
+            return error_response(message="User not found")
+
+        if user.otp == otp:
+            user.phone_verified = True
+            user.otp = None
+            user.save()
+            return success_response(message="Phone number verified successfully.")
+        return error_response(message="Invalid OTP.")
