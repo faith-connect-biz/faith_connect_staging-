@@ -1,3 +1,5 @@
+from tokenize import TokenError
+
 from django.shortcuts import render
 
 # Create your views here.
@@ -12,8 +14,10 @@ from rest_framework import status
 from .UserSerializer.Serializers import RegisterSerializer, LoginSerializer
 from .utils import success_response, error_response
 import logging
-
-from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
 logger = logging.getLogger('user_auth')
 
@@ -61,3 +65,31 @@ class LoginView(APIView):
         return error_response("Login failed", serializer.errors)
 
 
+class LogoutAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        refresh_token = request.data.get("refresh")
+        if not refresh_token:
+            return error_response("Refresh token is required", status_code=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return success_response("Logout successful", status_code=status.HTTP_205_RESET_CONTENT)
+        except TokenError:
+            return error_response("Invalid or expired token", status_code=status.HTTP_400_BAD_REQUEST)
+
+
+class CustomTokenRefreshView(TokenRefreshView):
+    serializer_class = TokenRefreshSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+
+        try:
+            serializer.is_valid(raise_exception=True)
+        except Exception as e:
+            return error_response("Token refresh failed", str(e), status.HTTP_400_BAD_REQUEST)
+
+        return success_response("Token refreshed", serializer.validated_data)
