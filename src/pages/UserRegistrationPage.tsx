@@ -53,7 +53,7 @@ const UserRegistrationPage = () => {
 
     toast({
       title: "Registration successful!",
-      description: "Welcome to FaithConnect. You can now access all features.",
+      description: "Welcome to Faith Connect. You can now access all features.",
     });
 
     navigate("/login");
@@ -71,7 +71,7 @@ const UserRegistrationPage = () => {
                 <Building2 className="w-12 h-12 text-fem-terracotta" />
               </div>
               <h1 className="text-3xl font-bold text-fem-navy mb-2">
-                Join FaithConnect
+                Join Faith Connect
               </h1>
               <p className="text-gray-600">
                 Connect with fellow believers in our faith-based business directory

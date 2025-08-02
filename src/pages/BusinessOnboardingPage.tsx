@@ -161,7 +161,7 @@ const BusinessOnboardingPage = () => {
                 backgroundClip: "text"
               }}
             >
-              FaithConnect
+              Faith Connect
             </motion.h1>
             <motion.p
               className="text-xl text-gray-300 font-light"

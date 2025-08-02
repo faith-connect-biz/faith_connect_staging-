@@ -41,7 +41,7 @@ export const Navbar = () => {
             className="h-12 w-auto" 
           />
           <div className="hidden sm:flex flex-col">
-            <span className="font-heading font-semibold text-fem-navy">FaithConnect</span>
+            <span className="font-heading font-semibold text-fem-navy">Faith Connect</span>
             <span className="text-xs text-fem-darkgray">Business Directory</span>
           </div>
         </Link>

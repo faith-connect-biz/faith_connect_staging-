@@ -52,7 +52,7 @@ const SignInPage = () => {
         
         toast({
           title: "Sign in successful",
-          description: "Welcome to FaithConnect!",
+          description: "Welcome to Faith Connect!",
         });
         
         // Check if user has seen onboarding before
@@ -100,7 +100,7 @@ const SignInPage = () => {
       <main className="flex-grow flex items-center justify-center px-4 py-12">
         <Card className="w-full max-w-md shadow-lg">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center text-fem-navy">Sign In to FaithConnect</CardTitle>
+            <CardTitle className="text-2xl font-bold text-center text-fem-navy">Sign In to Faith Connect</CardTitle>
             <CardDescription className="text-center text-fem-darkgray">
               Enter your credentials to access your account
             </CardDescription>

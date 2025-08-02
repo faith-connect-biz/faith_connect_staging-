@@ -219,7 +219,7 @@ const BusinessRegistrationPage = () => {
   const handleSubmit = () => {
     toast({
       title: "Business registered successfully!",
-      description: "Your business has been added to the directory. Welcome to the FaithConnect community!",
+      description: "Your business has been added to the directory. Welcome to the Faith Connect community!",
     });
     navigate("/directory");
   };

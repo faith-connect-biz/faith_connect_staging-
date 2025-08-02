@@ -274,7 +274,7 @@ const ChatPage = () => {
           >
             <div className="inline-flex items-center gap-3 bg-gradient-to-r from-fem-navy to-fem-terracotta text-white px-6 py-3 rounded-full shadow-lg mb-4">
               <Sparkles className="w-5 h-5" />
-              <h1 className="text-2xl font-bold">FaithConnect Chat</h1>
+              <h1 className="text-2xl font-bold">Faith Connect Chat</h1>
               <Sparkles className="w-5 h-5" />
             </div>
             <p className="text-gray-600 max-w-md mx-auto">

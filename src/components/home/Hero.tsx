@@ -82,7 +82,7 @@ export const Hero = () => {
                    <div className="space-y-4">
                      <div className="text-white/95 font-light tracking-tight">Welcome to</div>
                      <div className="font-black bg-gradient-to-r from-fem-gold via-fem-terracotta to-fem-gold bg-clip-text text-transparent">
-                       FaithConnect
+                       Faith Connect
                      </div>
                      <div className="text-white font-medium tracking-tight text-4xl">
                        Business Directory

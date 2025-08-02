@@ -21,11 +21,11 @@ export const CallToAction = () => {
           {/* Header */}
           <div className="scroll-reveal space-y-8">
              <h2 className="text-section-title text-fem-navy tracking-tight leading-tight">
-               Ready to Join FaithConnect?
+               Ready to Join Faith Connect?
              </h2>
              <div className="w-24 h-1 bg-gradient-to-r from-fem-terracotta to-fem-gold mx-auto rounded-full"></div>
              <p className="text-body-large text-gray-600 leading-relaxed max-w-3xl mx-auto">
-               Whether you're looking for trusted services or want to showcase your business to our faith community, FaithConnect brings believers together through commerce.
+               Whether you're looking for trusted services or want to showcase your business to our faith community, Faith Connect brings believers together through commerce.
              </p>
           </div>
           
