@@ -6,7 +6,8 @@ services:
       pip install -r requirements.txt
       python manage.py migrate
       python manage.py collectstatic --noinput
-    startCommand: gunicorn core.wsgi:application --env DJANGO_SETTINGS_MODULE=core.settings.staging
+    startCommand: DJANGO_SETTINGS_MODULE=core.settings.staging gunicorn core.wsgi:application
+
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: core.settings.staging
