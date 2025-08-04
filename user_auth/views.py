@@ -30,8 +30,6 @@ def mask_sensitive_data(data, sensitive_fields=None):
 
 
 class RegisterAPIView(APIView):
-    permission_classes = [AllowAny]  # 👈 This allows public access
-
     def post(self, request):
         safe_data = mask_sensitive_data(request.data)
         logger.info(f"[REGISTER REQUEST] - {safe_data}")
