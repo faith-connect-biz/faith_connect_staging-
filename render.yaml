@@ -4,9 +4,11 @@ services:
     env: python
     buildCommand: |
       pip install -r requirements.txt
-      python manage.py migrate
-      python manage.py collectstatic --noinput
-    startCommand: DJANGO_SETTINGS_MODULE=core.settings.staging gunicorn core.wsgi:application
+      python manage.py migrate --noinput --settings=core.settings.staging
+      python manage.py collectstatic --noinput --settings=core.settings.staging
+
+    startCommand: gunicorn core.wsgi:application --env DJANGO_SETTINGS_MODULE=core.settings.staging
+
 
     envVars:
       - key: DJANGO_SETTINGS_MODULE
