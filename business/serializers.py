@@ -18,11 +18,14 @@ class ServiceSerializer(serializers.ModelSerializer):
         model = Service
         exclude = ['id', 'business']
 
+
 class ReviewSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField(read_only=True)
+
     class Meta:
         model = Review
-        exclude = ['id', 'business', 'user']
-
+        fields = ['id', 'user', 'rating', 'review_text', 'is_verified', 'created_at', 'updated_at']
+        read_only_fields = ['is_verified', 'created_at', 'updated_at']
 
 class BusinessSerializer(serializers.ModelSerializer):
     hours = BusinessHourSerializer(many=True)  # 👈 match related_name
@@ -84,3 +87,6 @@ class ProductSerializer(serializers.ModelSerializer):
             'created_at'
         ]
         read_only_fields = ['id', 'created_at']
+
+
+

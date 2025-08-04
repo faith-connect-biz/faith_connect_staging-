@@ -1,15 +1,14 @@
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, filters
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 
-from business import permissions
-from business.models import Business, Category, Favorite, Product
+from business.models import Business, Category, Favorite, Product, Review
 from business.permissions import IsBusinessUser
-from business.serializers import BusinessSerializer, CategorySerializer, FavoriteSerializer, ProductSerializer
-from core import settings
+from business.serializers import BusinessSerializer, CategorySerializer, FavoriteSerializer, ProductSerializer, \
+    ReviewSerializer
 from user_auth.utils import success_response, error_response
 
 
@@ -170,4 +169,40 @@ class ProductRetrieveUpdateView(generics.RetrieveUpdateAPIView):
         if product.business.user != self.request.user:
             raise PermissionDenied("Only the owner can update this product")
         serializer.save()
+
+class ReviewListCreateView(generics.ListCreateAPIView):
+    serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        business_id = self.kwargs.get('business_id')
+        return Review.objects.filter(business_id=business_id)
+
+    def perform_create(self, serializer):
+        business_id = self.kwargs.get('business_id')
+        if Review.objects.filter(business_id=business_id, user=self.request.user).exists():
+            raise PermissionDenied("You’ve already reviewed this business.")
+        serializer.save(
+            business_id=business_id,
+            user=self.request.user
+        )
+
+
+class ReviewUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Review.objects.filter(user=self.request.user, business_id=self.kwargs.get('business_id'))
+
+    def perform_update(self, serializer):
+        review = self.get_object()
+        if review.user != self.request.user:
+            raise PermissionDenied("You can only update your own review.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.user != self.request.user:
+            raise PermissionDenied("You can only delete your own review.")
+        instance.delete()
 

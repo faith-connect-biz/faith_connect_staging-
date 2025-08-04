@@ -1,7 +1,8 @@
 from django.urls import path
 
 from business.views import BusinessDetailAPIView, BusinessUpdateView, BusinessListCreateAPIView, CategoryListAPIView, \
-  FavoriteToggleView, BusinessProductListCreateView, ProductRetrieveUpdateView
+  FavoriteToggleView, BusinessProductListCreateView, ProductRetrieveUpdateView, ReviewListCreateView, \
+  ReviewUpdateDeleteView
 
 urlpatterns = [
   path('', BusinessListCreateAPIView.as_view(), name='business-list'),
@@ -16,5 +17,7 @@ urlpatterns = [
   path('api/businesses/<uuid:business_id>/products', BusinessProductListCreateView.as_view(),
        name='business-product-list-create'),
   path('products/<uuid:id>', ProductRetrieveUpdateView.as_view(), name='product-detail'),
+path('<uuid:business_id>/reviews', ReviewListCreateView.as_view(), name='business-reviews'),
+ path('<uuid:business_id>/reviews/<int:pk>', ReviewUpdateDeleteView.as_view(), name='business-review-detail'),
 
 ]
