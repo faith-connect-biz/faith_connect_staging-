@@ -269,7 +269,7 @@ const BusinessRegistrationPage = () => {
             <SelectValue placeholder="Select a category" />
           </SelectTrigger>
           <SelectContent>
-            {categories.map((category) => (
+            {Array.isArray(categories) && categories.map((category) => (
               <SelectItem key={category} value={category}>{category}</SelectItem>
             ))}
           </SelectContent>

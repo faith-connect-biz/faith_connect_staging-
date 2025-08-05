@@ -2,35 +2,22 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Search, LogOut, User, Menu, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const Navbar = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
-  const [userType, setUserType] = useState<string | null>(null);
+  const { user, isAuthenticated, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Check if user is logged in
-    const loggedInStatus = localStorage.getItem("isLoggedIn") === "true";
-    const email = localStorage.getItem("userEmail");
-    const type = localStorage.getItem("userType");
-    
-    setIsLoggedIn(loggedInStatus);
-    setUserEmail(email || "");
-    setUserType(type);
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("userType");
-    setIsLoggedIn(false);
-    setUserEmail("");
-    setUserType(null);
-    setIsMobileMenuOpen(false);
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setIsMobileMenuOpen(false);
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
   const toggleMobileMenu = () => {
@@ -64,7 +51,7 @@ export const Navbar = () => {
           <Link to="/directory" className="text-fem-navy hover:text-fem-terracotta transition-colors">
             Business Directory
           </Link>
-          {isLoggedIn && userType === "business" && (
+          {isAuthenticated && user?.user_type === "business" && (
             <Link to="/register-business" className="text-fem-navy hover:text-fem-terracotta transition-colors">
               List Business
             </Link>
@@ -72,7 +59,7 @@ export const Navbar = () => {
           <Link to="/about" className="text-fem-navy hover:text-fem-terracotta transition-colors">
             About
           </Link>
-          {isLoggedIn && (
+          {isAuthenticated && (
             <Link to="/chat" className="text-fem-navy hover:text-fem-terracotta transition-colors">
               Chat
             </Link>
@@ -85,7 +72,7 @@ export const Navbar = () => {
             <Search className="h-5 w-5" />
           </Button>
           
-          {isLoggedIn ? (
+          {isAuthenticated ? (
             <div className="flex items-center gap-2">
               <Link to="/profile">
                 <Button variant="outline" className="flex items-center gap-2 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white">
@@ -147,7 +134,7 @@ export const Navbar = () => {
               >
                 Business Directory
               </Link>
-              {isLoggedIn && userType === "business" && (
+              {isAuthenticated && user?.user_type === "business" && (
                 <Link 
                   to="/register-business" 
                   className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
@@ -163,7 +150,7 @@ export const Navbar = () => {
               >
                 About
               </Link>
-              {isLoggedIn && (
+              {isAuthenticated && (
                 <Link 
                   to="/chat" 
                   className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
@@ -176,7 +163,7 @@ export const Navbar = () => {
 
             {/* Mobile Actions */}
             <div className="pt-4 border-t border-gray-100 space-y-3">
-              {isLoggedIn ? (
+              {isAuthenticated ? (
                 <>
                   <Link to="/profile" onClick={closeMobileMenu}>
                     <Button variant="outline" className="w-full border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white">

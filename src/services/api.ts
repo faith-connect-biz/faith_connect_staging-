@@ -194,7 +194,7 @@ class ApiService {
             // Refresh token failed, redirect to login
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
-            window.location.href = '/signin';
+            window.location.href = '/login';
           }
         }
         

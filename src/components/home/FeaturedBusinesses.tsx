@@ -30,7 +30,7 @@ export const FeaturedBusinesses = () => {
   const { businesses, isLoading, error } = useBusiness();
   
   // Select featured businesses from the API data
-  const featuredBusinesses = selectFeaturedBusinesses(businesses, 3);
+  const featuredBusinesses = Array.isArray(businesses) ? selectFeaturedBusinesses(businesses, 3) : [];
   
   if (isLoading) {
     return (

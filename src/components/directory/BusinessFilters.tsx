@@ -96,7 +96,7 @@ export const BusinessFilters = ({ onApplyFilters, onClearFilters }: BusinessFilt
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((category) => (
+                {Array.isArray(categories) && categories.map((category) => (
                   <SelectItem key={category} value={category}>
                     {category}
                   </SelectItem>

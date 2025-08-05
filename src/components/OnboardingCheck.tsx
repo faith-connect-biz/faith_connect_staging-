@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface OnboardingCheckProps {
   userType: "community" | "business";
@@ -7,11 +8,11 @@ interface OnboardingCheckProps {
 
 export const OnboardingCheck = ({ userType }: OnboardingCheckProps) => {
   const { showOnboarding } = useOnboarding();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     // Check if user is logged in
-    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-    if (!isLoggedIn) return;
+    if (!isAuthenticated) return;
 
     // Check if user has seen onboarding before
     const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");

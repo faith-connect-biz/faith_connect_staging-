@@ -1,34 +1,70 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Building2, Users, Shield, Star } from "lucide-react";
-
-const stats = [
-  {
-    icon: Building2,
-    value: "150+",
-    label: "Local Businesses",
-    description: "Trusted businesses in our directory"
-  },
-  {
-    icon: Users,
-    value: "1,200+",
-    label: "Community Members",
-    description: "Active church family members"
-  },
-  {
-    icon: Shield,
-    value: "95%",
-    label: "Verified Businesses",
-    description: "Background checked and approved"
-  },
-  {
-    icon: Star,
-    value: "4.8",
-    label: "Average Rating",
-    description: "Community satisfaction score"
-  }
-];
+import { useBusiness } from "@/contexts/BusinessContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const CommunityStats = () => {
+  const { businesses, isLoading } = useBusiness();
+  const { user } = useAuth();
+
+  // Calculate real statistics from the data
+  const calculateStats = () => {
+    if (isLoading || !Array.isArray(businesses) || !businesses.length) {
+      return {
+        totalBusinesses: "0",
+        verifiedBusinesses: "0",
+        averageRating: "0.0",
+        totalUsers: "0"
+      };
+    }
+
+    const totalBusinesses = businesses.length;
+    const verifiedBusinesses = businesses.filter(b => b.is_verified).length;
+    const averageRating = businesses.length > 0 
+      ? (businesses.reduce((sum, b) => sum + b.rating, 0) / businesses.length).toFixed(1)
+      : "0.0";
+    
+    // For now, we'll estimate users based on businesses (assuming 1 user per business + community users)
+    // In a real app, you'd get this from a users API endpoint
+    const totalUsers = totalBusinesses + Math.floor(totalBusinesses * 0.5); // Estimate
+
+    return {
+      totalBusinesses: totalBusinesses.toString(),
+      verifiedBusinesses: verifiedBusinesses.toString(),
+      averageRating,
+      totalUsers: totalUsers.toString()
+    };
+  };
+
+  const stats = calculateStats();
+
+  const statsData = [
+    {
+      icon: Building2,
+      value: `${stats.totalBusinesses}+`,
+      label: "Local Businesses",
+      description: "Trusted businesses in our directory"
+    },
+    {
+      icon: Users,
+      value: `${stats.totalUsers}+`,
+      label: "Community Members",
+      description: "Active church family members"
+    },
+    {
+      icon: Shield,
+      value: Array.isArray(businesses) && businesses.length > 0 ? `${Math.round((parseInt(stats.verifiedBusinesses) / parseInt(stats.totalBusinesses)) * 100)}%` : "0%",
+      label: "Verified Businesses",
+      description: "Background checked and approved"
+    },
+    {
+      icon: Star,
+      value: stats.averageRating,
+      label: "Average Rating",
+      description: "Community satisfaction score"
+    }
+  ];
+
   return (
     <section className="py-16 bg-white">
       <div className="container mx-auto px-4">
@@ -43,7 +79,7 @@ export const CommunityStats = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
+          {statsData.map((stat, index) => (
             <Card 
               key={stat.label} 
               className="text-center hover-card-effect border-0 shadow-sm bg-gradient-to-br from-fem-gold/5 to-fem-terracotta/5"

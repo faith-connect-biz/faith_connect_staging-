@@ -1,33 +1,50 @@
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageCircle, Send, User, Sparkles, MessageSquare, Clock, Phone } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  Send, 
+  Search, 
+  MoreVertical, 
+  Phone, 
+  Mail, 
+  MapPin, 
+  Star, 
+  Clock,
+  MessageSquare,
+  Building2,
+  ArrowLeft,
+  User,
+  Bot
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import Lottie from "lottie-react";
-import { Badge } from "@/components/ui/badge";
+import { useBusiness } from "@/contexts/BusinessContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
 
-// Types for our messages
 interface Message {
   id: string;
   content: string;
-  sender: "user" | "client";
+  sender: "user" | "business";
   timestamp: Date;
 }
 
 interface Chat {
   id: string;
-  name: string;
+  businessId: string;
+  businessName: string;
+  businessImage?: string;
   lastMessage: string;
   unread: number;
   serviceType?: string;
@@ -35,49 +52,75 @@ interface Chat {
 }
 
 const ChatPage = () => {
+  const [searchParams] = useSearchParams();
+  const { businesses, isLoading } = useBusiness();
+  const { user } = useAuth();
+  
   const [chats, setChats] = useState<Chat[]>([]);
+  const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [activeChat, setActiveChat] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const chatListRef = useRef<HTMLDivElement>(null);
-  const messagesRef = useRef<HTMLDivElement>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isLoadingChats, setIsLoadingChats] = useState(true);
+  
   const headerRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
+  const chatListRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Mock data
+  // Initialize chats from businesses
   useEffect(() => {
-    // Simulate loading chats from an API
-    const mockChats: Chat[] = [
-      {
-        id: "1",
-        name: "ABC Painting Services",
-        lastMessage: "Thanks for your inquiry!",
-        unread: 2,
-        serviceType: "Painting Services",
-        pricing: "KSH 25,000 - KSH 35,000 per project"
-      },
-      {
-        id: "2",
-        name: "XYZ Tech Solutions",
-        lastMessage: "When can we schedule a consultation?",
-        unread: 0,
-        serviceType: "Software Development",
-        pricing: "KSH 85,000 - KSH 110,000 per project"
-      },
-      {
-        id: "3",
-        name: "123 Cleaning Services",
-        lastMessage: "We'd like to schedule a site visit.",
-        unread: 1,
-        serviceType: "Cleaning Services",
-        pricing: "KSH 18,000 - KSH 22,000 per month"
-      },
-    ];
+    if (isLoading || !Array.isArray(businesses) || !businesses.length) return;
 
-    setChats(mockChats);
-  }, []);
+    // Create chat conversations from businesses
+    const businessChats: Chat[] = businesses.slice(0, 5).map((business, index) => ({
+      id: `chat-${business.id}`,
+      businessId: business.id,
+      businessName: business.business_name,
+      businessImage: business.business_image_url || business.business_logo_url,
+      lastMessage: getRandomLastMessage(),
+      unread: Math.floor(Math.random() * 3), // Random unread count
+      serviceType: business.category?.name,
+      pricing: getRandomPricing()
+    }));
+
+    setChats(businessChats);
+    setIsLoadingChats(false);
+
+    // Set active chat if business ID is in URL params
+    const businessId = searchParams.get('business');
+    if (businessId) {
+      const chat = businessChats.find(c => c.businessId === businessId);
+      if (chat) {
+        setActiveChat(chat);
+      }
+    }
+  }, [businesses, isLoading, searchParams]);
+
+  const getRandomLastMessage = () => {
+    const messages = [
+      "Thanks for your inquiry!",
+      "When can we schedule a consultation?",
+      "We'd like to schedule a site visit.",
+      "Here are our current rates and availability.",
+      "Looking forward to working with you!",
+      "Can you provide more details about your project?",
+      "We have availability next week.",
+      "Thank you for choosing our services."
+    ];
+    return messages[Math.floor(Math.random() * messages.length)];
+  };
+
+  const getRandomPricing = () => {
+    const pricingRanges = [
+      "KSH 25,000 - KSH 35,000 per project",
+      "KSH 85,000 - KSH 110,000 per project", 
+      "KSH 18,000 - KSH 22,000 per month",
+      "KSH 5,000 - KSH 15,000 per service",
+      "KSH 50,000 - KSH 75,000 per project",
+      "Contact for custom pricing"
+    ];
+    return pricingRanges[Math.floor(Math.random() * pricingRanges.length)];
+  };
 
   // GSAP Animations
   useEffect(() => {
@@ -110,7 +153,7 @@ const ChatPage = () => {
     return () => {
       ScrollTrigger.getAll().forEach(trigger => trigger.kill());
     };
-  }, []);
+  }, [chats]);
 
   // Fetch messages when a chat is selected
   useEffect(() => {
@@ -127,7 +170,7 @@ const ChatPage = () => {
       {
         id: "2",
         content: "Hi there! Thanks for reaching out. How can I help you today?",
-        sender: "client",
+        sender: "business",
         timestamp: new Date(Date.now() - 3500000) // 58 minutes ago
       },
       {
@@ -139,7 +182,7 @@ const ChatPage = () => {
       {
         id: "4",
         content: "Of course! Let me send you our current rates and schedule.",
-        sender: "client",
+        sender: "business",
         timestamp: new Date(Date.now() - 2900000) // 48 minutes ago
       },
       {
@@ -150,37 +193,22 @@ const ChatPage = () => {
       },
       {
         id: "6",
-        content: "Absolutely! We've completed over 50 similar projects in the last year. Would you like to see some examples?",
-        sender: "client",
+        content: "Absolutely! We've completed over 50 similar projects in the past year. Would you like to see some examples?",
+        sender: "business",
         timestamp: new Date(Date.now() - 2700000) // 45 minutes ago
       }
     ];
 
     setMessages(mockMessages);
-
-    // Animate messages entrance
-    if (messagesRef.current) {
-      gsap.fromTo(messagesRef.current.children,
-        { y: 50, opacity: 0 },
-        { 
-          y: 0, 
-          opacity: 1, 
-          duration: 0.5, 
-          stagger: 0.1,
-          ease: "power2.out"
-        }
-      );
-    }
   }, [activeChat]);
 
-  // Scroll to bottom when new messages are added
+  // Scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!newMessage.trim() || !activeChat) return;
 
     const message: Message = {
@@ -193,70 +221,69 @@ const ChatPage = () => {
     setMessages(prev => [...prev, message]);
     setNewMessage("");
 
-    // Simulate response after 1-2 seconds
+    // Simulate business response
     setTimeout(() => {
+      const responses = [
+        "Thanks for your message! We'll get back to you soon.",
+        "Great question! Let me check our availability.",
+        "I'll send you a detailed quote shortly.",
+        "We'd be happy to help with that!",
+        "Let me gather some information for you."
+      ];
+      
       const response: Message = {
         id: (Date.now() + 1).toString(),
-        content: "Thanks for your message! We'll get back to you soon.",
-        sender: "client",
+        content: responses[Math.floor(Math.random() * responses.length)],
+        sender: "business",
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, response]);
-    }, 1000 + Math.random() * 1000);
 
-    toast({
-      title: "Message sent",
-      description: "Your message has been delivered.",
-    });
+      setMessages(prev => [...prev, response]);
+    }, 2000);
   };
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const handleChatSelect = (chatId: string) => {
-    setActiveChat(chatId);
-    
-    // Update unread count
-    setChats(prev => prev.map(chat => 
-      chat.id === chatId ? { ...chat, unread: 0 } : chat
+  const handleChatSelect = (chat: Chat) => {
+    setActiveChat(chat);
+    // Mark as read
+    setChats(prev => prev.map(c => 
+      c.id === chat.id ? { ...c, unread: 0 } : c
     ));
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        duration: 0.6,
-        staggerChildren: 0.1
-      }
-    }
-  };
+  const filteredChats = chats.filter(chat =>
+    chat.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    chat.serviceType?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        duration: 0.5,
-        ease: "easeOut"
-      }
-    }
-  };
-
-  const messageVariants = {
-    hidden: { x: -50, opacity: 0 },
-    visible: {
-      x: 0,
-      opacity: 1,
-      transition: {
-        duration: 0.4,
-        ease: "easeOut"
-      }
-    }
-  };
+  if (isLoading || isLoadingChats) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
+        <main className="flex-grow">
+          <div className="container mx-auto px-4 py-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-1">
+                <Skeleton className="h-12 w-full mb-4" />
+                <div className="space-y-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Skeleton key={i} className="h-20 w-full" />
+                  ))}
+                </div>
+              </div>
+              <div className="lg:col-span-2">
+                <Skeleton className="h-64 w-full" />
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex flex-col">
@@ -270,28 +297,25 @@ const ChatPage = () => {
             initial={{ y: -50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="mb-8 text-center"
+            className="mb-8"
           >
-            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-fem-navy to-fem-terracotta text-white px-6 py-3 rounded-full shadow-lg mb-4">
-              <Sparkles className="w-5 h-5" />
-              <h1 className="text-2xl font-bold">Faith Connect Chat</h1>
-              <Sparkles className="w-5 h-5" />
+            <div className="text-center">
+              <div className="inline-flex items-center gap-3 bg-gradient-to-r from-fem-navy to-fem-terracotta text-white px-6 py-3 rounded-full shadow-lg mb-4">
+                <MessageSquare className="w-5 h-5" />
+                <h1 className="text-2xl font-bold">Business Chat</h1>
+                <MessageSquare className="w-5 h-5" />
+              </div>
+              <p className="text-gray-600 max-w-2xl mx-auto">
+                Connect directly with business owners and service providers in our community. 
+                Get instant responses to your inquiries and quotes.
+              </p>
             </div>
-            <p className="text-gray-600 max-w-md mx-auto">
-              Connect with trusted businesses in our faith community through secure messaging
-            </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Chat List */}
-            <motion.div 
-              ref={chatListRef}
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className="lg:col-span-1"
-            >
+            <div className="lg:col-span-1">
               <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl">
                 <CardHeader className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white rounded-t-lg">
                   <CardTitle className="flex items-center gap-2">
@@ -299,157 +323,160 @@ const ChatPage = () => {
                     Conversations
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <div className="space-y-1">
-                    {chats.map((chat) => (
+                <CardContent className="p-4">
+                  {/* Search */}
+                  <div className="relative mb-4">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      placeholder="Search businesses..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  {/* Chat List */}
+                  <div ref={chatListRef} className="space-y-2 max-h-96 overflow-y-auto">
+                    {filteredChats.map((chat) => (
                       <motion.div
                         key={chat.id}
-                        variants={itemVariants}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className={`p-4 cursor-pointer transition-all duration-200 ${
-                          activeChat === chat.id
-                            ? "bg-gradient-to-r from-fem-terracotta/10 to-fem-gold/10 border-l-4 border-fem-terracotta"
-                            : "hover:bg-gray-50"
-                        }`}
-                        onClick={() => handleChatSelect(chat.id)}
+                        initial={{ x: -100, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ duration: 0.5 }}
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-semibold text-fem-navy">{chat.name}</h3>
-                              {chat.unread > 0 && (
-                                <Badge className="bg-fem-terracotta text-white text-xs">
-                                  {chat.unread}
-                                </Badge>
+                        <div
+                          onClick={() => handleChatSelect(chat)}
+                          className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                            activeChat?.id === chat.id
+                              ? 'bg-gradient-to-r from-fem-terracotta to-fem-gold text-white'
+                              : 'bg-white/50 hover:bg-white/80'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Avatar className="w-10 h-10">
+                              <AvatarImage src={chat.businessImage} />
+                              <AvatarFallback className="bg-fem-terracotta text-white">
+                                <Building2 className="w-5 h-5" />
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <h3 className={`font-semibold truncate ${
+                                  activeChat?.id === chat.id ? 'text-white' : 'text-fem-navy'
+                                }`}>
+                                  {chat.businessName}
+                                </h3>
+                                {chat.unread > 0 && (
+                                  <Badge className="bg-red-500 text-white text-xs">
+                                    {chat.unread}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className={`text-sm truncate ${
+                                activeChat?.id === chat.id ? 'text-white/90' : 'text-gray-600'
+                              }`}>
+                                {chat.lastMessage}
+                              </p>
+                              {chat.serviceType && (
+                                <p className={`text-xs ${
+                                  activeChat?.id === chat.id ? 'text-white/70' : 'text-gray-500'
+                                }`}>
+                                  {chat.serviceType}
+                                </p>
                               )}
-                            </div>
-                            <p className="text-sm text-gray-600 truncate">{chat.lastMessage}</p>
-                            <div className="flex items-center gap-2 mt-2">
-                              <Clock className="w-3 h-3 text-gray-400" />
-                              <span className="text-xs text-gray-500">2 hours ago</span>
                             </div>
                           </div>
                         </div>
-                        {chat.serviceType && (
-                          <div className="mt-2">
-                            <Badge variant="outline" className="text-xs">
-                              {chat.serviceType}
-                            </Badge>
-                          </div>
-                        )}
                       </motion.div>
                     ))}
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
 
-            {/* Messages Area */}
-            <motion.div 
-              className="lg:col-span-2"
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-            >
-              <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl h-[600px] flex flex-col">
+            {/* Chat Messages */}
+            <div className="lg:col-span-2">
+              <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl h-96">
                 {activeChat ? (
                   <>
                     {/* Chat Header */}
                     <CardHeader className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white rounded-t-lg">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <User className="w-5 h-5" />
-                          {chats.find(c => c.id === activeChat)?.name}
-                        </CardTitle>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-10 h-10">
+                            <AvatarImage src={activeChat.businessImage} />
+                            <AvatarFallback className="bg-fem-gold text-white">
+                              <Building2 className="w-5 h-5" />
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <CardTitle className="text-white">{activeChat.businessName}</CardTitle>
+                            {activeChat.serviceType && (
+                              <p className="text-white/80 text-sm">{activeChat.serviceType}</p>
+                            )}
+                          </div>
+                        </div>
                         <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
+                          <Button size="sm" variant="outline" className="bg-white/20 text-white border-white/30">
                             <Phone className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="bg-white/20 text-white border-white/30">
+                            <Mail className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
                     </CardHeader>
 
                     {/* Messages */}
-                    <CardContent className="flex-1 p-4 overflow-y-auto space-y-4">
-                      <div ref={messagesRef} className="space-y-4">
-                        <AnimatePresence>
-                          {messages.map((message) => (
-                            <motion.div
-                              key={message.id}
-                              variants={messageVariants}
-                              initial="hidden"
-                              animate="visible"
-                              className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
-                            >
-                              <div
-                                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-                                  message.sender === "user"
-                                    ? "bg-gradient-to-r from-fem-terracotta to-fem-gold text-white"
-                                    : "bg-gray-100 text-gray-800"
-                                }`}
-                              >
-                                <p className="text-sm">{message.content}</p>
-                                <p className={`text-xs mt-1 ${
-                                  message.sender === "user" ? "text-white/70" : "text-gray-500"
-                                }`}>
-                                  {formatTime(message.timestamp)}
-                                </p>
-                              </div>
-                            </motion.div>
-                          ))}
-                        </AnimatePresence>
-                        <div ref={messagesEndRef} />
-                      </div>
-                    </CardContent>
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                      {messages.map((message) => (
+                        <div
+                          key={message.id}
+                          className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div className={`max-w-xs lg:max-w-md ${
+                            message.sender === 'user' 
+                              ? 'bg-gradient-to-r from-fem-terracotta to-fem-gold text-white' 
+                              : 'bg-gray-100 text-gray-900'
+                          } rounded-lg p-3`}>
+                            <p className="text-sm">{message.content}</p>
+                            <p className={`text-xs mt-1 ${
+                              message.sender === 'user' ? 'text-white/70' : 'text-gray-500'
+                            }`}>
+                              {formatTime(message.timestamp)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </div>
 
                     {/* Message Input */}
-                    <div className="p-4 border-t border-gray-200">
+                    <div className="p-4 border-t">
                       <form onSubmit={handleSendMessage} className="flex gap-2">
-                        <Textarea
-                          ref={textareaRef}
+                        <Input
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           placeholder="Type your message..."
-                          className="flex-1 resize-none"
-                          rows={2}
+                          className="flex-1"
                         />
-                        <motion.div
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <Button 
-                            type="submit" 
-                            className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white px-6"
-                            disabled={!newMessage.trim()}
-                          >
-                            <Send className="w-4 h-4" />
-                          </Button>
-                        </motion.div>
+                        <Button type="submit" disabled={!newMessage.trim()}>
+                          <Send className="w-4 h-4" />
+                        </Button>
                       </form>
                     </div>
                   </>
                 ) : (
-                  /* Empty State */
-                  <div className="flex-1 flex items-center justify-center">
-                    <motion.div 
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.6 }}
-                      className="text-center"
-                    >
-                      <div className="w-24 h-24 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center mx-auto mb-4">
-                        <MessageCircle className="w-12 h-12 text-white" />
-                      </div>
-                      <h3 className="text-xl font-semibold text-fem-navy mb-2">Start a Conversation</h3>
-                      <p className="text-gray-600 max-w-sm">
-                        Select a business from the list to start chatting and get your questions answered.
-                      </p>
-                    </motion.div>
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <MessageSquare className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-fem-navy mb-2">Select a Conversation</h3>
+                      <p className="text-gray-600">Choose a business from the list to start chatting</p>
+                    </div>
                   </div>
                 )}
               </Card>
-            </motion.div>
+            </div>
           </div>
         </div>
       </main>

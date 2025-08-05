@@ -37,24 +37,24 @@ import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useAuth } from "@/contexts/AuthContext";
+import { useBusiness } from "@/contexts/BusinessContext";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
 
 const ProfilePage = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
-  const [userType, setUserType] = useState("");
-  const [partnershipNumber, setPartnershipNumber] = useState("");
-  const [loading, setLoading] = useState(true);
+  const { user, isAuthenticated, isLoading: authLoading, updateUser } = useAuth();
+  const { businesses } = useBusiness();
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    phone: "+254 700 123 456",
-    address: "Nairobi, Kenya",
-    bio: "Faith-driven entrepreneur passionate about building community connections.",
-    website: "https://mybusiness.com"
+    firstName: "",
+    lastName: "",
+    phone: "",
+    address: "",
+    bio: "",
+    website: ""
   });
   const navigate = useNavigate();
   const headerRef = useRef<HTMLDivElement>(null);
@@ -62,25 +62,27 @@ const ProfilePage = () => {
   const statsRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  // Initialize profile data from user
   useEffect(() => {
-    // Check authentication status
-    const loggedInStatus = localStorage.getItem("isLoggedIn") === "true";
-    if (!loggedInStatus) {
-      navigate("/login");
-      return;
+    if (user) {
+      setProfileData({
+        firstName: user.first_name || "",
+        lastName: user.last_name || "",
+        phone: user.phone || "",
+        address: user.address || "",
+        bio: user.bio || "",
+        website: ""
+      });
+      setLoading(false);
     }
+  }, [user]);
 
-    // Get user data from localStorage
-    const email = localStorage.getItem("userEmail") || "";
-    const type = localStorage.getItem("userType") || "user";
-    const partnership = localStorage.getItem("partnershipNumber") || "";
-    
-    setIsLoggedIn(loggedInStatus);
-    setUserEmail(email);
-    setUserType(type);
-    setPartnershipNumber(partnership);
-    setLoading(false);
-  }, [navigate]);
+  // Check authentication
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      navigate("/login");
+    }
+  }, [isAuthenticated, authLoading, navigate]);
 
   // GSAP Animations
   useEffect(() => {
@@ -153,12 +155,28 @@ const ProfilePage = () => {
     };
   }, []);
 
-  const handleUpdateProfile = () => {
-    setIsEditing(false);
-    toast({
-      title: "Profile updated",
-      description: "Your profile changes have been saved successfully.",
-    });
+  const handleUpdateProfile = async () => {
+    try {
+      await updateUser({
+        first_name: profileData.firstName,
+        last_name: profileData.lastName,
+        phone: profileData.phone,
+        address: profileData.address,
+        bio: profileData.bio
+      });
+      
+      setIsEditing(false);
+      toast({
+        title: "Profile updated",
+        description: "Your profile changes have been saved successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const containerVariants = {
@@ -184,7 +202,16 @@ const ProfilePage = () => {
     }
   };
 
-  if (loading) {
+  // Calculate user stats
+  const userBusinesses = Array.isArray(businesses) ? businesses.filter(b => b.user === user?.id) : [];
+  const userStats = {
+    favorites: 0, // TODO: Implement favorites
+    conversations: 0, // TODO: Implement conversations
+    reviewsGiven: 0, // TODO: Implement reviews
+    businesses: userBusinesses.length
+  };
+
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex flex-col">
         <Navbar />
@@ -201,6 +228,10 @@ const ProfilePage = () => {
         <Footer />
       </div>
     );
+  }
+
+  if (!user) {
+    return null;
   }
 
   return (
@@ -245,9 +276,9 @@ const ProfilePage = () => {
                       className="relative mb-4"
                     >
                       <Avatar className="h-32 w-32 border-4 border-fem-terracotta shadow-lg">
-                        <AvatarImage src="" alt="Profile" />
+                        <AvatarImage src={user.profile_image_url || ""} alt="Profile" />
                         <AvatarFallback className="text-4xl bg-gradient-to-br from-fem-terracotta to-fem-gold text-white">
-                          {userEmail.charAt(0).toUpperCase()}
+                          {user.first_name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "U"}
                         </AvatarFallback>
                       </Avatar>
                       <Button
@@ -260,27 +291,37 @@ const ProfilePage = () => {
                     
                     <motion.div variants={itemVariants} className="text-center mb-4">
                       <h2 className="text-xl font-semibold text-fem-navy">
-                        {profileData.firstName} {profileData.lastName}
+                        {user.first_name} {user.last_name}
                       </h2>
-                      <p className="text-gray-600 capitalize">{userType.replace('-', ' ')}</p>
+                      <p className="text-gray-600 capitalize">{user.user_type.replace('_', ' ')}</p>
                       <Badge className="mt-2 bg-gradient-to-r from-fem-gold to-fem-terracotta text-white">
-                        Partnership #{partnershipNumber}
+                        Partnership #{user.partnership_number}
                       </Badge>
+                      {user.is_verified && (
+                        <Badge className="mt-2 ml-2 bg-green-500 text-white">
+                          <Shield className="w-3 h-3 mr-1" />
+                          Verified
+                        </Badge>
+                      )}
                     </motion.div>
 
                     <motion.div variants={itemVariants} className="w-full space-y-3">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Mail className="w-4 h-4 text-fem-terracotta" />
-                        <span>{userEmail}</span>
+                        <span>{user.email}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Phone className="w-4 h-4 text-fem-terracotta" />
-                        <span>{profileData.phone}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <MapPin className="w-4 h-4 text-fem-terracotta" />
-                        <span>{profileData.address}</span>
-                      </div>
+                      {user.phone && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Phone className="w-4 h-4 text-fem-terracotta" />
+                          <span>{user.phone}</span>
+                        </div>
+                      )}
+                      {user.address && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <MapPin className="w-4 h-4 text-fem-terracotta" />
+                          <span>{user.address}</span>
+                        </div>
+                      )}
                     </motion.div>
 
                     <motion.div variants={itemVariants} className="mt-6 w-full">
@@ -314,7 +355,9 @@ const ProfilePage = () => {
                     </CardTitle>
                     <div className="flex items-center gap-2">
                       <Shield className="w-4 h-4" />
-                      <span className="text-sm">Verified Account</span>
+                      <span className="text-sm">
+                        {user.is_verified ? "Verified Account" : "Unverified Account"}
+                      </span>
                     </div>
                   </div>
                 </CardHeader>
@@ -378,6 +421,7 @@ const ProfilePage = () => {
                             disabled={!isEditing}
                             rows={3}
                             className="mt-1"
+                            placeholder="Tell us about yourself..."
                           />
                         </div>
                         
@@ -389,6 +433,7 @@ const ProfilePage = () => {
                             onChange={(e) => setProfileData(prev => ({ ...prev, website: e.target.value }))}
                             disabled={!isEditing}
                             className="mt-1"
+                            placeholder="https://yourwebsite.com"
                           />
                         </div>
                         
@@ -412,15 +457,39 @@ const ProfilePage = () => {
                     
                     <TabsContent value="business" className="mt-6">
                       <motion.div variants={itemVariants} className="space-y-6">
-                        <div className="text-center py-8">
-                          <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                          <h3 className="text-lg font-semibold text-fem-navy mb-2">Business Management</h3>
-                          <p className="text-gray-600 mb-4">Manage your business listings and services</p>
-                          <Button className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Business
-                          </Button>
-                        </div>
+                        {userBusinesses.length > 0 ? (
+                          <div className="space-y-4">
+                            <h3 className="text-lg font-semibold text-fem-navy mb-4">Your Businesses</h3>
+                            {userBusinesses.map((business) => (
+                              <Card key={business.id} className="p-4">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <h4 className="font-semibold text-fem-navy">{business.business_name}</h4>
+                                    <p className="text-sm text-gray-600">{business.city}, {business.county}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <Star className="w-4 h-4 text-yellow-500" />
+                                      <span className="text-sm">{business.rating} ({business.review_count} reviews)</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button size="sm" variant="outline">Edit</Button>
+                                    <Button size="sm" variant="outline">View</Button>
+                                  </div>
+                                </div>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8">
+                            <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold text-fem-navy mb-2">No Businesses Yet</h3>
+                            <p className="text-gray-600 mb-4">Start by adding your first business listing</p>
+                            <Button className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white">
+                              <Plus className="w-4 h-4 mr-2" />
+                              Add Business
+                            </Button>
+                          </div>
+                        )}
                       </motion.div>
                     </TabsContent>
                     
@@ -451,7 +520,7 @@ const ProfilePage = () => {
               <div className="w-12 h-12 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center mx-auto mb-2">
                 <Heart className="w-6 h-6 text-white" />
               </div>
-              <div className="text-2xl font-bold text-fem-navy">12</div>
+              <div className="text-2xl font-bold text-fem-navy">{userStats.favorites}</div>
               <div className="text-sm text-gray-600">Favorites</div>
             </motion.div>
             
@@ -459,7 +528,7 @@ const ProfilePage = () => {
               <div className="w-12 h-12 bg-gradient-to-br from-fem-navy to-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-2">
                 <MessageCircle className="w-6 h-6 text-white" />
               </div>
-              <div className="text-2xl font-bold text-fem-navy">8</div>
+              <div className="text-2xl font-bold text-fem-navy">{userStats.conversations}</div>
               <div className="text-sm text-gray-600">Conversations</div>
             </motion.div>
             
@@ -467,7 +536,7 @@ const ProfilePage = () => {
               <div className="w-12 h-12 bg-gradient-to-br from-fem-gold to-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-2">
                 <Star className="w-6 h-6 text-white" />
               </div>
-              <div className="text-2xl font-bold text-fem-navy">15</div>
+              <div className="text-2xl font-bold text-fem-navy">{userStats.reviewsGiven}</div>
               <div className="text-sm text-gray-600">Reviews Given</div>
             </motion.div>
             
@@ -475,7 +544,7 @@ const ProfilePage = () => {
               <div className="w-12 h-12 bg-gradient-to-br from-fem-terracotta to-fem-navy rounded-full flex items-center justify-center mx-auto mb-2">
                 <Award className="w-6 h-6 text-white" />
               </div>
-              <div className="text-2xl font-bold text-fem-navy">3</div>
+              <div className="text-2xl font-bold text-fem-navy">{userStats.businesses}</div>
               <div className="text-sm text-gray-600">Businesses</div>
             </motion.div>
           </motion.div>
