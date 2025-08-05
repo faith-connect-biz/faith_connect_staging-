@@ -10,6 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { useOnboarding } from "@/contexts/OnboardingContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SignInPage = () => {
   const [password, setPassword] = useState("");
@@ -20,24 +21,51 @@ const SignInPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { showOnboarding } = useOnboarding();
+  const { login, setUser } = useAuth();
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // This is a placeholder for actual authentication
-    // In a real app, you would connect this to a backend service
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For demo purposes, accept any non-empty password with partnership number
+      // For demo purposes, we'll create a mock user and tokens
+      // In a real app, this would call the actual login API
       if (password && partnershipNumber) {
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("userEmail", "user@faithconnect.com"); // Default email for demo
-        localStorage.setItem("userType", userType);
-        localStorage.setItem("partnershipNumber", partnershipNumber);
+        // Create mock user data
+        const mockUser = {
+          id: "1",
+          first_name: "Demo",
+          last_name: "User",
+          partnership_number: partnershipNumber,
+          email: "user@faithconnect.com",
+          user_type: userType as "community" | "business",
+          is_verified: true,
+          email_verified: true,
+          phone_verified: false,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        // Create mock tokens
+        const mockTokens = {
+          access: "mock-access-token-" + Date.now(),
+          refresh: "mock-refresh-token-" + Date.now()
+        };
+
+        // For demo purposes, we'll bypass the API call and set up mock authentication
+        // In a real app, this would call the actual login API
+
+        // Set tokens in localStorage (this is what AuthContext expects)
+        localStorage.setItem('access_token', mockTokens.access);
+        localStorage.setItem('refresh_token', mockTokens.refresh);
+
+        // Set user data in localStorage for demo purposes
+        localStorage.setItem('user', JSON.stringify(mockUser));
         
+        // Update AuthContext state
+        setUser(mockUser);
+
         // For testing: Clear onboarding flags to ensure onboarding shows
         localStorage.removeItem("hasSeenOnboarding");
         localStorage.removeItem("hasSeenBusinessOnboarding");
@@ -46,7 +74,6 @@ const SignInPage = () => {
         // Check if this is the first time logging in
         const hasLoggedInBefore = localStorage.getItem("hasLoggedInBefore");
         if (!hasLoggedInBefore) {
-          localStorage.setItem("isFirstTimeLogin", "true");
           localStorage.setItem("hasLoggedInBefore", "true");
         }
         
@@ -59,6 +86,7 @@ const SignInPage = () => {
         const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
         const hasSeenBusinessOnboarding = localStorage.getItem("hasSeenBusinessOnboarding");
         
+        // For demo purposes, always show onboarding for first-time users
         if (userType === "business") {
           if (hasSeenBusinessOnboarding !== "true") {
             // Show onboarding modal for first-time business users
@@ -84,9 +112,10 @@ const SignInPage = () => {
         });
       }
     } catch (error) {
+      console.error("Login error:", error);
       toast({
-        title: "An error occurred",
-        description: "Please try again later",
+        title: "Sign in failed",
+        description: "Please check your credentials and try again",
         variant: "destructive",
       });
     } finally {
@@ -102,21 +131,27 @@ const SignInPage = () => {
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-center text-fem-navy">Sign In to Faith Connect</CardTitle>
             <CardDescription className="text-center text-fem-darkgray">
-              Enter your credentials to access your account
+              Use your partnership number to access your account
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="partnershipNumber" className="text-sm font-medium">Partnership Number</label>
+                <label htmlFor="partnershipNumber" className="text-sm font-medium">
+                  Partnership Number <span className="text-fem-terracotta">*</span>
+                </label>
                 <Input
                   id="partnershipNumber"
                   type="text"
-                  placeholder="Enter your partnership number"
+                  placeholder="Enter your unique partnership number"
                   value={partnershipNumber}
                   onChange={(e) => setPartnershipNumber(e.target.value)}
                   required
+                  className="border-fem-navy/20 focus:border-fem-terracotta"
                 />
+                <p className="text-xs text-gray-500">
+                  Your partnership number is your unique identifier in our church community
+                </p>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

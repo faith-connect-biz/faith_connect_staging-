@@ -31,6 +31,12 @@ const categoryIcons: { [key: string]: any } = {
   "Home & Garden": Building2,
   "Professional Services": Briefcase,
   "Automotive Services": Wrench,
+  // New categories from API
+  "Food & Dining": Utensils,
+  "Health & Beauty": Heart,
+  "Fashion & Clothing": ShoppingBag,
+  "Sports & Fitness": Heart,
+  "Entertainment": Monitor,
   // Add more mappings as needed
 };
 
@@ -42,14 +48,34 @@ export const BusinessCategories = () => {
 
   // Calculate business count for each category
   const getCategoryStats = () => {
-    if (isLoading || !Array.isArray(categories) || !categories.length) {
+    // console.log('BusinessCategories Debug:', { 
+    //   isLoading, 
+    //   categoriesLength: categories?.length, 
+    //   businessesLength: businesses?.length,
+    //   categories: categories,
+    //   businesses: businesses?.map(b => ({ id: b.id, name: b.business_name, category: b.category }))
+    // });
+
+    if (isLoading) {
       return [];
     }
 
-    return categories.map(category => {
-      const businessCount = businesses.filter(business => 
-        business.category?.id === category.id
-      ).length;
+    if (!Array.isArray(categories) || !categories.length) {
+      // console.log('No categories available');
+      return [];
+    }
+
+    const categoryStats = categories.map(category => {
+      const matchingBusinesses = Array.isArray(businesses) ? businesses.filter(business => {
+        // Handle both object and number category types
+        const categoryId = category.id;
+        const businessCategoryId = typeof business.category === 'object' ? business.category?.id : business.category;
+        const matches = categoryId == businessCategoryId; // Use loose equality to handle type differences
+        // console.log(`Category ${category.name} (ID: ${categoryId}, type: ${typeof categoryId}) vs Business ${business.business_name} category ID: ${businessCategoryId} (type: ${typeof businessCategoryId}) - Match: ${matches}`);
+        return matches; // Backend already filters for active businesses
+      }) : [];
+      
+      const businessCount = matchingBusinesses.length;
 
       const IconComponent = categoryIcons[category.name] || DefaultIcon;
 
@@ -61,7 +87,12 @@ export const BusinessCategories = () => {
         icon: IconComponent,
         color: getCategoryColor(category.name)
       };
-    }).filter(category => category.count > 0) // Only show categories with businesses
+    });
+
+    // console.log('Category stats before filtering:', categoryStats);
+
+    // Show all categories, not just those with businesses
+    return categoryStats
       .sort((a, b) => b.count - a.count) // Sort by business count
       .slice(0, 8); // Show top 8 categories
   };
@@ -79,7 +110,13 @@ export const BusinessCategories = () => {
       "Beauty & Personal Care": "text-pink-600",
       "Home & Garden": "text-emerald-600",
       "Professional Services": "text-slate-600",
-      "Automotive Services": "text-amber-600"
+      "Automotive Services": "text-amber-600",
+      // New categories from API
+      "Food & Dining": "text-orange-600",
+      "Health & Beauty": "text-pink-600",
+      "Fashion & Clothing": "text-purple-600",
+      "Sports & Fitness": "text-green-600",
+      "Entertainment": "text-blue-600"
     };
     return colorMap[categoryName] || "text-gray-600";
   };
@@ -144,7 +181,9 @@ export const BusinessCategories = () => {
                         {React.createElement(category.icon, { className: "w-6 h-6" })}
                       </div>
                       <h3 className="font-semibold text-fem-navy mb-2">{category.name}</h3>
-                      <p className="text-sm text-fem-darkgray">{category.count} businesses</p>
+                      <p className="text-sm text-fem-darkgray">
+                        {category.count} {category.count === 1 ? 'business' : 'businesses'}
+                      </p>
                     </CardContent>
                   </Card>
                 </Link>
@@ -163,7 +202,15 @@ export const BusinessCategories = () => {
           <div className="text-center py-12">
             <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-fem-navy mb-2">No Categories Available</h3>
-            <p className="text-gray-600">Categories will appear here once businesses are added to the directory.</p>
+            <p className="text-gray-600">
+              {isLoading ? 'Loading categories...' : 'Categories will appear here once businesses are added to the directory.'}
+            </p>
+            {!isLoading && (
+              <div className="mt-4 text-sm text-gray-500">
+                <p>Categories: {categories?.length || 0}</p>
+                <p>Businesses: {businesses?.length || 0}</p>
+              </div>
+            )}
           </div>
         )}
       </div>

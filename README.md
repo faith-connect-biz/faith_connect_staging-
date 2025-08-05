@@ -5,7 +5,8 @@ A comprehensive business directory platform built for the Faith Connect communit
 ## 🚀 Features
 
 - **Business Directory**: Browse and search businesses by category, location, and ratings
-- **User Authentication**: Secure login/registration with partnership number system
+- **User Authentication**: Secure login/registration with partnership number system (primary unique identifier)
+- **Products & Services Distinction**: Clear separation between product-based and service-based businesses
 - **Business Registration**: Easy business listing creation for community members
 - **Real-time Chat**: Direct communication between users and businesses
 - **Review System**: Community-driven ratings and reviews
@@ -187,10 +188,20 @@ The application uses PostgreSQL with the following main models:
 ## 🔐 Authentication
 
 The application uses JWT-based authentication with:
+- **Partnership Number System**: Primary unique identifier for church members
 - Partnership number as username
 - Password-based authentication
 - Token refresh mechanism
 - Role-based access control (Community/Business users)
+
+### Partnership Number System
+
+Since this is a church-based platform, the partnership number serves as the primary unique identifier for all users:
+
+- **Unique Identification**: Each church member has a unique partnership number
+- **Authentication**: Used for login and account verification
+- **Community Connection**: Links users to their church membership
+- **Business Verification**: Helps verify business owners within the community
 
 ## 🎨 UI Components
 
@@ -199,6 +210,22 @@ The project uses a custom design system built with:
 - **Radix UI** for accessible primitives
 - **shadcn/ui** for pre-built components
 - Custom color palette and typography
+
+## 📋 Products vs Services Distinction
+
+The directory clearly distinguishes between product-based and service-based businesses:
+
+### Services Tab
+- **Service-Oriented Businesses**: Professional services, health & wellness, education, etc.
+- **Appointment-Based**: Booking and consultation services
+- **Blue Color Scheme**: Visual distinction with blue badges and buttons
+- **Service-Specific Features**: Appointment booking, consultation requests
+
+### Products Tab
+- **Product-Oriented Businesses**: Retail, restaurants, technology, home & garden, etc.
+- **Physical Products**: Items available for purchase
+- **Green Color Scheme**: Visual distinction with green badges and buttons
+- **Product-Specific Features**: Order placement, delivery options
 
 ### Color Palette
 - **FEM Navy**: Primary brand color

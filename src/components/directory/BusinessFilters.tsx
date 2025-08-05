@@ -7,21 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
+import { useBusiness } from "@/contexts/BusinessContext";
 
 interface BusinessFiltersProps {
   onApplyFilters: (filters: any) => void;
   onClearFilters: () => void;
 }
 
-const categories = [
-  "Restaurant", "Retail", "Services", "Health & Wellness", 
-  "Automotive", "Real Estate", "Education", "Technology",
-  "Beauty & Personal Care", "Home & Garden", "Legal Services",
-  "Financial Services", "Entertainment", "Professional Services",
-  "Construction", "Transportation", "Non-Profit"
-];
-
 export const BusinessFilters = ({ onApplyFilters, onClearFilters }: BusinessFiltersProps) => {
+  const { categories } = useBusiness();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
@@ -97,8 +91,8 @@ export const BusinessFilters = ({ onApplyFilters, onClearFilters }: BusinessFilt
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 {Array.isArray(categories) && categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
+                  <SelectItem key={category.id} value={category.name}>
+                    {category.name}
                   </SelectItem>
                 ))}
               </SelectContent>

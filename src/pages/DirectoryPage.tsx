@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { BusinessList } from "@/components/directory/BusinessList";
+import { ServiceList } from "@/components/directory/ServiceList";
+import { ProductList } from "@/components/directory/ProductList";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -67,15 +69,33 @@ const DirectoryPage = () => {
   const statsRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  // Handle URL search parameter
+  // Handle URL search parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
+    
+    // Handle search parameter
     const searchParam = urlParams.get('search');
     if (searchParam) {
       setSearchTerm(decodeURIComponent(searchParam));
       setIsSearchExpanded(true);
     }
-  }, []);
+    
+    // Handle category parameter
+    const categoryParam = urlParams.get('category');
+    console.log('URL category param:', categoryParam, 'Categories:', categories);
+    if (categoryParam && categories) {
+      // Find the category by slug
+      const category = categories.find(cat => cat.slug === categoryParam);
+      console.log('Found category:', category);
+      if (category) {
+        setFilters(prev => ({
+          ...prev,
+          category: category.name
+        }));
+        console.log('Set category filter to:', category.name);
+      }
+    }
+  }, [categories]);
 
   // GSAP Animations
   useEffect(() => {
@@ -431,7 +451,7 @@ const DirectoryPage = () => {
                         <p className="text-gray-600">Discover trusted service providers in our community</p>
                           </div>
                           
-                      <BusinessList filters={{ ...filters, searchTerm }} viewType="services" />
+                      <ServiceList filters={{ ...filters, searchTerm }} />
                     </TabsContent>
 
                     <TabsContent value="products" className="mt-4 sm:mt-6">
@@ -440,7 +460,7 @@ const DirectoryPage = () => {
                         <p className="text-gray-600">Find high-quality products from local businesses</p>
                         </div>
                         
-                      <BusinessList filters={{ ...filters, searchTerm }} viewType="products" />
+                      <ProductList filters={{ ...filters, searchTerm }} />
                     </TabsContent>
                   </Tabs>
                 </CardContent>

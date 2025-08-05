@@ -32,7 +32,7 @@ export const OnboardingCheck = ({ userType }: OnboardingCheckProps) => {
         showOnboarding("community");
       }
     }
-  }, [userType, showOnboarding]);
+  }, [isAuthenticated, userType, showOnboarding]);
 
   return null;
 }; 

@@ -7,6 +7,8 @@ import { FeaturedBusinesses } from "@/components/home/FeaturedBusinesses";
 import { CommunityStats } from "@/components/home/CommunityStats";
 import { CallToAction } from "@/components/home/CallToAction";
 import { OnboardingCheck } from "@/components/OnboardingCheck";
+// import { DataDebugger } from "@/components/debug/DataDebugger";
+// import { ApiTester } from "@/components/debug/ApiTester";
 import { useEffect } from "react";
 
 const Index = () => {
@@ -101,13 +103,15 @@ const Index = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
       <OnboardingCheck userType="community" />
-      <main className="flex-grow">
-        <Hero />
-        <BusinessCategories />
-        <FeaturedBusinesses />
-        <CommunityStats />
-        <CallToAction />
-      </main>
+             <main className="flex-grow">
+         <Hero />
+         {/* <ApiTester />
+         <DataDebugger /> */}
+         <BusinessCategories />
+         <FeaturedBusinesses />
+         <CommunityStats />
+         <CallToAction />
+       </main>
       <Footer />
     </div>
   );

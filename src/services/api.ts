@@ -5,7 +5,7 @@ export interface User {
   id: string;
   first_name: string;
   last_name: string;
-  partnership_number: string;
+  partnership_number: string; // Primary unique identifier for church members
   email?: string;
   phone?: string;
   user_type: 'community' | 'business';
@@ -271,7 +271,7 @@ class ApiService {
     await this.api.delete(`/business/${id}`);
   }
 
-  async getCategories(): Promise<Category[]> {
+  async getCategories(): Promise<{ results: Category[]; count: number; next?: string; previous?: string }> {
     const response = await this.api.get('/business/categories');
     return response.data;
   }

@@ -89,11 +89,23 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     try {
       setError(null);
       const response = await apiService.getCategories();
-      setCategories(response);
+      
+      // Handle paginated response
+      if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
+        setCategories(response.results);
+      } else if (Array.isArray(response)) {
+        // Handle direct array response
+        setCategories(response);
+      } else {
+        console.error('Categories API returned unexpected response format:', response);
+        setCategories([]);
+        setError('Categories API returned invalid format');
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch categories';
       setError(errorMessage);
       console.error('Failed to fetch categories:', err);
+      setCategories([]); // Set empty array on error
     }
   };
 
