@@ -1,0 +1,268 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .analytics-container {
+        padding: 20px;
+        background: #f8f9fa;
+        min-height: 100vh;
+    }
+    
+    .chart-container {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border-left: 4px solid #3b82f6;
+    }
+    
+    .chart-title {
+        font-size: 1.3em;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: #1f2937;
+        border-bottom: 3px solid #3b82f6;
+        padding-bottom: 8px;
+        position: relative;
+    }
+    
+    .chart-title::after {
+        content: '';
+        position: absolute;
+        bottom: -3px;
+        left: 0;
+        width: 50px;
+        height: 3px;
+        background: linear-gradient(90deg, #3b82f6, #06b6d4);
+    }
+    
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .stat-box {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .stat-number {
+        font-size: 2.2em;
+        font-weight: 700;
+        color: #3b82f6;
+    }
+    
+    .stat-label {
+        color: #6b7280;
+        font-size: 0.85em;
+        margin-top: 8px;
+        font-weight: 500;
+    }
+    
+    .top-list {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .list-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #e5e7eb;
+        color: #374151;
+    }
+    
+    .list-item:last-child {
+        border-bottom: none;
+    }
+    
+    .list-item span:first-child {
+        color: #1f2937;
+        font-weight: 600;
+    }
+    
+    .rating-stars {
+        color: #f59e0b;
+        font-weight: 700;
+    }
+    
+    .back-button {
+        display: inline-block;
+        padding: 12px 24px;
+        background: #3b82f6;
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        margin-bottom: 24px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .back-button:hover {
+        background: #2563eb;
+        color: white;
+        text-decoration: none;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-container">
+    <a href="{% url 'admin:dashboard' %}" class="back-button">← Back to Dashboard</a>
+    
+    <h1 style="margin-bottom: 30px; color: #333;">{{ title }}</h1>
+    
+    <!-- Business Growth Chart -->
+    <div class="chart-container">
+        <h3 class="chart-title">Business Growth (Last 30 Days)</h3>
+        <canvas id="businessGrowthChart" width="400" height="200"></canvas>
+    </div>
+    
+    <!-- Review Trends Chart -->
+    <div class="chart-container">
+        <h3 class="chart-title">Review Trends (Last 7 Days)</h3>
+        <canvas id="reviewTrendsChart" width="400" height="200"></canvas>
+    </div>
+    
+    <!-- Top Categories and Businesses -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="top-list">
+            <h3 class="chart-title">Top Performing Categories</h3>
+            {% for category in top_categories %}
+            <div class="list-item">
+                <span>{{ category.name }}</span>
+                <span>
+                    <span class="rating-stars">{{ category.avg_rating|floatformat:1 }}★</span>
+                    ({{ category.business_count }} businesses)
+                </span>
+            </div>
+            {% empty %}
+            <div>No categories found</div>
+            {% endfor %}
+        </div>
+        
+        <div class="top-list">
+            <h3 class="chart-title">Top Rated Businesses</h3>
+            {% for business in top_businesses %}
+            <div class="list-item">
+                <span>{{ business.business_name }}</span>
+                <span>
+                    <span class="rating-stars">{{ business.rating|floatformat:1 }}★</span>
+                    ({{ business.review_count }} reviews)
+                </span>
+            </div>
+            {% empty %}
+            <div>No businesses found</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Business Growth Chart
+const businessCtx = document.getElementById('businessGrowthChart').getContext('2d');
+const businessData = {{ business_growth|safe }};
+
+new Chart(businessCtx, {
+    type: 'line',
+    data: {
+        labels: businessData.map(item => item.date),
+        datasets: [{
+            label: 'New Businesses',
+            data: businessData.map(item => item.count),
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+
+// Review Trends Chart
+const reviewCtx = document.getElementById('reviewTrendsChart').getContext('2d');
+const reviewData = {{ review_trends|safe }};
+
+new Chart(reviewCtx, {
+    type: 'bar',
+    data: {
+        labels: reviewData.map(item => item.date),
+        datasets: [{
+            label: 'Number of Reviews',
+            data: reviewData.map(item => item.count),
+            backgroundColor: '#10b981',
+            borderColor: '#10b981',
+            borderWidth: 1
+        }, {
+            label: 'Average Rating',
+            data: reviewData.map(item => item.avg_rating),
+            backgroundColor: '#f59e0b',
+            borderColor: '#f59e0b',
+            borderWidth: 1,
+            yAxisID: 'y1'
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                position: 'left',
+                title: {
+                    display: true,
+                    text: 'Number of Reviews'
+                }
+            },
+            y1: {
+                beginAtZero: true,
+                position: 'right',
+                title: {
+                    display: true,
+                    text: 'Average Rating'
+                },
+                grid: {
+                    drawOnChartArea: false,
+                },
+                max: 5
+            }
+        },
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top'
+            }
+        }
+    }
+});
+</script>
+{% endblock %} 

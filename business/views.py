@@ -2,7 +2,7 @@ from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, filters
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 
 from business.models import Business, Category, Favorite, Product, Review
@@ -16,9 +16,9 @@ from user_auth.utils import success_response, error_response
 
 
 class BusinessDetailAPIView(generics.RetrieveAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]  # Allow public access to view business details
     serializer_class = BusinessSerializer
-    queryset = Business.objects.filter(is_active=True)
+    queryset = Business.objects.filter(is_active=True).select_related('category')
     lookup_field = 'id'
 
 
@@ -26,8 +26,8 @@ class BusinessDetailAPIView(generics.RetrieveAPIView):
 
 class BusinessListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = BusinessSerializer
-    permission_classes = [IsAuthenticated]
-    queryset = Business.objects.filter(is_active=True).order_by('-created_at')
+    permission_classes = [AllowAny]  # Allow public access to list businesses, but require auth for creation
+    queryset = Business.objects.filter(is_active=True).select_related('category').order_by('-created_at')
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['category', 'city', 'county', 'is_featured']
@@ -38,6 +38,13 @@ class BusinessListCreateAPIView(generics.ListCreateAPIView):
         return {"request": self.request}
 
     def create(self, request, *args, **kwargs):
+        # Check if user is authenticated for creation
+        if not request.user.is_authenticated:
+            return error_response(
+                "Authentication required to create a business.",
+                status_code=status.HTTP_401_UNAUTHORIZED
+            )
+        
         user = request.user
         if user.user_type != 'business':
             return error_response(
@@ -66,7 +73,7 @@ class BusinessUpdateView(generics.UpdateAPIView):
 class CategoryListAPIView(generics.ListAPIView):
     queryset = Category.objects.all().order_by('name')
     serializer_class = CategorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]  # Allow public access to list categories
 
 
 # class GenerateSASToken(APIView):
@@ -138,7 +145,7 @@ class FavoriteToggleView(APIView):
 # List and Create products
 class BusinessProductListCreateView(generics.ListCreateAPIView):
     serializer_class = ProductSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]  # Allow public access to list products, but require auth for creation
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['name', 'description']
     ordering_fields = ['price', 'created_at']
@@ -149,6 +156,10 @@ class BusinessProductListCreateView(generics.ListCreateAPIView):
         return Product.objects.filter(business_id=business_id, is_active=True)
 
     def perform_create(self, serializer):
+        # Check if user is authenticated for creation
+        if not self.request.user.is_authenticated:
+            raise PermissionDenied("Authentication required to create a product.")
+        
         business_id = self.kwargs.get('business_id')
         try:
             business = Business.objects.get(id=business_id)
@@ -161,10 +172,14 @@ class BusinessProductListCreateView(generics.ListCreateAPIView):
 class ProductRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     queryset = Product.objects.filter(is_active=True)
     serializer_class = ProductSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]  # Allow public access to view products, but require auth for updates
     lookup_field = 'id'
 
     def perform_update(self, serializer):
+        # Check if user is authenticated for updates
+        if not self.request.user.is_authenticated:
+            raise PermissionDenied("Authentication required to update a product.")
+        
         product = self.get_object()
         if product.business.user != self.request.user:
             raise PermissionDenied("Only the owner can update this product")
@@ -172,13 +187,17 @@ class ProductRetrieveUpdateView(generics.RetrieveUpdateAPIView):
 
 class ReviewListCreateView(generics.ListCreateAPIView):
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]  # Allow public access to list reviews, but require auth for creation
 
     def get_queryset(self):
         business_id = self.kwargs.get('business_id')
         return Review.objects.filter(business_id=business_id)
 
     def perform_create(self, serializer):
+        # Check if user is authenticated for creation
+        if not self.request.user.is_authenticated:
+            raise PermissionDenied("Authentication required to create a review.")
+        
         business_id = self.kwargs.get('business_id')
         if Review.objects.filter(business_id=business_id, user=self.request.user).exists():
             raise PermissionDenied("You’ve already reviewed this business.")
