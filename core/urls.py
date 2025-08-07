@@ -16,6 +16,8 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from core.admin_dashboard import admin_site
 
 urlpatterns = [
@@ -24,3 +26,8 @@ urlpatterns = [
     path('api/users/', include('user_auth.user_management.urls')),
     path('api/business/', include('business.urls')),
 ]
+
+# Serve static files during development
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
