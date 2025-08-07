@@ -1,0 +1,20 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle with admin theme -->
+  <circle cx="16" cy="16" r="15" fill="#1e3a8a" stroke="#f59e0b" stroke-width="2"/>
+  
+  <!-- Admin shield/gear icon -->
+  <path d="M16 4L20 6V10C20 12.5 21.5 15 24 16.5L20 18V22L16 24L12 22V18L8 16.5C10.5 15 12 12.5 12 10V6L16 4Z" fill="#f59e0b"/>
+  
+  <!-- Admin gear inside shield -->
+  <circle cx="16" cy="16" r="4" fill="#1e3a8a"/>
+  <circle cx="16" cy="16" r="2" fill="#f59e0b"/>
+  
+  <!-- Gear teeth -->
+  <rect x="14" y="8" width="4" height="2" fill="#1e3a8a"/>
+  <rect x="14" y="22" width="4" height="2" fill="#1e3a8a"/>
+  <rect x="8" y="14" width="2" height="4" fill="#1e3a8a"/>
+  <rect x="22" y="14" width="2" height="4" fill="#1e3a8a"/>
+  
+  <!-- Admin "A" letter -->
+  <path d="M12 20L14 16L18 16L20 20L19 21L17 19L15 19L13 21L12 20ZM15 17L16 18L17 17H15Z" fill="#f59e0b"/>
+</svg>
