@@ -27,10 +27,18 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'rating', 'review_text', 'is_verified', 'created_at', 'updated_at']
         read_only_fields = ['is_verified', 'created_at', 'updated_at']
 
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['id', 'name', 'slug']
+
+
 class BusinessSerializer(serializers.ModelSerializer):
     hours = BusinessHourSerializer(many=True)  # 👈 match related_name
     services = ServiceSerializer(many=True)
     reviews = ReviewSerializer(many=True, read_only=True)
+    category = CategorySerializer(read_only=True)  # Include full category object
 
     class Meta:
         model = Business
@@ -55,12 +63,6 @@ class BusinessSerializer(serializers.ModelSerializer):
             Service.objects.create(business=business, **service)
 
         return business
-
-class CategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Category
-        fields = ['id', 'name', 'slug']
-
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
