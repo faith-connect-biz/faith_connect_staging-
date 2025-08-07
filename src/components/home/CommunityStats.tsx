@@ -20,8 +20,14 @@ export const CommunityStats = () => {
 
     const totalBusinesses = businesses.length;
     const verifiedBusinesses = businesses.filter(b => b.is_verified).length;
-    const averageRating = businesses.length > 0 
-      ? (businesses.reduce((sum, b) => sum + parseFloat(b.rating.toString()), 0) / businesses.length).toFixed(1)
+    
+    // Calculate average rating from all reviews (matching admin dashboard logic)
+    const allReviews = businesses.flatMap(b => 
+      Array(b.review_count).fill(b.rating).filter(rating => rating > 0)
+    );
+    
+    const averageRating = allReviews.length > 0 
+      ? (allReviews.reduce((sum, rating) => sum + rating, 0) / allReviews.length).toFixed(1)
       : "0.0";
     
     // For now, we'll estimate users based on businesses (assuming 1 user per business + community users)

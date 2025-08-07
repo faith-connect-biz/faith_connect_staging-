@@ -199,9 +199,18 @@ const DirectoryPage = () => {
   const stats = {
     totalBusinesses: Array.isArray(businesses) ? businesses.length : 0,
     verifiedBusinesses: Array.isArray(businesses) ? businesses.filter(b => b.is_verified).length : 0,
-    averageRating: Array.isArray(businesses) && businesses.length > 0 
-      ? (businesses.reduce((sum, b) => sum + parseFloat(b.rating.toString()), 0) / businesses.length).toFixed(1)
-      : "0.0",
+    averageRating: (() => {
+      if (!Array.isArray(businesses) || businesses.length === 0) return "0.0";
+      
+      // Calculate average rating from all reviews (matching admin dashboard logic)
+      const allReviews = businesses.flatMap(b => 
+        Array(b.review_count).fill(b.rating).filter(rating => rating > 0)
+      );
+      
+      return allReviews.length > 0 
+        ? (allReviews.reduce((sum, rating) => sum + rating, 0) / allReviews.length).toFixed(1)
+        : "0.0";
+    })(),
     totalReviews: Array.isArray(businesses) ? businesses.reduce((sum, b) => sum + b.review_count, 0) : 0
   };
 
