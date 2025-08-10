@@ -16,6 +16,8 @@ from utils.communication import send_email_verification_code
 from .UserSerializer.Serializers import RegisterSerializer, LoginSerializer, ForgotPasswordOTPSerializer, \
     ResetPasswordWithOTPSerializer
 from .utils import success_response, error_response
+from utils.communication import send_email_verification_code, send_sms, send_welcome_message, send_password_reset_message
+
 
 logger = logging.getLogger('user_auth')
 User = get_user_model()  # ✅ Correct User model import
@@ -91,27 +93,37 @@ class CustomTokenRefreshView(TokenRefreshView):
         return success_response("Token refreshed", serializer.validated_data)
 
 
-def send_sms(phone_number, otp):
-    print(f"Mock sending OTP {otp} to {phone_number}")  # Replace with real SMS logic
-
-
 class ForgotPasswordOTPView(APIView):
     def post(self, request):
+        safe_data = mask_sensitive_data(request.data)
+        logger.info(f"[FORGOT PASSWORD ATTEMPT] - {safe_data}")
+
         serializer = ForgotPasswordOTPSerializer(data=request.data)
         if serializer.is_valid():
             phone = serializer.validated_data['phone_number']
             try:
                 user = User.objects.get(phone=phone)
+                otp = str(random.randint(100000, 999999))
+                user.otp = otp
+                user.save()
+
+                logger.info(f"[FORGOT PASSWORD SUCCESS] - Phone: {phone}, User: {user.id}")
+
+                success, response = send_sms(phone, otp)
+
+                if success:
+                    return success_response(message="OTP sent successfully.")
+                else:
+                    logger.error(f"[FORGOT PASSWORD SMS FAILED] - Phone: {phone}, Response: {response}")
+                    return error_response(message="Failed to send OTP. Please try again later.")
+
             except User.DoesNotExist:
+                logger.warning(f"[FORGOT PASSWORD FAILED] - Phone: {phone} not found")
                 return error_response("User not found with this phone number.")
 
-            otp = str(random.randint(100000, 999999))
-            user.otp = otp
-            user.save()
-
-            send_sms(phone, f"Your OTP is {otp}")
-            return success_response(message="OTP sent successfully.")
+        logger.warning(f"[FORGOT PASSWORD VALIDATION ERROR] - {serializer.errors}")
         return error_response(message="Validation failed.", errors=serializer.errors)
+
 
 
 class ResetPasswordWithOTPView(APIView):
@@ -166,9 +178,12 @@ class SendPhoneOTPView(APIView):
         otp = str(random.randint(100000, 999999))
         user.otp = otp
         user.save()
-
-        send_sms(phone, otp)
-        return success_response("OTP sent to phone number")
+        success, response = send_sms(phone, otp)
+        if success:
+            return success_response(message="OTP sent successfully.")
+        else:
+            logger.error(f"[Validate  Phone  SMS FAILED] - Phone: {phone}, Response: {response}")
+            return error_response(message="Failed to send OTP. Please try again later.")
 
 
 class ConfirmEmailVerificationView(APIView):
