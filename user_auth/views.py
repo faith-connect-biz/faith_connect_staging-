@@ -109,7 +109,7 @@ class ForgotPasswordOTPView(APIView):
 
                 logger.info(f"[FORGOT PASSWORD SUCCESS] - Phone: {phone}, User: {user.id}")
 
-                success, response = send_sms(phone, otp)
+                success, response = send_password_reset_message(phone, otp)
 
                 if success:
                     return success_response(message="OTP sent successfully.")
