@@ -8,13 +8,16 @@ https://docs.djangoproject.com/en/4.2/howto/deployment/wsgi/
 """
 
 import os
+import sys
 
-from django.core.wsgi import get_wsgi_application
-from decouple import config
+# Force the settings module
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.railway')
 
-env = config('ENVIRONMENT', default='base')
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', f'core.settings.{env}')
-
-
-
-application = get_wsgi_application()
+try:
+    from django.core.wsgi import get_wsgi_application
+    application = get_wsgi_application()
+    print("✅ WSGI application created successfully")
+except Exception as e:
+    print(f"❌ Error creating WSGI application: {e}")
+    print(f"Current DJANGO_SETTINGS_MODULE: {os.environ.get('DJANGO_SETTINGS_MODULE')}")
+    sys.exit(1)

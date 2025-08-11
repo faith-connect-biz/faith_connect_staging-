@@ -18,16 +18,25 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
 from core.admin_dashboard import admin_site
 
+def api_root(request):
+    """Root API endpoint for healthcheck"""
+    return JsonResponse({
+        'message': 'FEM Family Business Directory API',
+        'status': 'healthy',
+        'version': '1.0.0'
+    })
+
 urlpatterns = [
+    path('', api_root, name='api_root'),  # Root endpoint
+    path('api/', api_root, name='api_root'),  # API root for healthcheck
     path('admin/', admin_site.urls),  # Use enhanced admin site
     path('api/auth/', include('user_auth.urls')),
     path('api/users/', include('user_auth.user_management.urls')),
     path('api/business/', include('business.urls')),
 ]
 
-# Serve static files during development
-if settings.DEBUG:
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
+# Serve static files in production
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
