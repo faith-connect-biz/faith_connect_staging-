@@ -10,6 +10,10 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateUser: (data: Partial<User>) => Promise<void>;
   setUser: (user: User | null) => void;
+  forceReAuth: () => Promise<void>;
+  isBusinessUser: () => boolean;
+  isCommunityUser: () => boolean;
+  canAccessBusinessFeatures: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,19 +32,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Check for mock user data first (for demo purposes)
+        // Check for real authentication first
+        if (apiService.isAuthenticated()) {
+          // Validate the token with the backend
+          const isValid = await apiService.validateToken();
+          if (isValid) {
+            const userData = await apiService.getCurrentUser();
+            setUser(userData);
+            setIsLoading(false);
+            return;
+          } else {
+            // Token is invalid, clear it
+            console.log('Invalid token found, clearing auth state...');
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user');
+          }
+        }
+
+        // Fallback to mock user data (for demo purposes)
         const mockUserData = localStorage.getItem('user');
         if (mockUserData) {
           const user = JSON.parse(mockUserData);
           setUser(user);
-          setIsLoading(false);
-          return;
-        }
-
-        // Check for real authentication
-        if (apiService.isAuthenticated()) {
-          const userData = await apiService.getCurrentUser();
-          setUser(userData);
         }
       } catch (error) {
         console.error('Auth check failed:', error);
@@ -62,6 +76,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await apiService.login(data);
       apiService.setAuthTokens(response.tokens);
       setUser(response.user);
+      
+      // Force a re-render by updating the state
+      setTimeout(() => {
+        setUser({ ...response.user });
+      }, 100);
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
@@ -97,6 +116,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const forceReAuth = async () => {
+    try {
+      console.log('Forcing re-authentication...');
+      setUser(null);
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      
+      // Try to get fresh user data
+      if (apiService.isAuthenticated()) {
+        const userData = await apiService.getCurrentUser();
+        setUser(userData);
+      }
+    } catch (error) {
+      console.error('Force re-auth failed:', error);
+    }
+  };
+
   const updateUser = async (data: Partial<User>) => {
     try {
       const updatedUser = await apiService.updateProfile(data);
@@ -116,6 +153,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     updateUser,
     setUser,
+    forceReAuth,
+    isBusinessUser: () => user?.user_type === 'business',
+    isCommunityUser: () => user?.user_type === 'community',
+    canAccessBusinessFeatures: () => user?.user_type === 'business',
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

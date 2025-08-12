@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,31 +37,46 @@ import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { apiService } from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
 
 const BusinessRegistrationPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, forceReAuth } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [businessId, setBusinessId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Array<{id: number, name: string, slug: string}>>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  const [formErrors, setFormErrors] = useState<string[]>([]);
   const headerRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({
     // Basic Information
-    businessName: "",
+    business_name: "",
     category: "",
     description: "",
-    longDescription: "",
+    long_description: "",
     businessType: "both" as "products" | "services" | "both", // NEW FIELD
     
     // Contact Information
     phone: "",
     email: "",
     website: "",
+    // Social media links
+    facebook_url: "",
+    instagram_url: "",
+    twitter_url: "",
+    youtube_url: "",
     address: "",
     city: "",
-    state: "",
+    county: "",
     zipCode: "",
     
     // Business Details
@@ -138,13 +153,159 @@ const BusinessRegistrationPage = () => {
     };
   }, []);
 
-  const categories = [
-    "Restaurant", "Retail", "Services", "Health & Wellness", 
-    "Automotive", "Real Estate", "Education", "Technology",
-    "Beauty & Personal Care", "Home & Garden", "Legal Services",
-    "Financial Services", "Entertainment", "Professional Services",
-    "Construction", "Transportation", "Non-Profit"
-  ];
+  // Check if user is authenticated and is a business user
+  useEffect(() => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to register your business",
+        variant: "destructive"
+      });
+      navigate('/');
+      return;
+    }
+
+    if (user.user_type !== 'business') {
+      toast({
+        title: "Business account required",
+        description: "Only business users can register businesses",
+        variant: "destructive"
+      });
+        navigate('/');
+        return;
+    }
+
+    // Check if we're in edit mode
+    if (location.state?.editMode && location.state?.businessId) {
+      setIsEditMode(true);
+      setBusinessId(location.state.businessId);
+      // TODO: Load existing business data to populate the form
+      loadExistingBusinessData(location.state.businessId);
+    }
+
+    // Debug: Check authentication tokens
+    const accessToken = localStorage.getItem('access_token');
+    const refreshToken = localStorage.getItem('refresh_token');
+    console.log('Authentication debug:', {
+      user: user,
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+      accessTokenLength: accessToken?.length || 0,
+      refreshTokenLength: refreshToken?.length || 0
+    });
+  }, [user, navigate, location.state]);
+
+  // Load existing business data for editing
+  const loadExistingBusinessData = async (id: string) => {
+    try {
+      // Fetch real business data from the API
+      const business = await apiService.getBusiness(id);
+      
+      console.log('Raw business data for editing:', business);
+      
+      if (business) {
+        // Transform API data to match our form structure
+        const transformedData = {
+          business_name: business.business_name,
+          category: business.category?.name || '',
+          description: business.description || '',
+          long_description: business.long_description || '',
+          businessType: 'both' as "products" | "services" | "both", // Default to both
+          phone: business.phone || '',
+          email: business.email || '',
+          website: business.website || '',
+          facebook_url: business.facebook_url || '',
+          instagram_url: business.instagram_url || '',
+          twitter_url: business.twitter_url || '',
+                youtube_url: business.youtube_url || '',
+          address: business.address,
+          city: business.city || '',
+          county: business.county || '',
+          zipCode: business.zip_code || '',
+          hours: {
+            monday: { open: '', close: '', closed: false },
+            tuesday: { open: '', close: '', closed: false },
+            wednesday: { open: '', close: '', closed: false },
+            thursday: { open: '', close: '', closed: false },
+            friday: { open: '', close: '', closed: false },
+            saturday: { open: '', close: '', closed: false },
+            sunday: { open: '', close: '', closed: false }
+          },
+          services: [], // TODO: Fetch services when API endpoint is available
+          products: [], // TODO: Fetch products when API endpoint is available
+          features: [], // TODO: Fetch features when API endpoint is available
+          tags: [],
+          photoRequest: false,
+          photoRequestNotes: ''
+        };
+
+        console.log('Transformed data for edit mode:', transformedData);
+
+        setFormData(transformedData);
+        toast({
+          title: "Edit Mode",
+          description: "Business data loaded. You can now edit your business information.",
+        });
+      } else {
+        throw new Error('Business not found');
+      }
+    } catch (error) {
+      console.error('Error loading business data:', error);
+      toast({
+        title: "Error loading business data",
+        description: "Could not load existing business data for editing. Please try again.",
+        variant: "destructive"
+      });
+      // Redirect back to manage business page if we can't load the data
+      navigate('/manage-business');
+    }
+  };
+
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setIsLoadingCategories(true);
+        const response = await apiService.getCategories();
+        setCategories(response.results);
+      } catch (error: any) {
+        console.error('Failed to fetch categories:', error);
+        // Fallback to default categories if API fails
+        const fallbackCategories = [
+          { id: 1, name: 'Food & Dining', slug: 'food-dining' },
+          { id: 2, name: 'Health & Beauty', slug: 'health-beauty' },
+          { id: 3, name: 'Technology', slug: 'technology' },
+          { id: 4, name: 'Fashion & Clothing', slug: 'fashion-clothing' },
+          { id: 5, name: 'Home & Garden', slug: 'home-garden' },
+          { id: 6, name: 'Sports & Fitness', slug: 'sports-fitness' },
+          { id: 7, name: 'Education', slug: 'education' },
+          { id: 8, name: 'Automotive', slug: 'automotive' },
+          { id: 9, name: 'Entertainment', slug: 'entertainment' },
+          { id: 10, name: 'Professional Services', slug: 'professional-services' },
+          { id: 11, name: 'Restaurant', slug: 'restaurant' },
+          { id: 12, name: 'Retail', slug: 'retail' },
+          { id: 13, name: 'Services', slug: 'services' },
+          { id: 14, name: 'Real Estate', slug: 'real-estate' },
+          { id: 15, name: 'Legal Services', slug: 'legal-services' },
+          { id: 16, name: 'Financial Services', slug: 'financial-services' },
+          { id: 17, name: 'Construction', slug: 'construction' },
+          { id: 18, name: 'Transportation', slug: 'transportation' },
+          { id: 19, name: 'Non-Profit', slug: 'non-profit' },
+          { id: 20, name: 'Beauty & Personal Care', slug: 'beauty-personal-care' }
+        ];
+        setCategories(fallbackCategories);
+        toast({
+          title: "Using default categories",
+          description: "Could not load categories from server. Using default categories.",
+          variant: "default"
+        });
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const availableServices = [
     "Dine-in", "Takeout", "Delivery", "Catering", "Private Events",
@@ -170,8 +331,19 @@ const BusinessRegistrationPage = () => {
     { id: 3, title: "Services & Products", icon: Settings }
   ];
 
+  // Get field-specific errors
+  const getFieldError = (fieldName: string) => {
+    return formErrors.find(error => error.toLowerCase().includes(fieldName.toLowerCase()));
+  };
+
+  // Clear field error when user starts typing
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear form errors when user starts typing
+    if (formErrors.length > 0) {
+      setFormErrors([]);
+    }
   };
 
   const handleArrayToggle = (field: string, value: string) => {
@@ -180,6 +352,15 @@ const BusinessRegistrationPage = () => {
       if (currentArray.includes(value)) {
         return { ...prev, [field]: currentArray.filter(item => item !== value) };
       } else {
+        // Limit features to maximum of 5
+        if (field === 'features' && currentArray.length >= 5) {
+          toast({
+            title: "Feature Limit Reached",
+            description: "You can select a maximum of 5 features. Please remove some features before adding new ones.",
+            variant: "destructive"
+          });
+          return prev;
+        }
         return { ...prev, [field]: [...currentArray, value] };
       }
     });
@@ -210,12 +391,272 @@ const BusinessRegistrationPage = () => {
     }
   };
 
-  const handleSubmit = () => {
-    toast({
-      title: "Business registered successfully!",
-      description: "Your business has been added to the directory. Welcome to the Faith Connect community!",
+  // Validate form data before submission
+  const validateFormData = () => {
+    const errors: string[] = [];
+
+    if (!formData.business_name.trim()) {
+      errors.push("Business name is required");
+    } else if (formData.business_name.trim().length < 2) {
+      errors.push("Business name must be at least 2 characters long");
+    }
+
+    if (!formData.category) {
+      errors.push("Business category is required");
+    }
+
+    if (!formData.description.trim()) {
+      errors.push("Business description is required");
+    } else if (formData.description.trim().length < 10) {
+      errors.push("Business description must be at least 10 characters long");
+    }
+
+    if (!formData.phone.trim()) {
+      errors.push("Phone number is required");
+    } else if (!/^\+?[\d\s\-\(\)]+$/.test(formData.phone.trim())) {
+      errors.push("Please enter a valid phone number");
+    }
+
+    if (!formData.email.trim()) {
+      errors.push("Email address is required");
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      errors.push("Please enter a valid email address");
+    }
+
+    // Website validation (if provided)
+    if (formData.website.trim()) {
+      const websiteRegex = /^https?:\/\/.+\..+/;
+      if (!websiteRegex.test(formData.website.trim())) {
+        errors.push("Please enter a valid website URL (e.g., https://www.example.com)");
+      }
+    }
+
+    // Social media URL validation (if provided)
+    const socialMediaFields = [
+      { field: 'facebook_url', name: 'Facebook' },
+      { field: 'instagram_url', name: 'Instagram' },
+          { field: 'twitter_url', name: 'Twitter' },
+    { field: 'youtube_url', name: 'YouTube' }
+    ];
+
+    socialMediaFields.forEach(({ field, name }) => {
+      const url = formData[field as keyof typeof formData] as string;
+      if (url.trim()) {
+        const urlRegex = /^https?:\/\/.+\..+/;
+        if (!urlRegex.test(url.trim())) {
+          errors.push(`Please enter a valid ${name} URL`);
+        }
+      }
     });
-    navigate("/directory");
+
+    if (!formData.address.trim()) {
+      errors.push("Business address is required");
+    } else if (formData.address.trim().length < 5) {
+      errors.push("Business address must be at least 5 characters long");
+    }
+
+    if (!formData.city.trim()) {
+      errors.push("City is required");
+    }
+
+    if (!formData.county.trim()) {
+      errors.push("County is required");
+    }
+
+    // Validate business hours - at least one day should have hours set (optional for now)
+    // const hasValidHours = Object.values(formData.hours).some(day => 
+    //   !day.closed && day.open && day.close
+    // );
+    // if (!hasValidHours) {
+    //   errors.push("Please set business hours for at least one day");
+    // }
+
+    // Validate that at least one service or product is selected (optional for initial registration)
+    // if (formData.services.length === 0 && formData.products.length === 0) {
+    //   errors.push("Please select at least one service or add at least one product");
+    // }
+
+    // Validate products if any are added
+    formData.products.forEach((product, index) => {
+      if (product.name.trim() && !product.price.trim()) {
+        errors.push(`Product ${index + 1}: Price is required`);
+      }
+      if (product.price.trim() && !product.name.trim()) {
+        errors.push(`Product ${index + 1}: Name is required`);
+      }
+    });
+
+    return errors;
+  };
+
+  // Convert form data to API format
+  const prepareBusinessData = () => {
+    // Convert hours to the format expected by the API
+    const hours = Object.entries(formData.hours)
+      .filter(([day, hours]) => {
+        // Only include days that have been configured (either closed or with times)
+        return hours.closed || (hours.open && hours.close);
+      })
+      .map(([day, hours]) => {
+        // Map day names to day numbers (0 = Sunday, 1 = Monday, etc.)
+        const dayMap: { [key: string]: number } = {
+          'sunday': 0,
+          'monday': 1,
+          'tuesday': 2,
+          'wednesday': 3,
+          'thursday': 4,
+          'friday': 5,
+          'saturday': 6
+        };
+        
+        // Format time strings to HH:MM format
+        const formatTime = (timeStr: string) => {
+          if (!timeStr) return '';
+          // Ensure time is in HH:MM format
+          const time = new Date(`2000-01-01T${timeStr}`);
+          return time.toTimeString().slice(0, 5);
+        };
+
+        return {
+          day_of_week: dayMap[day.toLowerCase()],
+          open_time: hours.closed ? null : formatTime(hours.open),
+          close_time: hours.closed ? null : formatTime(hours.close),
+          is_closed: hours.closed || false
+        };
+      });
+
+    // Convert services to the format expected by the API
+    const services = formData.services
+      .filter(service => service.trim() !== '')
+      .map(service => ({
+        name: service,
+        description: `${service} service`,
+        price_range: 'Varies',
+        duration: 'Varies',
+        is_available: true
+      }));
+
+    // Convert products to the format expected by the API
+    const products = formData.products
+      .filter(product => product.name.trim() !== '')
+      .map(product => ({
+        name: product.name,
+        description: product.description || `${product.name} product`,
+        price: product.price || '0.00',
+        is_available: true
+      }));
+
+    // Clean and prepare the data
+    const businessData = {
+      business_name: formData.business_name.trim(),
+      category: formData.category,
+      description: formData.description.trim(),
+      long_description: formData.long_description.trim(),
+      phone: formData.phone.trim(),
+      email: formData.email.trim(),
+      website: formData.website.trim() || null,
+      facebook_url: formData.facebook_url.trim() || null,
+      instagram_url: formData.instagram_url.trim() || null,
+      twitter_url: formData.twitter_url.trim() || null,
+      youtube_url: formData.youtube_url.trim() || null,
+      address: formData.address.trim(),
+      city: formData.city.trim(),
+      county: formData.county.trim(),
+      hours: hours,
+      services: services,
+      products: products,
+      features: formData.features.filter(feature => feature.trim() !== ''),
+      photo_request: formData.photoRequest ? 'Yes' : 'No',
+      photo_request_notes: formData.photoRequestNotes.trim() || null
+    };
+
+    console.log('Prepared business data structure:', {
+      hours: hours,
+      services: services,
+      products: products,
+      features: businessData.features
+    });
+
+    return businessData;
+  };
+
+  const handleSubmit = async () => {
+    // Clear previous errors
+    setFormErrors([]);
+    
+    // Validate form data
+    const validationErrors = validateFormData();
+    if (validationErrors.length > 0) {
+      setFormErrors(validationErrors);
+      toast({
+        title: "Validation errors",
+        description: validationErrors.join(", "),
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Debug: Check authentication before API call
+      const accessToken = localStorage.getItem('access_token');
+      const refreshToken = localStorage.getItem('refresh_token');
+      console.log('Before API call - Authentication state:', {
+        user: user,
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        accessTokenLength: accessToken?.length || 0,
+        refreshTokenLength: refreshToken?.length || 0
+      });
+
+      const businessData = prepareBusinessData();
+      
+      // Debug: Log the data being sent
+      console.log('Business data being sent to API:', businessData);
+      
+      if (isEditMode && businessId) {
+        // Update existing business
+        const updatedBusiness = await apiService.updateBusiness(businessId, businessData);
+        console.log('Business updated successfully:', updatedBusiness);
+      } else {
+        // Create new business
+        const business = await apiService.createBusiness(businessData);
+        console.log('Business created successfully:', business);
+      }
+      
+      toast({
+        title: isEditMode ? "Business updated successfully!" : "Business registered successfully!",
+        description: isEditMode 
+          ? "Your business information has been updated successfully."
+          : "Your business has been added to the directory. Welcome to the Faith Connect community!",
+      });
+
+      // Navigate to the business management page
+      navigate("/manage-business");
+    } catch (error: any) {
+      console.error('Business registration failed:', error);
+      
+      let errorMessage = "Failed to register business. Please try again.";
+      
+      if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        errorMessage = Object.values(errors).join(', ');
+        setFormErrors(Object.values(errors));
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast({
+        title: "Registration failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const containerVariants = {
@@ -244,29 +685,45 @@ const BusinessRegistrationPage = () => {
   const renderStep1 = () => (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
       <motion.div variants={itemVariants}>
-        <Label htmlFor="businessName">Business Name *</Label>
+        <Label htmlFor="business_name">
+          Business Name <span className="text-red-500">*</span>
+        </Label>
         <Input
-          id="businessName"
-          value={formData.businessName}
-          onChange={(e) => handleInputChange("businessName", e.target.value)}
+          id="business_name"
+          value={formData.business_name}
+          onChange={(e) => handleInputChange("business_name", e.target.value)}
           placeholder="Enter your business name"
           className="mt-1"
           required
         />
+        {getFieldError("business_name") && (
+          <p className="text-sm text-red-500 mt-1">{getFieldError("business_name")}</p>
+        )}
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <Label htmlFor="category">Business Category *</Label>
+        <Label htmlFor="category">
+          Business Category <span className="text-red-500">*</span>
+        </Label>
         <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
           <SelectTrigger className="mt-1">
             <SelectValue placeholder="Select a category" />
           </SelectTrigger>
           <SelectContent>
-            {Array.isArray(categories) && categories.map((category) => (
-              <SelectItem key={category} value={category}>{category}</SelectItem>
-            ))}
+            {isLoadingCategories ? (
+              <SelectItem value="loading" disabled>Loading categories...</SelectItem>
+            ) : categories.length === 0 ? (
+              <SelectItem value="no-categories" disabled>No categories found.</SelectItem>
+            ) : (
+              categories.map((category) => (
+                <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
+        {getFieldError("category") && (
+          <p className="text-sm text-red-500 mt-1">{getFieldError("category")}</p>
+        )}
       </motion.div>
 
       <motion.div variants={itemVariants}>
@@ -348,10 +805,15 @@ const BusinessRegistrationPage = () => {
             </div>
           </div>
         </div>
+        {getFieldError("businessType") && (
+          <p className="text-sm text-red-500 mt-1">{getFieldError("businessType")}</p>
+        )}
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <Label htmlFor="description">Short Description *</Label>
+        <Label htmlFor="description">
+          Short Description <span className="text-red-500">*</span>
+        </Label>
         <Input
           id="description"
           value={formData.description}
@@ -360,18 +822,25 @@ const BusinessRegistrationPage = () => {
           className="mt-1"
           required
         />
+        {getFieldError("description") && (
+          <p className="text-sm text-red-500 mt-1">{getFieldError("description")}</p>
+        )}
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <Label htmlFor="longDescription">Detailed Description</Label>
+        <Label htmlFor="long_description">Detailed Description</Label>
         <Textarea
-          id="longDescription"
-          value={formData.longDescription}
-          onChange={(e) => handleInputChange("longDescription", e.target.value)}
+          id="long_description"
+          value={formData.long_description}
+          onChange={(e) => handleInputChange("long_description", e.target.value)}
           placeholder="Tell us more about your business, services, and what makes you unique"
           rows={4}
           className="mt-1"
+          required
         />
+        {getFieldError("long_description") && (
+          <p className="text-sm text-red-500 mt-1">{getFieldError("long_description")}</p>
+        )}
       </motion.div>
     </motion.div>
   );
@@ -380,7 +849,9 @@ const BusinessRegistrationPage = () => {
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <motion.div variants={itemVariants}>
-          <Label htmlFor="phone">Phone Number *</Label>
+          <Label htmlFor="phone">
+            Phone Number <span className="text-red-500">*</span>
+          </Label>
           <Input
             id="phone"
             value={formData.phone}
@@ -389,10 +860,15 @@ const BusinessRegistrationPage = () => {
             className="mt-1"
             required
           />
+          {getFieldError("phone") && (
+            <p className="text-sm text-red-500 mt-1">{getFieldError("phone")}</p>
+          )}
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <Label htmlFor="email">Email Address *</Label>
+          <Label htmlFor="email">
+            Email Address <span className="text-red-500">*</span>
+          </Label>
           <Input
             id="email"
             type="email"
@@ -402,6 +878,9 @@ const BusinessRegistrationPage = () => {
             className="mt-1"
             required
           />
+          {getFieldError("email") && (
+            <p className="text-sm text-red-500 mt-1">{getFieldError("email")}</p>
+          )}
         </motion.div>
       </div>
 
@@ -413,10 +892,67 @@ const BusinessRegistrationPage = () => {
           onChange={(e) => handleInputChange("website", e.target.value)}
           placeholder="https://www.yourbusiness.com"
         />
+        {getFieldError("website") && (
+          <p className="text-sm text-red-500 mt-1">{getFieldError("website")}</p>
+        )}
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <Label htmlFor="address">Street Address *</Label>
+        <Label htmlFor="facebook_url">Facebook URL (Optional)</Label>
+        <Input
+          id="facebook_url"
+          value={formData.facebook_url}
+          onChange={(e) => handleInputChange("facebook_url", e.target.value)}
+          placeholder="https://www.facebook.com/yourbusiness"
+        />
+        {getFieldError("facebook_url") && (
+          <p className="text-sm text-red-500 mt-1">{getFieldError("facebook_url")}</p>
+        )}
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <Label htmlFor="instagram_url">Instagram URL (Optional)</Label>
+        <Input
+          id="instagram_url"
+          value={formData.instagram_url}
+          onChange={(e) => handleInputChange("instagram_url", e.target.value)}
+          placeholder="https://www.instagram.com/yourbusiness"
+        />
+        {getFieldError("instagram_url") && (
+          <p className="text-sm text-red-500 mt-1">{getFieldError("instagram_url")}</p>
+        )}
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <Label htmlFor="twitter_url">Twitter URL (Optional)</Label>
+        <Input
+          id="twitter_url"
+          value={formData.twitter_url}
+          onChange={(e) => handleInputChange("twitter_url", e.target.value)}
+          placeholder="https://twitter.com/yourbusiness"
+        />
+        {getFieldError("twitter_url") && (
+          <p className="text-sm text-red-500 mt-1">{getFieldError("twitter_url")}</p>
+        )}
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <Label htmlFor="youtube_url">YouTube URL (Optional)</Label>
+        <Input
+          id="youtube_url"
+          value={formData.youtube_url}
+          onChange={(e) => handleInputChange("youtube_url", e.target.value)}
+          placeholder="https://www.youtube.com/channel/yourbusiness"
+        />
+        {getFieldError("youtube_url") && (
+          <p className="text-sm text-red-500 mt-1">{getFieldError("youtube_url")}</p>
+        )}
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <Label htmlFor="address">
+          Street Address <span className="text-red-500">*</span>
+        </Label>
         <Input
           id="address"
           value={formData.address}
@@ -424,11 +960,16 @@ const BusinessRegistrationPage = () => {
           placeholder="123 Main Street"
           required
         />
+        {getFieldError("address") && (
+          <p className="text-sm text-red-500 mt-1">{getFieldError("address")}</p>
+        )}
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <motion.div variants={itemVariants}>
-          <Label htmlFor="city">City *</Label>
+          <Label htmlFor="city">
+            City <span className="text-red-500">*</span>
+          </Label>
           <Input
             id="city"
             value={formData.city}
@@ -436,17 +977,25 @@ const BusinessRegistrationPage = () => {
             placeholder="Nairobi"
             required
           />
+          {getFieldError("city") && (
+            <p className="text-sm text-red-500 mt-1">{getFieldError("city")}</p>
+          )}
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <Label htmlFor="state">County *</Label>
+          <Label htmlFor="county">
+            County <span className="text-red-500">*</span>
+          </Label>
           <Input
-            id="state"
-            value={formData.state}
-            onChange={(e) => handleInputChange("state", e.target.value)}
+            id="county"
+            value={formData.county}
+            onChange={(e) => handleInputChange("county", e.target.value)}
             placeholder="Nairobi"
             required
           />
+          {getFieldError("county") && (
+            <p className="text-sm text-red-500 mt-1">{getFieldError("county")}</p>
+          )}
         </motion.div>
 
         <motion.div variants={itemVariants}>
@@ -585,6 +1134,9 @@ const BusinessRegistrationPage = () => {
                     }}
                     className="mt-1"
                   />
+                  {getFieldError(`product-name-${index}`) && (
+                    <p className="text-sm text-red-500 mt-1">{getFieldError(`product-name-${index}`)}</p>
+                  )}
                 </div>
                 
                 <div>
@@ -600,6 +1152,9 @@ const BusinessRegistrationPage = () => {
                     }}
                     className="mt-1"
                   />
+                  {getFieldError(`product-price-${index}`) && (
+                    <p className="text-sm text-red-500 mt-1">{getFieldError(`product-price-${index}`)}</p>
+                  )}
                 </div>
               </div>
               
@@ -722,8 +1277,18 @@ const BusinessRegistrationPage = () => {
           Features & Amenities
         </h3>
         <p className="text-sm text-purple-700 mb-4">
-          Select the features and amenities your business offers
+          Select the features and amenities your business offers (Maximum 5)
         </p>
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-xs text-purple-600">
+            Selected: {formData.features.length}/5
+          </span>
+          {formData.features.length >= 5 && (
+            <span className="text-xs text-red-600 font-medium">
+              Maximum features reached
+            </span>
+          )}
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {availableFeatures.map((feature) => (
             <div key={feature} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-purple-100 transition-colors">
@@ -731,6 +1296,7 @@ const BusinessRegistrationPage = () => {
                 id={feature}
                 checked={formData.features.includes(feature)}
                 onCheckedChange={() => handleArrayToggle("features", feature)}
+                disabled={!formData.features.includes(feature) && formData.features.length >= 5}
               />
               <Label htmlFor={feature} className="text-sm cursor-pointer">{feature}</Label>
             </div>
@@ -840,11 +1406,16 @@ const BusinessRegistrationPage = () => {
           >
             <div className="inline-flex items-center gap-3 bg-gradient-to-r from-fem-navy to-fem-terracotta text-white px-6 py-3 rounded-full shadow-lg mb-4">
               <Sparkles className="w-5 h-5" />
-              <h1 className="text-2xl font-bold">Register Your Business</h1>
+              <h1 className="text-2xl font-bold">
+                {isEditMode ? 'Edit Your Business' : 'Register Your Business'}
+              </h1>
               <Sparkles className="w-5 h-5" />
             </div>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Join our faith community directory and connect with customers who share your values
+              {isEditMode 
+                ? 'Update your business information to keep your listing current and accurate'
+                : 'Join our faith community directory and connect with customers who share your values'
+              }
             </p>
           </motion.div>
 
@@ -914,6 +1485,66 @@ const BusinessRegistrationPage = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
+                  {/* Display form errors */}
+                  {formErrors.length > 0 && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <h3 className="text-sm font-medium text-red-800 mb-2">
+                        Please fix the following errors:
+                      </h3>
+                      <ul className="text-sm text-red-700 space-y-1">
+                        {formErrors.map((error, index) => (
+                          <li key={index} className="flex items-start">
+                            <span className="text-red-500 mr-2">•</span>
+                            {error}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Debug Authentication Status */}
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h3 className="text-sm font-medium text-blue-800 mb-2">
+                      Authentication Status (Debug)
+                    </h3>
+                    <div className="text-sm text-blue-700 space-y-1">
+                      <p>User: {user ? `${user.partnership_number} (${user.user_type})` : 'Not logged in'}</p>
+                      <p>Access Token: {localStorage.getItem('access_token') ? 'Present' : 'Missing'}</p>
+                      <p>Refresh Token: {localStorage.getItem('refresh_token') ? 'Present' : 'Missing'}</p>
+                      <p>Is Authenticated: {apiService.isAuthenticated() ? 'Yes' : 'No'}</p>
+                      <div className="mt-2 space-x-2">
+                        <Button
+                          onClick={() => forceReAuth()}
+                          variant="outline"
+                          size="sm"
+                          className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                        >
+                          Force Re-authentication
+                        </Button>
+                        <Button
+                          onClick={() => apiService.logAuthStatus()}
+                          variant="outline"
+                          size="sm"
+                          className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                        >
+                          Log Auth Status
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            localStorage.removeItem('access_token');
+                            localStorage.removeItem('refresh_token');
+                            window.location.href = '/';
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-600 hover:bg-red-50"
+                        >
+                          Force Re-login
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  
                   {renderCurrentStep()}
                 </CardContent>
               </Card>
@@ -953,9 +1584,22 @@ const BusinessRegistrationPage = () => {
                     <Button 
                       onClick={handleSubmit}
                       className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white"
+                      disabled={isSubmitting}
                     >
-                      <Award className="w-4 h-4 mr-2" />
-                      Complete Registration
+                      {isSubmitting ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span className="ml-2">{isEditMode ? 'Updating...' : 'Registering...'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Award className="w-4 h-4 mr-2" />
+                          {isEditMode ? 'Update Business' : 'Complete Registration'}
+                        </>
+                      )}
                     </Button>
                   ) : (
                     <Button onClick={nextStep} className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white">

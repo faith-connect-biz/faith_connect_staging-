@@ -1,10 +1,14 @@
 
 import { Link, useNavigate } from "react-router-dom";
 import { Search, ArrowRight, Sparkles, Users, Briefcase, Target, Globe, Zap, Plus, Heart, Star } from "lucide-react";
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 import ImageCarousel from "@/components/ui/ImageCarousel";
 
-export const Hero = () => {
+interface HeroProps {
+  actionButtons?: ReactNode;
+}
+
+export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -102,25 +106,29 @@ export const Hero = () => {
 
                 {/* Modern Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-6 scroll-reveal">
-                  <Link to="/directory" className="group">
-                    <button className="btn-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
-                      <div className="flex items-center gap-3">
-                        <Briefcase className="w-6 h-6" />
-                        <span className="font-mont font-semibold tracking-wide">Browse Directory</span>
-                        <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" />
-                      </div>
-                    </button>
-                  </Link>
-                  
-                  <Link to="/register-business" className="group">
-                    <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
-                      <div className="flex items-center gap-3">
-                        <Plus className="w-6 h-6" />
-                        <span className="font-mont font-semibold tracking-wide">List Your Business</span>
-                        <ArrowRight className="w-6 h-6 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
-                      </div>
-                    </button>
-                  </Link>
+                  {actionButtons || (
+                    <>
+                      <Link to="/directory" className="group">
+                        <button className="btn-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+                          <div className="flex items-center gap-3">
+                            <Briefcase className="w-6 h-6" />
+                            <span className="font-mont font-semibold tracking-wide">Browse Directory</span>
+                            <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" />
+                          </div>
+                        </button>
+                      </Link>
+                      
+                      <Link to="/register-business" className="group">
+                        <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+                          <div className="flex items-center gap-3">
+                            <Plus className="w-6 h-6" />
+                            <span className="font-mont font-semibold tracking-wide">List Your Business</span>
+                            <ArrowRight className="w-6 h-6 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
+                          </div>
+                        </button>
+                      </Link>
+                    </>
+                  )}
                 </div>
 
                 {/* Enhanced Trust Indicators */}
