@@ -64,7 +64,28 @@ class RegisterAPIView(APIView):
             })
 
         logger.error(f"[REGISTER ERROR] - {serializer.errors}")
-        return error_response("Registration failed", serializer.errors)
+        
+        # Provide more user-friendly error messages
+        error_details = {}
+        for field, errors in serializer.errors.items():
+            if field == 'partnership_number':
+                error_details[field] = "Please provide a valid partnership number."
+            elif field == 'email':
+                error_details[field] = "Please provide a valid email address."
+            elif field == 'phone':
+                error_details[field] = "Please provide a valid phone number."
+            elif field == 'password':
+                error_details[field] = "Password must be at least 6 characters long."
+            elif field == 'first_name':
+                error_details[field] = "First name is required."
+            elif field == 'last_name':
+                error_details[field] = "Last name is required."
+            elif field == 'user_type':
+                error_details[field] = "User type is required."
+            else:
+                error_details[field] = str(errors[0]) if errors else "Invalid value"
+        
+        return error_response("Registration failed", error_details)
 
 
 class LoginView(APIView):
