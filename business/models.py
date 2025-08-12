@@ -56,6 +56,12 @@ class Business(models.Model):
     business_image_url = models.URLField(max_length=500, blank=True, null=True)
     business_logo_url = models.URLField(max_length=500, blank=True, null=True)
 
+    # Social media links
+    facebook_url = models.URLField(max_length=500, blank=True, null=True)
+    instagram_url = models.URLField(max_length=500, blank=True, null=True)
+    twitter_url = models.URLField(max_length=500, blank=True, null=True)
+    youtube_url = models.URLField(max_length=500, blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

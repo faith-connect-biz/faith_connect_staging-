@@ -139,6 +139,21 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
 }
 
+# JWT Settings
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    "BLACKLIST_AFTER_ROTATION": True,
+    "ROTATE_REFRESH_TOKENS": True,
+    # Access token: longer-lived for better user experience
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=2),  # 2 hours as requested
+    # Refresh token: longer-lived
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),  # 7 days
+    # Optional settings
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+}
+
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True

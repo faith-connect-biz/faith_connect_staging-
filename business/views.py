@@ -4,12 +4,16 @@ from rest_framework import generics, filters
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
-
-from business.models import Business, Category, Favorite, Product, Review
-from business.permissions import IsBusinessUser
-from business.serializers import BusinessSerializer, CategorySerializer, FavoriteSerializer, ProductSerializer, \
-    ReviewSerializer
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from .models import Business, Category, Favorite, Product, Review, BusinessHour
+from .serializers import BusinessSerializer, CategorySerializer, FavoriteSerializer, ProductSerializer, ReviewSerializer, BusinessHourSerializer
 from user_auth.utils import success_response, error_response
+from user_auth.models import User
+from django.db import transaction
+from django.utils import timezone
+from datetime import datetime, time
+import json
 
 
 # Create your views here.
@@ -67,7 +71,7 @@ class BusinessListCreateAPIView(generics.ListCreateAPIView):
 class BusinessUpdateView(generics.UpdateAPIView):
     queryset = Business.objects.all()
     serializer_class = BusinessSerializer
-    permission_classes = [IsBusinessUser]
+    permission_classes = [IsAuthenticated]
     lookup_field = 'id'
 
 class CategoryListAPIView(generics.ListAPIView):
@@ -224,4 +228,131 @@ class ReviewUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
         if instance.user != self.request.user:
             raise PermissionDenied("You can only delete your own review.")
         instance.delete()
+
+
+class BusinessHoursView(APIView):
+    """Handle business hours CRUD operations"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, business_id):
+        """Get business hours for a specific business"""
+        try:
+            business = get_object_or_404(Business, id=business_id)
+            hours = BusinessHour.objects.filter(business=business)
+            serializer = BusinessHourSerializer(hours, many=True)
+            return Response({
+                'success': True,
+                'data': serializer.data
+            })
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+    
+    def post(self, request, business_id):
+        """Create or update business hours for a business"""
+        try:
+            business = get_object_or_404(Business, id=business_id)
+            
+            # Check if user owns this business
+            if business.user != request.user:
+                return Response({
+                    'success': False,
+                    'message': 'You can only manage hours for your own business'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            hours_data = request.data.get('hours', [])
+            
+            with transaction.atomic():
+                # Delete existing hours for this business
+                BusinessHour.objects.filter(business=business).delete()
+                
+                # Create new hours
+                for hour_data in hours_data:
+                    day_of_week = hour_data.get('day_of_week')
+                    open_time = hour_data.get('open_time')
+                    close_time = hour_data.get('close_time')
+                    is_closed = hour_data.get('is_closed', False)
+                    
+                    if is_closed:
+                        open_time = None
+                        close_time = None
+                    
+                    BusinessHour.objects.create(
+                        business=business,
+                        day_of_week=day_of_week,
+                        open_time=open_time,
+                        close_time=close_time,
+                        is_closed=is_closed
+                    )
+            
+            # Return updated hours
+            hours = BusinessHour.objects.filter(business=business)
+            serializer = BusinessHourSerializer(hours, many=True)
+            
+            return Response({
+                'success': True,
+                'message': 'Business hours updated successfully',
+                'data': serializer.data
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class BusinessImageUploadView(APIView):
+    """Handle business image and logo uploads"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, business_id):
+        """Upload business image or logo"""
+        try:
+            business = get_object_or_404(Business, id=business_id)
+            
+            # Check if user owns this business
+            if business.user != request.user:
+                return Response({
+                    'success': False,
+                    'message': 'You can only upload images for your own business'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            image_type = request.data.get('image_type')  # 'image' or 'logo'
+            image_url = request.data.get('image_url')
+            
+            if not image_url:
+                return Response({
+                    'success': False,
+                    'message': 'Image URL is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if image_type == 'logo':
+                business.business_logo_url = image_url
+            elif image_type == 'image':
+                business.business_image_url = image_url
+            else:
+                return Response({
+                    'success': False,
+                    'message': 'Invalid image type. Use "image" or "logo"'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            business.save()
+            
+            return Response({
+                'success': True,
+                'message': f'Business {image_type} updated successfully',
+                'data': {
+                    'business_image_url': business.business_image_url,
+                    'business_logo_url': business.business_logo_url
+                }
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
 

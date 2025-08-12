@@ -1,8 +1,5 @@
-# authapp/serializers.py
 from django.contrib.auth import authenticate
 from rest_framework import serializers
-
-
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 
@@ -48,6 +45,44 @@ class RegisterSerializer(serializers.ModelSerializer):
         # Ensure at least one contact method is provided
         if not email and not phone:
             raise serializers.ValidationError("Either email or phone number must be provided.")
+        
+        # Check for existing users with same email OR phone
+        existing_user = None
+        
+        if email:
+            try:
+                existing_user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                pass
+        
+        if phone:
+            try:
+                existing_user = User.objects.get(phone=phone)
+            except User.DoesNotExist:
+                pass
+        
+        if existing_user:
+            # Check if this is the same person trying to add missing contact info
+            if existing_user.partnership_number == data.get('partnership_number'):
+                # Same person - allow updating contact info
+                return data
+            else:
+                # Different person - prevent duplicate account
+                if email and phone:
+                    raise serializers.ValidationError(
+                        "An account with this email or phone number already exists. "
+                        "Please use a different email and phone number."
+                    )
+                elif email:
+                    raise serializers.ValidationError(
+                        "An account with this email already exists. "
+                        "Please use a different email or contact support if this is your account."
+                    )
+                else:
+                    raise serializers.ValidationError(
+                        "An account with this phone number already exists. "
+                        "Please use a different phone number or contact support if this is your account."
+                    )
 
         # Ensure password meets minimum requirements
         password = data.get('password')
@@ -114,16 +149,18 @@ class LoginSerializer(serializers.Serializer):
             "is_active": user.is_active,
         }
 
+
 class ForgotPasswordOTPSerializer(serializers.Serializer):
     phone_number = serializers.CharField()
+
     @staticmethod
     def validate_phone_number(value):
         if not User.objects.filter(phone=value).exists():
             raise serializers.ValidationError("User with this phone number does not exist.")
         return value
 
+
 class ResetPasswordWithOTPSerializer(serializers.Serializer):
     phone_number = serializers.CharField()
     otp = serializers.CharField()
     new_password = serializers.CharField(min_length=6)
-

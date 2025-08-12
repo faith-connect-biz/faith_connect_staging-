@@ -2,7 +2,7 @@ from django.urls import path
 
 from business.views import BusinessDetailAPIView, BusinessUpdateView, BusinessListCreateAPIView, CategoryListAPIView, \
   FavoriteToggleView, BusinessProductListCreateView, ProductRetrieveUpdateView, ReviewListCreateView, \
-  ReviewUpdateDeleteView
+  ReviewUpdateDeleteView, BusinessHoursView, BusinessImageUploadView
 
 urlpatterns = [
     path('', BusinessListCreateAPIView.as_view(), name='business-list'),
@@ -14,4 +14,6 @@ urlpatterns = [
     path('products/<uuid:id>/', ProductRetrieveUpdateView.as_view(), name='product-detail'),
     path('<uuid:business_id>/reviews/', ReviewListCreateView.as_view(), name='business-reviews'),
     path('<uuid:business_id>/reviews/<int:pk>/', ReviewUpdateDeleteView.as_view(), name='business-review-detail'),
+    path('<uuid:business_id>/hours/', BusinessHoursView.as_view(), name='business-hours'),
+    path('<uuid:business_id>/upload-image/', BusinessImageUploadView.as_view(), name='business-image-upload'),
 ]

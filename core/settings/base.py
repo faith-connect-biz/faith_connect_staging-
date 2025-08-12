@@ -98,11 +98,11 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "ROTATE_REFRESH_TOKENS": True,
-    # Access token: short-lived
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),  # e.g., 15 minutes
+    # Access token: longer-lived for better user experience
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=2),  # 2 hours as requested
 
     # Refresh token: longer-lived
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),  # e.g., 7 days
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),  # 7 days
     # Optional settings
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
