@@ -7,10 +7,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         categories = [
-            "Salon", "Barbershop", "Automotive", "Gym", "Pharmacy",
-            "Electronics", "Restaurant", "Clothing", "Groceries",
-            "Bakery", "Books & Stationery", "Mobile Money", "Laundromat",
-            "Internet Cafe", "Hardware", "Spa"
+            "Restaurant", "Retail", "Services", "Health & Wellness", 
+            "Automotive", "Real Estate", "Education", "Technology",
+            "Beauty & Personal Care", "Home & Garden", "Legal Services",
+            "Financial Services", "Entertainment", "Professional Services",
+            "Construction", "Transportation", "Non-Profit"
         ]
 
         for name in categories:
