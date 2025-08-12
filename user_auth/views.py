@@ -42,12 +42,25 @@ class RegisterAPIView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             logger.info(f"[REGISTER SUCCESS] - User {user.id}")
+            
+            # Generate authentication tokens for the new user
+            token = RefreshToken.for_user(user)
+            
             return success_response("User registered successfully", {
-                "user_id": user.id,
-                "email": user.email,
-                "phone": user.phone,
-                "user_type": user.user_type,
-                "partnerNo": user.partnership_number,
+                "tokens": {
+                    "access": str(token.access_token),
+                    "refresh": str(token),
+                },
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "phone": user.phone,
+                    "user_type": user.user_type,
+                    "partnership_number": user.partnership_number,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "is_active": user.is_active,
+                }
             })
 
         logger.error(f"[REGISTER ERROR] - {serializer.errors}")
@@ -60,8 +73,24 @@ class LoginView(APIView):
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
-            logger.info(f"Login successful for partnership: {serializer.validated_data['partnership_number']}")
-            return success_response("Login successful", serializer.validated_data)
+            # The serializer returns tokens and user data directly
+            validated_data = serializer.validated_data
+            
+            logger.info(f"Login successful for partnership: {validated_data.get('partnership_number')}")
+            
+            return success_response("Login successful", {
+                "tokens": {
+                    "access": validated_data.get('access'),
+                    "refresh": validated_data.get('refresh'),
+                },
+                "user": {
+                    "partnership_number": validated_data.get('partnership_number'),
+                    "user_type": validated_data.get('user_type'),
+                    "email": validated_data.get('email'),
+                    "phone": validated_data.get('phone'),
+                    "is_active": validated_data.get('is_active'),
+                }
+            })
         return error_response("Login failed", serializer.errors)
 
 
