@@ -13,6 +13,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from utils.communication import send_email_verification_code
+from utils.zeptomail import send_password_reset_email, send_email_verification_code as send_zeptomail_verification
 from .UserSerializer.Serializers import RegisterSerializer, LoginSerializer, ForgotPasswordOTPSerializer, \
     ResetPasswordWithOTPSerializer
 from .utils import success_response, error_response
@@ -152,44 +153,83 @@ class ForgotPasswordOTPView(APIView):
 
         serializer = ForgotPasswordOTPSerializer(data=request.data)
         if serializer.is_valid():
-            phone = serializer.validated_data['phone_number']
+            identifier = serializer.validated_data['identifier']
+            
+            # Determine if it's email or phone
+            is_email = '@' in identifier
+            
             try:
-                user = User.objects.get(phone=phone)
-                otp = str(random.randint(100000, 999999))
-                user.otp = otp
-                user.save()
-
-                logger.info(f"[FORGOT PASSWORD SUCCESS] - Phone: {phone}, User: {user.id}")
-
-                success, response = send_password_reset_message(phone, otp)
-
-                if success:
-                    return success_response(message="OTP sent successfully.")
+                if is_email:
+                    user = User.objects.get(email=identifier)
+                    # Generate OTP for email
+                    otp = str(random.randint(100000, 999999))
+                    user.otp = otp
+                    user.save()
+                    
+                    # Generate password reset link
+                    reset_link = f"https://yourdomain.com/reset-password?token={otp}&email={identifier}"
+                    
+                    logger.info(f"[FORGOT PASSWORD SUCCESS] - Email: {identifier}, User: {user.id}")
+                    
+                    # Send email via ZeptoMail with reset link
+                    success, response = send_password_reset_email(
+                        email=identifier, 
+                        token=otp, 
+                        user_name=f"{user.first_name} {user.last_name}",
+                        reset_link=reset_link
+                    )
+                    
+                    if success:
+                        return success_response(message="Password reset link sent to your email successfully.")
+                    else:
+                        logger.error(f"[FORGOT PASSWORD EMAIL FAILED] - Email: {identifier}, Response: {response}")
+                        return error_response(message="Failed to send password reset email. Please try again later.")
+                        
                 else:
-                    logger.error(f"[FORGOT PASSWORD SMS FAILED] - Phone: {phone}, Response: {response}")
-                    return error_response(message="Failed to send OTP. Please try again later.")
+                    # Phone number
+                    user = User.objects.get(phone=identifier)
+                    otp = str(random.randint(100000, 999999))
+                    user.otp = otp
+                    user.save()
+
+                    logger.info(f"[FORGOT PASSWORD SUCCESS] - Phone: {identifier}, User: {user.id}")
+
+                    success, response = send_password_reset_message(identifier, otp)
+
+                    if success:
+                        return success_response(message="OTP sent successfully to your phone.")
+                    else:
+                        logger.error(f"[FORGOT PASSWORD SMS FAILED] - Phone: {identifier}, Response: {response}")
+                        return error_response(message="Failed to send OTP. Please try again later.")
 
             except User.DoesNotExist:
-                logger.warning(f"[FORGOT PASSWORD FAILED] - Phone: {phone} not found")
-                return error_response("User not found with this phone number.")
+                identifier_type = "email" if is_email else "phone number"
+                logger.warning(f"[FORGOT PASSWORD FAILED] - {identifier_type}: {identifier} not found")
+                return error_response(f"User not found with this {identifier_type}.")
 
         logger.warning(f"[FORGOT PASSWORD VALIDATION ERROR] - {serializer.errors}")
         return error_response(message="Validation failed.", errors=serializer.errors)
-
 
 
 class ResetPasswordWithOTPView(APIView):
     def post(self, request):
         serializer = ResetPasswordWithOTPSerializer(data=request.data)
         if serializer.is_valid():
-            phone = serializer.validated_data['phone_number']
+            identifier = serializer.validated_data['identifier']
             otp = serializer.validated_data['otp']
             new_password = serializer.validated_data['new_password']
+            
+            # Determine if it's email or phone
+            is_email = '@' in identifier
 
             try:
-                user = User.objects.get(phone=phone, otp=otp)
+                if is_email:
+                    user = User.objects.get(email=identifier, otp=otp)
+                else:
+                    user = User.objects.get(phone=identifier, otp=otp)
             except User.DoesNotExist:
-                return error_response("Invalid phone number or OTP.")
+                identifier_type = "email" if is_email else "phone number"
+                return error_response(f"Invalid {identifier_type} or OTP.")
 
             user.set_password(new_password)
             user.otp = None  # Clear OTP after use
@@ -213,8 +253,18 @@ class SendEmailVerificationView(APIView):
         user.email_token = token
         user.save()
 
-        send_email_verification_code(email, token)
-        return success_response("Verification token sent to email")
+        # Use ZeptoMail for email verification
+        success, response = send_zeptomail_verification(
+            email=email, 
+            token=token, 
+            user_name=f"{user.first_name} {user.last_name}"
+        )
+        
+        if success:
+            return success_response("Verification token sent to email")
+        else:
+            logger.error(f"[EMAIL VERIFICATION FAILED] - Email: {email}, Response: {response}")
+            return error_response("Failed to send verification email. Please try again later.")
 
 class SendPhoneOTPView(APIView):
     def post(self, request):
