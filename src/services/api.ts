@@ -213,12 +213,14 @@ class ApiService {
   // Authentication Methods
   async login(data: LoginRequest): Promise<{ user: User; tokens: AuthTokens }> {
     const response = await this.api.post('/auth/login', data);
-    return response.data;
+    // The backend wraps the response in a data field via success_response
+    return response.data.data || response.data;
   }
 
   async register(data: RegisterRequest): Promise<{ user: User; tokens: AuthTokens }> {
     const response = await this.api.post('/auth/register', data);
-    return response.data;
+    // The backend wraps the response in a data field via success_response
+    return response.data.data || response.data;
   }
 
   async logout(): Promise<void> {
