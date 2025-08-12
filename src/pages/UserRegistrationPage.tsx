@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneVerificationModal } from "@/components/auth/PhoneVerificationModal";
 import { 
   User, 
   Mail, 
@@ -29,6 +30,9 @@ const UserRegistrationPage = () => {
     userType: "community", // 'community' or 'business'
     partnershipNumber: ""
   });
+  
+  const [showPhoneVerification, setShowPhoneVerification] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -49,14 +53,27 @@ const UserRegistrationPage = () => {
       return;
     }
 
-    // Mock registration - in real app, this would call an API
+    // Check if phone number is provided and needs verification
+    if (formData.phone && !isPhoneVerified) {
+      setShowPhoneVerification(true);
+      return;
+    }
 
+    // Mock registration - in real app, this would call an API
     toast({
       title: "Registration successful!",
       description: "Welcome to Faith Connect. You can now access all features.",
     });
 
     navigate("/login");
+  };
+
+  const handlePhoneVerificationSuccess = () => {
+    setIsPhoneVerified(true);
+    toast({
+      title: "Phone Verified!",
+      description: "Your phone number has been verified successfully.",
+    });
   };
 
   return (
@@ -122,15 +139,38 @@ const UserRegistrationPage = () => {
 
                   <div>
                     <Label htmlFor="phone">Phone Number *</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => handleInputChange("phone", e.target.value)}
-                      placeholder="+254 700 123 456"
-                      required
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Enter your Kenyan phone number</p>
+                    <div className="relative">
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => handleInputChange("phone", e.target.value)}
+                        placeholder="+254 700 123 456"
+                        required
+                        className={isPhoneVerified ? "border-green-500 bg-green-50" : ""}
+                      />
+                      {isPhoneVerified && (
+                        <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {isPhoneVerified 
+                        ? "✓ Phone number verified" 
+                        : "Enter your Kenyan phone number - verification required"
+                      }
+                    </p>
+                    {formData.phone && !isPhoneVerified && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowPhoneVerification(true)}
+                        className="mt-2 text-fem-terracotta border-fem-terracotta hover:bg-fem-terracotta hover:text-white"
+                      >
+                        <Phone className="w-4 h-4 mr-2" />
+                        Verify Phone Number
+                      </Button>
+                    )}
                   </div>
 
                   <div>
@@ -234,6 +274,15 @@ const UserRegistrationPage = () => {
         </div>
       </main>
       <Footer />
+      
+      {/* Phone Verification Modal */}
+      <PhoneVerificationModal
+        isOpen={showPhoneVerification}
+        onClose={() => setShowPhoneVerification(false)}
+        phone={formData.phone}
+        onVerificationSuccess={handlePhoneVerificationSuccess}
+        purpose="registration"
+      />
     </div>
   );
 };

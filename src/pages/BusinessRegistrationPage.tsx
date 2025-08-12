@@ -81,12 +81,6 @@ const BusinessRegistrationPage = () => {
     features: [] as string[],
     tags: [] as string[],
     
-    // Additional Information
-    ownerName: "",
-    ownerEmail: "",
-    ownerPhone: "",
-    memberSince: "",
-    
     // Photo Request
     photoRequest: false,
     photoRequestNotes: ""
@@ -173,8 +167,7 @@ const BusinessRegistrationPage = () => {
   const steps = [
     { id: 1, title: "Basic Info", icon: Building2 },
     { id: 2, title: "Contact Details", icon: Phone },
-    { id: 3, title: "Services & Products", icon: Settings },
-    { id: 4, title: "Final Details", icon: CheckCircle }
+    { id: 3, title: "Services & Products", icon: Settings }
   ];
 
   const handleInputChange = (field: string, value: any) => {
@@ -206,7 +199,7 @@ const BusinessRegistrationPage = () => {
   };
 
   const nextStep = () => {
-    if (currentStep < 4) {
+    if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -745,26 +738,48 @@ const BusinessRegistrationPage = () => {
         </div>
       </motion.div>
 
-      {/* Business Tags */}
-      <motion.div variants={itemVariants} className="bg-gradient-to-br from-orange-50 to-amber-50 p-6 rounded-xl border border-orange-200 shadow-sm">
-        <h3 className="text-lg font-semibold text-orange-900 mb-4 flex items-center gap-2">
-          <Tag className="w-5 h-5" />
-          Business Tags
+
+
+      {/* Professional Photography Request */}
+      <motion.div variants={itemVariants} className="bg-gradient-to-br from-pink-50 to-rose-50 p-6 rounded-xl border border-pink-200 shadow-sm">
+        <h3 className="text-lg font-semibold text-pink-900 mb-4 flex items-center gap-2">
+          <Camera className="w-5 h-5" />
+          Professional Photography
         </h3>
-        <p className="text-sm text-orange-700 mb-4">
-          Help customers find your business by selecting relevant tags
+        <p className="text-sm text-pink-700 mb-4">
+          Request professional photos for your business to enhance your listing
         </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {availableTags.map((tag) => (
-            <div key={tag} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-orange-100 transition-colors">
-              <Checkbox
-                id={tag}
-                checked={formData.tags.includes(tag)}
-                onCheckedChange={() => handleArrayToggle("tags", tag)}
+        
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="photoRequest"
+              checked={formData.photoRequest}
+              onCheckedChange={(checked) => handleInputChange("photoRequest", checked)}
+            />
+            <Label htmlFor="photoRequest" className="text-sm cursor-pointer">
+              Request professional photos for my business
+            </Label>
+          </div>
+          
+          {formData.photoRequest && (
+            <div className="bg-white p-4 rounded-lg border border-pink-200">
+              <Label htmlFor="photoRequestNotes" className="text-sm font-medium text-pink-900 mb-2 block">
+                Photo Request Details
+              </Label>
+              <Textarea
+                id="photoRequestNotes"
+                value={formData.photoRequestNotes}
+                onChange={(e) => handleInputChange("photoRequestNotes", e.target.value)}
+                placeholder="Describe your business, preferred photo style, specific areas to capture, or any special requirements..."
+                rows={4}
+                className="border-pink-200 focus:border-pink-400 focus:ring-pink-400"
               />
-              <Label htmlFor={tag} className="text-sm cursor-pointer">{tag}</Label>
+              <p className="text-xs text-pink-600 mt-2">
+                Our professional photographers will contact you to schedule a session and discuss your specific needs.
+              </p>
             </div>
-          ))}
+          )}
         </div>
       </motion.div>
 
@@ -792,78 +807,8 @@ const BusinessRegistrationPage = () => {
     </motion.div>
   );
 
-  const renderStep4 = () => (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <motion.div variants={itemVariants}>
-          <Label htmlFor="ownerName">Owner Name *</Label>
-          <Input
-            id="ownerName"
-            value={formData.ownerName}
-            onChange={(e) => handleInputChange("ownerName", e.target.value)}
-            placeholder="Full name of business owner"
-            className="mt-1"
-            required
-          />
-        </motion.div>
 
-        <motion.div variants={itemVariants}>
-          <Label htmlFor="ownerEmail">Owner Email *</Label>
-          <Input
-            id="ownerEmail"
-            type="email"
-            value={formData.ownerEmail}
-            onChange={(e) => handleInputChange("ownerEmail", e.target.value)}
-            placeholder="owner@business.com"
-            className="mt-1"
-            required
-          />
-        </motion.div>
-      </div>
 
-      <motion.div variants={itemVariants}>
-        <Label htmlFor="ownerPhone">Owner Phone</Label>
-        <Input
-          id="ownerPhone"
-          value={formData.ownerPhone}
-          onChange={(e) => handleInputChange("ownerPhone", e.target.value)}
-          placeholder="+254 XXX XXX XXX"
-        />
-      </motion.div>
-
-      <motion.div variants={itemVariants}>
-        <Label htmlFor="memberSince">Member Since</Label>
-        <Input
-          id="memberSince"
-          type="date"
-          value={formData.memberSince}
-          onChange={(e) => handleInputChange("memberSince", e.target.value)}
-        />
-      </motion.div>
-
-      <motion.div variants={itemVariants} className="flex items-center space-x-2">
-        <Checkbox
-          id="photoRequest"
-          checked={formData.photoRequest}
-          onCheckedChange={(checked) => handleInputChange("photoRequest", checked)}
-        />
-        <Label htmlFor="photoRequest">Request professional photos</Label>
-      </motion.div>
-
-      {formData.photoRequest && (
-        <motion.div variants={itemVariants}>
-          <Label htmlFor="photoRequestNotes">Photo Request Notes</Label>
-          <Textarea
-            id="photoRequestNotes"
-            value={formData.photoRequestNotes}
-            onChange={(e) => handleInputChange("photoRequestNotes", e.target.value)}
-            placeholder="Any specific requirements or notes for the photo session"
-            rows={3}
-          />
-        </motion.div>
-      )}
-    </motion.div>
-  );
 
   const renderCurrentStep = () => {
     switch (currentStep) {
@@ -873,8 +818,6 @@ const BusinessRegistrationPage = () => {
         return renderStep2();
       case 3:
         return renderStep3();
-      case 4:
-        return renderStep4();
       default:
         return renderStep1();
     }
@@ -967,7 +910,7 @@ const BusinessRegistrationPage = () => {
                       const StepIcon = steps[currentStep - 1].icon;
                       return <StepIcon className="w-5 h-5" />;
                     })()}
-                    Step {currentStep} of 4: {steps[currentStep - 1].title}
+                    Step {currentStep} of 3: {steps[currentStep - 1].title}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
@@ -1006,7 +949,7 @@ const BusinessRegistrationPage = () => {
                     </div>
                   </Button>
 
-                  {currentStep === 4 ? (
+                  {currentStep === 3 ? (
                     <Button 
                       onClick={handleSubmit}
                       className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white"
