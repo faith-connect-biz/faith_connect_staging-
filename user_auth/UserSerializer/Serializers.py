@@ -18,20 +18,41 @@ class RegisterSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {
             'password': {'write_only': True, 'min_length': 6},
+            'first_name': {'required': True},
+            'last_name': {'required': True},
+            'partnership_number': {'required': True},
+            'user_type': {'required': True},
         }
+
+    def validate_partnership_number(self, value):
+        if not value:
+            raise serializers.ValidationError("Partnership number is required.")
+        if User.objects.filter(partnership_number=value).exists():
+            raise serializers.ValidationError("This partnership number is already registered.")
+        return value
+
+    def validate_email(self, value):
+        if value and User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("This email is already registered.")
+        return value
+
+    def validate_phone(self, value):
+        if value and User.objects.filter(phone=value).exists():
+            raise serializers.ValidationError("This phone number is already registered.")
+        return value
 
     def validate(self, data):
         email = data.get('email')
         phone = data.get('phone')
 
+        # Ensure at least one contact method is provided
         if not email and not phone:
-            raise serializers.ValidationError("Either phone or email must be provided.")
+            raise serializers.ValidationError("Either email or phone number must be provided.")
 
-        if email and User.objects.filter(email=email).exists():
-            raise serializers.ValidationError("Email already exists.")
-
-        if phone and User.objects.filter(phone=phone).exists():
-            raise serializers.ValidationError("Phone number already exists.")
+        # Ensure password meets minimum requirements
+        password = data.get('password')
+        if password and len(password) < 6:
+            raise serializers.ValidationError("Password must be at least 6 characters long.")
 
         return data
 
