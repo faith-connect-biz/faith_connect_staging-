@@ -29,6 +29,12 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', cast=bool)
 ALLOWED_HOSTS =['*']
 
+# ZeptoMail API Configuration
+ZEPTO_API_KEY = config('ZEPTO_API_KEY')
+ZEPTO_FROM_EMAIL = config('ZEPTO_FROM_EMAIL')
+ZEPTO_FROM_NAME = config('ZEPTO_FROM_NAME')
+ZEPTO_VERIFICATION_TEMPLATE_KEY = config('ZEPTO_VERIFICATION_TEMPLATE_KEY')
+
 
 # Application definition
 

@@ -199,7 +199,7 @@ class NdovubaseSMS:
         Returns:
             Tuple of (success: bool, response: dict)
         """
-        message = f"Your Faith Biz Connect verification code is: {otp}\n\nThis code expires in 10 minutes."
+        message = f"Your Faith Connect verification code is: {otp}\n\nThis code expires in 10 minutes."
         return self.send_sms(phone_number, message)
 
     def send_welcome_message(self, phone_number: str, user_name: str) -> Tuple[bool, Dict]:
@@ -213,7 +213,7 @@ class NdovubaseSMS:
         Returns:
             Tuple of (success: bool, response: dict)
         """
-        message = f"Welcome to Faith Biz Connect, {user_name}!\n\nYour account has been successfully created."
+        message = f"Welcome to Faith Connect, {user_name}!\n\nYour account has been successfully created."
         return self.send_sms(phone_number, message)
 
     def send_password_reset(self, phone_number: str, reset_code: str) -> Tuple[bool, Dict]:
@@ -227,7 +227,7 @@ class NdovubaseSMS:
         Returns:
             Tuple of (success: bool, response: dict)
         """
-        message = f"Your Faith Biz Connect password reset code is: {reset_code}\n\nThis code expires in 15 minutes."
+        message = f"Your Faith Connect password reset code is: {reset_code}\n\nThis code expires in 15 minutes."
         return self.send_sms(phone_number, message)
 
 

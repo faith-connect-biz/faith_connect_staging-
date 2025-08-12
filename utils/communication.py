@@ -1,19 +1,22 @@
 import os
 import logging
 from .ndovu_sms import send_otp_sms, send_welcome_sms, send_password_reset_sms
+from .zeptomail import send_email_verification_code as send_zeptomail_verification
 
 logger = logging.getLogger(__name__)
 
-SIMULATE_VERIFICATION = True
+SIMULATE_VERIFICATION = False  # Set to False to use real email service
 
 
-def send_email_verification_code(email: str, token: str):
+def send_email_verification_code(email: str, token: str, user_name: str = "User"):
+    """Send email verification code using ZeptoMail"""
     if SIMULATE_VERIFICATION:
         logger.info(f"[SIMULATED EMAIL] Sent token {token} to {email}")
         print(f"📧 Simulated: Token {token} sent to email {email}")
+        return True, {"simulated": True}
     else:
-        # Replace this with real email sending (e.g., SendGrid)
-        raise NotImplementedError("Real email sending not implemented")
+        # Use ZeptoMail for real email sending
+        return send_zeptomail_verification(email, token, user_name)
 
 
 def send_sms(phone_number: str, otp: str):
