@@ -199,19 +199,36 @@ export const BusinessCategories = () => {
             </div>
           </>
         ) : (
-          <div className="text-center py-12">
-            <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-fem-navy mb-2">No Categories Available</h3>
-            <p className="text-gray-600">
-              {isLoading ? 'Loading categories...' : 'Categories will appear here once businesses are added to the directory.'}
-            </p>
-            {!isLoading && (
-              <div className="mt-4 text-sm text-gray-500">
-                <p>Categories: {categories?.length || 0}</p>
-                <p>Businesses: {businesses?.length || 0}</p>
-              </div>
-            )}
-          </div>
+          // Show default categories when no data is available
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {[
+                { name: "Food & Dining", icon: "🍽️", description: "Restaurants, catering, and food services" },
+                { name: "Technology", icon: "💻", description: "IT services, web development, and tech support" },
+                { name: "Automotive", icon: "🚗", description: "Auto repair, maintenance, and car services" },
+                { name: "Health & Beauty", icon: "💄", description: "Salons, spas, and wellness services" },
+                { name: "Real Estate", icon: "🏠", description: "Property management and real estate services" },
+                { name: "Education", icon: "📚", description: "Schools, training, and educational services" },
+                { name: "Professional Services", icon: "💼", description: "Legal, accounting, and consulting" },
+                { name: "Home & Garden", icon: "🌱", description: "Home improvement and gardening services" }
+              ].map((category, index) => (
+                <div key={category.name} className="stagger-item tilt-3d magnetic neon-glow bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer">
+                  <div className="text-4xl mb-4">{category.icon}</div>
+                  <h3 className="text-xl font-semibold text-fem-navy mb-2">{category.name}</h3>
+                  <p className="text-gray-600 text-sm">{category.description}</p>
+                </div>
+              ))}
+            </div>
+            
+            <div className="text-center mt-8">
+              <p className="text-sm text-gray-500 mb-4">No businesses registered yet - be the first to join our community!</p>
+              <Link to="/register-business">
+                <button className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                  Register Your Business
+                </button>
+              </Link>
+            </div>
+          </>
         )}
       </div>
     </section>
