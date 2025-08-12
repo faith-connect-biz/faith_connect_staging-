@@ -32,7 +32,9 @@ import {
   ThumbsDown,
   X,
   ExternalLink,
-  TrendingUp
+  TrendingUp,
+  PenTool,
+  Plus
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
@@ -40,6 +42,9 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { MotionWrapper, HoverCard, GlassmorphismCard } from "@/components/ui/MotionWrapper";
 import { apiService } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
@@ -59,7 +64,23 @@ const BusinessDetailPage = () => {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [productFormData, setProductFormData] = useState({
+    name: '',
+    description: '',
+    price: 0,
+    price_currency: 'USD',
+    product_image_url: '',
+    images: [] as string[], // Multiple images support
+    in_stock: true
+  });
+  const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   
+  // Image viewer state
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedProductForImages, setSelectedProductForImages] = useState<any>(null);
+
   const headerRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
 
@@ -76,7 +97,21 @@ const BusinessDetailPage = () => {
         setBusiness(businessData);
         
         // Fetch additional data like services, products, reviews
-        // This would be implemented based on your API structure
+        try {
+          const [products, services] = await Promise.all([
+            apiService.getBusinessProducts(id),
+            apiService.getBusinessServices(id)
+          ]);
+          
+          setBusiness(prev => ({
+            ...prev,
+            products: products || [],
+            services: services || []
+          }));
+        } catch (error) {
+          console.error('Error fetching additional business data:', error);
+          // Continue with basic business data
+        }
         
       } catch (err) {
         console.error('Error fetching business:', err);
@@ -182,6 +217,154 @@ const BusinessDetailPage = () => {
     setUserReview("");
   };
 
+  // Product Management Functions
+  const handleAddProduct = () => {
+    setEditingProduct(null);
+    setProductFormData({
+      name: '',
+      description: '',
+      price: 0,
+      price_currency: 'USD',
+      product_image_url: '',
+      images: [],
+      in_stock: true
+    });
+    setShowProductForm(true);
+  };
+
+  const handleEditProduct = (product: any) => {
+    setEditingProduct(product);
+    setProductFormData({
+      name: product.name || '',
+      description: product.description || '',
+      price: product.price || 0,
+      price_currency: product.price_currency || 'USD',
+      product_image_url: product.product_image_url || '',
+      images: product.images || [],
+      in_stock: product.in_stock !== undefined ? product.in_stock : true
+    });
+    setShowProductForm(true);
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (!confirm('Are you sure you want to delete this product?')) return;
+    
+    try {
+      await apiService.deleteProduct(productId);
+      // Refresh business data
+      const businessData = await apiService.getBusiness(id!);
+      setBusiness(businessData);
+      toast({
+        title: "Product Deleted",
+        description: "Product has been deleted successfully.",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete product. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSubmitProduct = async () => {
+    if (!productFormData.name || productFormData.price <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSubmittingProduct(true);
+    try {
+      if (editingProduct) {
+        // Update existing product
+        await apiService.updateProduct(editingProduct.id, productFormData);
+        toast({
+          title: "Product Updated",
+          description: "Product has been updated successfully.",
+          variant: "default"
+        });
+      } else {
+        // Create new product
+        await apiService.createProduct(id!, productFormData);
+        toast({
+          title: "Product Added",
+          description: "Product has been added successfully.",
+          variant: "default"
+        });
+      }
+      
+      // Refresh business data
+      const businessData = await apiService.getBusiness(id!);
+      setBusiness(businessData);
+      
+      // Reset form
+      setShowProductForm(false);
+      setEditingProduct(null);
+      setProductFormData({
+        name: '',
+        description: '',
+        price: 0,
+        price_currency: 'USD',
+        product_image_url: '',
+        images: [],
+        in_stock: true
+      });
+    } catch (error) {
+      console.error('Error saving product:', error);
+      toast({
+        title: "Save Failed",
+        description: "Failed to save product. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmittingProduct(false);
+    }
+  };
+
+  const handleAddImage = () => {
+    if (productFormData.images.length >= 10) {
+      toast({
+        title: "Image Limit Reached",
+        description: "You can add a maximum of 10 images per product.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const imageUrl = prompt("Enter image URL:");
+    if (imageUrl && imageUrl.trim()) {
+      setProductFormData(prev => ({
+        ...prev,
+        images: [...prev.images, imageUrl.trim()]
+      }));
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setProductFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleImageUrlChange = (index: number, newUrl: string) => {
+    setProductFormData(prev => ({
+      ...prev,
+      images: prev.images.map((url, i) => i === index ? newUrl : url)
+    }));
+  };
+
+  const handleViewProductImages = (product: any) => {
+    setSelectedProductForImages(product);
+    setShowImageModal(true);
+  };
+
   const ProductPhotoModal = ({ product, onClose }: { product: any, onClose: () => void }) => (
     <AnimatePresence>
       <motion.div
@@ -263,7 +446,8 @@ const BusinessDetailPage = () => {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Business Not Found</h2>
             <p className="text-gray-600 mb-6">{error || "The business you're looking for doesn't exist."}</p>
-            <Button onClick={() => navigate('/directory')}>
+            <Button onClick={() => navigate('/directory')} className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white hover:from-fem-navy/90 hover:to-fem-terracotta/90">
+              <Settings className="w-4 h-4 mr-2" />
               Back to Directory
             </Button>
           </div>
@@ -287,6 +471,32 @@ const BusinessDetailPage = () => {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="mb-8"
           >
+            {/* Breadcrumb Navigation */}
+            <div className="mb-4">
+              <nav className="flex items-center gap-2 text-sm text-gray-600">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/directory')}
+                  className="text-gray-500 hover:text-fem-navy p-1 h-auto"
+                >
+                  <Settings className="w-4 h-4 mr-1" />
+                  Directory
+                </Button>
+                <span className="text-gray-400">/</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate(`/directory?category=${business.category?.name || 'all'}`)}
+                  className="text-gray-500 hover:text-fem-navy p-1 h-auto"
+                >
+                  {business.category?.name || 'Business'}
+                </Button>
+                <span className="text-gray-400">/</span>
+                <span className="text-fem-navy font-medium">{business.business_name}</span>
+              </nav>
+            </div>
+            
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden">
               <div className="relative h-64 md:h-80">
                 <img 
@@ -440,10 +650,127 @@ const BusinessDetailPage = () => {
                     </TabsContent>
                     
                     <TabsContent value="products" className="mt-6">
-                      <div className="text-center py-12">
-                        <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-fem-navy mb-2">Products Coming Soon</h3>
-                        <p className="text-gray-600">Product listings will be available here once businesses add their products.</p>
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xl font-semibold text-fem-navy">Products</h3>
+                          {user && user.user_type === 'business' && (
+                            <Button
+                              onClick={handleAddProduct}
+                              className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                            >
+                              <Package className="w-4 h-4 mr-2" />
+                              Add Product
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* Products List */}
+                        {business.products && business.products.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {business.products.map((product: any) => (
+                              <Card key={product.id} className="h-full hover:shadow-lg transition-shadow duration-200">
+                                <div className="relative">
+                                  {/* Main Product Image */}
+                                  <img 
+                                    src={product.product_image_url || product.images?.[0] || "/placeholder.svg"} 
+                                    alt={product.name}
+                                    className="w-full h-48 object-cover rounded-t-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                    onClick={() => handleViewProductImages(product)}
+                                  />
+                                  
+                                  {/* Multiple Images Indicator */}
+                                  {product.images && product.images.length > 0 && (
+                                    <div className="absolute top-2 left-2">
+                                      <Badge className="bg-black/70 text-white text-xs">
+                                        {product.images.length + (product.product_image_url ? 1 : 0)} images
+                                      </Badge>
+                                    </div>
+                                  )}
+                                  
+                                  <div className="absolute top-2 right-2">
+                                    <Badge className={`${product.in_stock ? 'bg-green-500' : 'bg-red-500'} text-white`}>
+                                      {product.in_stock ? 'In Stock' : 'Out of Stock'}
+                                    </Badge>
+                                  </div>
+                                  
+                                  {/* Image Gallery Preview */}
+                                  {product.images && product.images.length > 0 && (
+                                    <div className="absolute bottom-2 left-2 right-2">
+                                      <div className="flex space-x-1">
+                                        {product.images.slice(0, 4).map((imageUrl: string, index: number) => (
+                                          <img
+                                            key={index}
+                                            src={imageUrl}
+                                            alt={`${product.name} view ${index + 1}`}
+                                            className="w-8 h-8 object-cover rounded border border-white shadow-sm"
+                                          />
+                                        ))}
+                                        {product.images.length > 4 && (
+                                          <div className="w-8 h-8 bg-black/70 rounded border border-white shadow-sm flex items-center justify-center">
+                                            <span className="text-white text-xs font-bold">+{product.images.length - 4}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                <CardContent className="p-4">
+                                  <h4 className="font-semibold text-fem-navy mb-2">{product.name}</h4>
+                                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                                    {product.description || 'No description available'}
+                                  </p>
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="text-lg font-bold text-fem-terracotta">
+                                      ${product.price} {product.price_currency}
+                                    </div>
+                                    {user && user.user_type === 'business' && (
+                                      <div className="flex gap-2">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleEditProduct(product)}
+                                          className="text-xs"
+                                        >
+                                          <PenTool className="w-3 h-3 mr-1" />
+                                          Edit
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleDeleteProduct(product.id)}
+                                          className="text-xs text-red-600 border-red-600 hover:bg-red-50"
+                                        >
+                                          <X className="w-3 h-3 mr-1" />
+                                          Delete
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-12">
+                            <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold text-fem-navy mb-2">No Products Yet</h3>
+                            <p className="text-gray-600 mb-4">
+                              {user && user.user_type === 'business' 
+                                ? "Start adding products to showcase your offerings to customers."
+                                : "This business hasn't added any products yet."
+                              }
+                            </p>
+                            {user && user.user_type === 'business' && (
+                              <Button
+                                onClick={handleAddProduct}
+                                className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                              >
+                                <Package className="w-4 h-4 mr-2" />
+                                Add Your First Product
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </TabsContent>
                     
@@ -544,6 +871,246 @@ const BusinessDetailPage = () => {
           </div>
         </div>
       </main>
+
+      {/* Product Form Modal */}
+      <AnimatePresence>
+        {showProductForm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowProductForm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-fem-navy">
+                  {editingProduct ? 'Edit Product' : 'Add New Product'}
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowProductForm(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="productName" className="text-sm font-medium text-gray-700">Product Name *</Label>
+                  <Input
+                    id="productName"
+                    value={productFormData.name}
+                    onChange={(e) => setProductFormData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Enter product name"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="productDescription" className="text-sm font-medium text-gray-700">Description</Label>
+                  <Textarea
+                    id="productDescription"
+                    value={productFormData.description}
+                    onChange={(e) => setProductFormData(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Describe your product"
+                    rows={3}
+                    className="mt-1"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="productPrice" className="text-sm font-medium text-gray-700">Price *</Label>
+                    <Input
+                      id="productPrice"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={productFormData.price}
+                      onChange={(e) => setProductFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                      placeholder="0.00"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="productCurrency" className="text-sm font-medium text-gray-700">Currency</Label>
+                    <Select value={productFormData.price_currency} onValueChange={(value) => setProductFormData(prev => ({ ...prev, price_currency: value }))}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USD">USD ($)</SelectItem>
+                        <SelectItem value="EUR">EUR (€)</SelectItem>
+                        <SelectItem value="GBP">GBP (£)</SelectItem>
+                        <SelectItem value="KES">KES (KSh)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="productImage" className="text-sm font-medium text-gray-700">Image URL</Label>
+                  <Input
+                    id="productImage"
+                    value={productFormData.product_image_url}
+                    onChange={(e) => setProductFormData(prev => ({ ...prev, product_image_url: e.target.value }))}
+                    placeholder="https://example.com/image.jpg"
+                    className="mt-1"
+                  />
+                </div>
+
+                {/* Multiple Images Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-sm font-medium text-gray-700">
+                      Additional Images ({productFormData.images.length}/10)
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddImage}
+                      disabled={productFormData.images.length >= 10}
+                      className="text-xs"
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      Add Image
+                    </Button>
+                  </div>
+                  
+                  {productFormData.images.length > 0 && (
+                    <div className="space-y-2">
+                      {productFormData.images.map((imageUrl, index) => (
+                        <div key={index} className="flex items-center space-x-2">
+                          <Input
+                            value={imageUrl}
+                            onChange={(e) => handleImageUrlChange(index, e.target.value)}
+                            placeholder="https://example.com/image.jpg"
+                            className="flex-1 text-sm"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRemoveImage(index)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {productFormData.images.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Add up to 10 additional images to showcase your product from different angles
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="productInStock"
+                    checked={productFormData.in_stock}
+                    onCheckedChange={(checked) => setProductFormData(prev => ({ ...prev, in_stock: checked as boolean }))}
+                  />
+                  <Label htmlFor="productInStock" className="text-sm font-medium text-gray-700">In Stock</Label>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button
+                  onClick={handleSubmitProduct}
+                  disabled={isSubmittingProduct}
+                  className="flex-1 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                >
+                  {isSubmittingProduct ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Package className="w-4 h-4 mr-2" />
+                      {editingProduct ? 'Update Product' : 'Add Product'}
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowProductForm(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Image Viewer Modal */}
+      {showImageModal && selectedProductForImages && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-lg bg-white p-6">
+            <button
+              onClick={() => setShowImageModal(false)}
+              className="absolute right-4 top-4 z-10 rounded-full bg-white/20 p-2 text-white backdrop-blur-sm hover:bg-white/30"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            
+            <div className="mb-4 text-center">
+              <h3 className="text-xl font-semibold text-gray-900">
+                {selectedProductForImages.name} - Image Gallery
+              </h3>
+              <p className="text-sm text-gray-600">
+                {selectedProductForImages.images?.length || 0} images
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {selectedProductForImages.images?.map((imageUrl, index) => (
+                <div key={index} className="group relative overflow-hidden rounded-lg">
+                  <img
+                    src={imageUrl}
+                    alt={`${selectedProductForImages.name} image ${index + 1}`}
+                    className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/placeholder-product.jpg';
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
+                  <div className="absolute bottom-2 right-2 rounded-full bg-black/50 px-2 py-1 text-xs text-white">
+                    {index + 1}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 text-center">
+              <button
+                onClick={() => setShowImageModal(false)}
+                className="rounded-lg bg-fem-terracotta px-6 py-2 text-white hover:bg-fem-terracotta/90"
+              >
+                Close Gallery
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
   );

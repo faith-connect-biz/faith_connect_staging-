@@ -152,7 +152,14 @@ export const ProductList = ({ filters }: ProductListProps) => {
           <CardContent className="p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-fem-navy mb-2">{business.business_name}</h3>
+                <h3 
+                  className="text-lg font-semibold text-fem-navy mb-2 cursor-pointer hover:text-fem-terracotta transition-colors duration-200 flex items-center gap-2 group"
+                  onClick={() => navigate(`/business/${business.id}`)}
+                  title="Click to view business details"
+                >
+                  {business.business_name}
+                  <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-fem-terracotta transition-colors duration-200" />
+                </h3>
                 <p className="text-sm text-gray-600 mb-3">{business.description}</p>
                 
                 <div className="flex items-center gap-4 mb-3">
@@ -207,18 +214,31 @@ export const ProductList = ({ filters }: ProductListProps) => {
                   variant="ghost"
                   onClick={() => navigate(`/business/${business.id}`)}
                   className="text-gray-400 hover:text-fem-navy"
+                  title="View business details"
                 >
                   <Eye className="w-4 h-4" />
                 </Button>
               </div>
               
-              <Button
-                size="sm"
-                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
-                onClick={() => navigate(`/business/${business.id}`)}
-              >
-                View Products
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
+                  onClick={() => navigate(`/business/${business.id}`)}
+                >
+                  <Building2 className="w-4 h-4 mr-1" />
+                  View Business
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
+                  onClick={() => navigate(`/business/${business.id}`)}
+                >
+                  <ShoppingCart className="w-4 h-4 mr-1" />
+                  View Products
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

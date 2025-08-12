@@ -29,12 +29,12 @@ import {
   Heart,
   Globe,
   Users,
-  Building2,
   Eye,
   MessageSquare,
   Grid3X3,
   List,
-  Shield
+  Shield,
+  Building2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
@@ -49,7 +49,7 @@ const DirectoryPage = () => {
   const { businesses, categories, isLoading } = useBusiness();
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState("services");
+  const [activeTab, setActiveTab] = useState("businesses");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [filters, setFilters] = useState({
@@ -197,7 +197,8 @@ const DirectoryPage = () => {
 
   // Calculate statistics
   const stats = {
-    totalBusinesses: Array.isArray(businesses) ? businesses.length : 0,
+    totalServices: 0, // Will be populated when services are fetched
+    totalProducts: 0, // Will be populated when products are fetched
     verifiedBusinesses: Array.isArray(businesses) ? businesses.filter(b => b.is_verified).length : 0,
     averageRating: (() => {
       if (!Array.isArray(businesses) || businesses.length === 0) return "0.0";
@@ -253,11 +254,11 @@ const DirectoryPage = () => {
           >
             <div className="inline-flex items-center gap-3 bg-gradient-to-r from-fem-navy to-fem-terracotta text-white px-6 py-3 rounded-full shadow-lg mb-4">
               <Sparkles className="w-5 h-5" />
-              <h1 className="text-2xl font-bold">Business Directory</h1>
+              <h1 className="text-2xl font-bold">Services & Products Directory</h1>
               <Sparkles className="w-5 h-5" />
             </div>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Discover trusted businesses in our faith community. Connect with local entrepreneurs and find the services you need.
+              Discover trusted businesses, services, and quality products from our faith community. Connect with local entrepreneurs through their offerings.
             </p>
           </motion.div>
 
@@ -271,18 +272,18 @@ const DirectoryPage = () => {
           >
             <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-sm rounded-xl p-4 text-center shadow-lg">
               <div className="w-12 h-12 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center mx-auto mb-2">
-                <Building2 className="w-6 h-6 text-white" />
+                <Settings className="w-6 h-6 text-white" />
               </div>
-              <div className="text-2xl font-bold text-fem-navy">{stats.totalBusinesses}</div>
-              <div className="text-sm text-gray-600">Total Businesses</div>
+              <div className="text-2xl font-bold text-fem-navy">{stats.totalServices || 0}</div>
+              <div className="text-sm text-gray-600">Total Services</div>
             </motion.div>
             
             <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-sm rounded-xl p-4 text-center shadow-lg">
               <div className="w-12 h-12 bg-gradient-to-br from-fem-navy to-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-2">
-                <Shield className="w-6 h-6 text-white" />
+                <Package className="w-6 h-6 text-white" />
               </div>
-              <div className="text-2xl font-bold text-fem-navy">{stats.verifiedBusinesses}</div>
-              <div className="text-sm text-gray-600">Verified</div>
+              <div className="text-2xl font-bold text-fem-navy">{stats.totalProducts || 0}</div>
+              <div className="text-sm text-gray-600">Total Products</div>
             </motion.div>
             
             <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-sm rounded-xl p-4 text-center shadow-lg">
@@ -327,7 +328,7 @@ const DirectoryPage = () => {
                       <Label htmlFor="search" className="text-sm font-medium text-fem-navy">Search</Label>
                       <Input
                         id="search"
-                        placeholder="Search businesses..."
+                        placeholder="Search services and products..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         onKeyPress={handleKeyPress}
@@ -418,7 +419,7 @@ const DirectoryPage = () => {
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
                       <TrendingUp className="w-5 h-5" />
-                      {activeTab === "services" ? "Services" : "Products"}
+                      {activeTab === "services" ? "Services" : activeTab === "products" ? "Products" : "Businesses"}
                     </CardTitle>
                     <div className="flex items-center gap-2">
                       <Button
@@ -434,7 +435,7 @@ const DirectoryPage = () => {
                 </CardHeader>
                 <CardContent className="p-6">
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 bg-gray-100/50 backdrop-blur-sm">
+                    <TabsList className="grid w-full grid-cols-3 bg-gray-100/50 backdrop-blur-sm">
                       <TabsTrigger 
                         value="services" 
                         className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-fem-terracotta data-[state=active]:to-fem-gold data-[state=active]:text-white"
@@ -448,6 +449,13 @@ const DirectoryPage = () => {
                       >
                         <Package className="w-4 h-4" />
                         Products
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="businesses" 
+                        className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-fem-terracotta data-[state=active]:to-fem-gold data-[state=active]:text-white"
+                      >
+                        <Building2 className="w-4 h-4" />
+                        Businesses
                       </TabsTrigger>
                     </TabsList>
 
@@ -467,6 +475,14 @@ const DirectoryPage = () => {
                         </div>
                         
                       <ProductList filters={{ ...filters, searchTerm }} />
+                    </TabsContent>
+
+                    <TabsContent value="businesses" className="mt-4 sm:mt-6">
+                      <div className="mb-6">
+                        <h3 className="text-xl sm:text-2xl font-bold text-fem-navy mb-2">Faith Community Businesses</h3>
+                        <p className="text-gray-600">Explore local faith-based businesses and their offerings</p>
+                      </div>
+                      <BusinessList filters={{ ...filters, searchTerm }} />
                     </TabsContent>
                   </Tabs>
                 </CardContent>

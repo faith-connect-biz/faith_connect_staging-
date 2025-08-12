@@ -6,10 +6,10 @@ import { ArrowRight, User, Search, FileText, MessageCircle } from "lucide-react"
 export const HowItWorks = () => {
   const steps = [
     {
-      title: "Create Your Profile",
+      title: "Build Your Profile",
       description: "Build your community profile with your interests, needs, and church membership details for authentic connections.",
       icon: User,
-      link: "/register",
+      link: "/register-business",
       color: "from-blue-500/10 to-cyan-500/10",
       iconBg: "bg-blue-500/10 text-blue-600"
     },
@@ -120,7 +120,7 @@ export const HowItWorks = () => {
             <h3 className="text-2xl lg:text-3xl font-mont font-semibold text-white">
               Ready to Begin Your Journey?
             </h3>
-            <Link to="/register">
+            <Link to="/register-business">
               <Button className="btn-modern text-lg px-10 py-6 rounded-full hover:scale-110 transition-all duration-300">
                 <div className="flex items-center gap-3">
                   <span>Start Your Profile Today</span>

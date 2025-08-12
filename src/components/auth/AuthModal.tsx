@@ -95,18 +95,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       // Determine if identifier is email/phone or partnership number
       const isPartnershipNumber = !loginData.identifier.includes('@') && !loginData.identifier.includes('+');
       
+      let loginResponse;
+      
       if (isPartnershipNumber) {
         // Login with partnership number
-        await login({
+        loginResponse = await login({
           partnership_number: loginData.identifier,
           password: loginData.password
         });
       } else {
-        // Login with email/phone
-        await login({
+        // Login with email/phone - send the correct field names
+        loginResponse = await login({
           identifier: loginData.identifier,
-          password: loginData.password,
-          auth_method: authMethod
+          auth_method: authMethod,
+          password: loginData.password
         });
       }
 
@@ -115,31 +117,42 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         description: "Welcome back to Faith Connect!",
       });
 
-      // Handle post-login flow
+      // Handle post-login flow based on user type
       if (loginData.userType === 'business') {
-        navigate('/register-business');
+        // Check if user already has a business
+        try {
+          // For now, we'll redirect to business management
+          // In the future, you could add a method to check if user has existing businesses
+          navigate('/manage-business');
+        } catch (error) {
+          // If there's an error, redirect to business management
+          navigate('/manage-business');
+        }
       } else {
         navigate('/');
       }
       
       onClose();
     } catch (error: any) {
+      console.error('Login failed:', error);
+      
       // Handle specific validation errors from the backend
+      let errorMessage = "Please check your credentials and try again";
+      
       if (error.response?.data?.errors) {
         const errors = error.response.data.errors;
-        const errorMessages = Object.values(errors).join(', ');
-        toast({
-          title: "Login failed",
-          description: errorMessages,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Login failed",
-          description: "Please check your credentials and try again",
-          variant: "destructive"
-        });
+        errorMessage = Object.values(errors).join(', ');
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
       }
+
+      toast({
+        title: "Login failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -167,7 +180,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     setIsLoading(true);
     try {
-      await register({
+      const registerResponse = await register({
         first_name: signupData.firstName,
         last_name: signupData.lastName,
         partnership_number: signupData.partnershipNumber,
@@ -182,7 +195,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         description: "Welcome to Faith Connect!",
       });
 
-      // Handle post-registration flow
+      // Handle post-registration flow based on user type
       if (signupData.userType === 'business') {
         navigate('/register-business');
       } else {
@@ -191,22 +204,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       
       onClose();
     } catch (error: any) {
+      console.error('Registration failed:', error);
+      
       // Handle specific validation errors from the backend
+      let errorMessage = "Please try again or contact support";
+      
       if (error.response?.data?.errors) {
         const errors = error.response.data.errors;
-        const errorMessages = Object.values(errors).join(', ');
-        toast({
-          title: "Registration failed",
-          description: errorMessages,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Registration failed",
-          description: "Please try again or contact support",
-          variant: "destructive"
-        });
+        errorMessage = Object.values(errors).join(', ');
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
       }
+
+      toast({
+        title: "Registration failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }

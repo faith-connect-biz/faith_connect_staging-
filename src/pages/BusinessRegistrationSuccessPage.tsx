@@ -97,7 +97,7 @@ const BusinessRegistrationSuccessPage = () => {
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/profile">
+              <Link to="/manage-business">
                 <Button className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white">
                   <Building2 className="w-4 h-4 mr-2" />
                   Manage My Business

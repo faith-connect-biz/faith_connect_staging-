@@ -11,18 +11,17 @@ import Index from "./pages/Index";
 import DirectoryPage from "./pages/DirectoryPage";
 import AboutPage from "./pages/AboutPage";
 import NotFound from "./pages/NotFound";
-import SignInPage from "./pages/SignInPage";
 
 import ProfilePage from "./pages/ProfilePage";
 
 import BusinessDetailPage from "./pages/BusinessDetailPage";
 import BusinessRegistrationPage from "./pages/BusinessRegistrationPage";
 import BusinessRegistrationSuccessPage from "./pages/BusinessRegistrationSuccessPage";
-import UserRegistrationPage from "./pages/UserRegistrationPage";
 import WelcomePage from "./pages/WelcomePage";
 import BusinessOnboardingPage from "./pages/BusinessOnboardingPage";
 import { BusinessManagementPage } from "./pages/BusinessManagementPage";
 import { OTPVerificationPage } from "@/components/otp/OTPVerificationPage";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,16 +44,22 @@ const App = () => (
                 <Route path="/directory" element={<DirectoryPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/about" element={<AboutPage />} />
-                <Route path="/login" element={<SignInPage />} />
-                <Route path="/register" element={<UserRegistrationPage />} />
                 <Route path="/welcome" element={<WelcomePage />} />
                 <Route path="/business-onboarding" element={<BusinessOnboardingPage />} />
         
 
                 <Route path="/business/:id" element={<BusinessDetailPage />} />
-                <Route path="/register-business" element={<BusinessRegistrationPage />} />
+                <Route path="/register-business" element={
+                  <ProtectedRoute requireBusinessUser={true}>
+                    <BusinessRegistrationPage />
+                  </ProtectedRoute>
+                } />
                 <Route path="/business-registration-success" element={<BusinessRegistrationSuccessPage />} />
-                <Route path="/manage-business" element={<BusinessManagementPage />} />
+                <Route path="/manage-business" element={
+                  <ProtectedRoute requireBusinessUser={true}>
+                    <BusinessManagementPage />
+                  </ProtectedRoute>
+                } />
                 <Route path="/verify-otp" element={<OTPVerificationPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
