@@ -472,32 +472,46 @@ const BusinessRegistrationPage = () => {
         <Label className="text-lg font-semibold">Business Hours</Label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.entries(formData.hours).map(([day, hours]) => (
-            <div key={day} className="border rounded-lg p-4 bg-white/50 backdrop-blur-sm">
+            <div key={day} className={`border rounded-lg p-4 backdrop-blur-sm transition-all duration-200 ${
+              hours.closed 
+                ? 'bg-gray-100/80 border-gray-300' 
+                : 'bg-white/80 border-blue-300'
+            }`}>
               <div className="flex items-center justify-between mb-3">
-                <Label className="capitalize font-medium">{day}</Label>
-                <Checkbox
-                  checked={hours.closed}
-                  onCheckedChange={(checked) => handleHoursChange(day, "closed", checked as boolean)}
-                />
+                <div className="flex items-center gap-2">
+                  <Label className="capitalize font-medium">{day}</Label>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Checkbox
+                      id={`${day}-closed`}
+                      checked={hours.closed}
+                      onCheckedChange={(checked) => handleHoursChange(day, "closed", checked as boolean)}
+                    />
+                    <Label htmlFor={`${day}-closed`} className="text-xs cursor-pointer">
+                      {hours.closed ? "Closed" : "Open"}
+                    </Label>
+                  </div>
+                </div>
               </div>
               {!hours.closed && (
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="text-sm">Open</Label>
+                    <Label className="text-sm text-gray-700">Open</Label>
                     <Input
                       type="time"
                       value={hours.open}
                       onChange={(e) => handleHoursChange(day, "open", e.target.value)}
-                      className="text-sm"
+                      className="text-sm bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                      placeholder="--:--"
                     />
                   </div>
                   <div>
-                    <Label className="text-sm">Close</Label>
+                    <Label className="text-sm text-gray-700">Close</Label>
                     <Input
                       type="time"
                       value={hours.close}
                       onChange={(e) => handleHoursChange(day, "close", e.target.value)}
-                      className="text-sm"
+                      className="text-sm bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                      placeholder="--:--"
                     />
                   </div>
                 </div>
@@ -979,13 +993,17 @@ const BusinessRegistrationPage = () => {
                     onClick={() => {
                       toast({
                         title: "Delegate Account",
-                        description: "Account delegation feature coming soon!",
+                        description: "Allow team members or employees to manage your business listing. Coming soon!",
                       });
                     }}
-                    className="border-fem-gold text-fem-gold hover:bg-fem-gold hover:text-white"
+                    className="border-fem-gold text-fem-gold hover:bg-fem-gold hover:text-white group relative"
+                    title="Delegate Account - Allow team members to manage your business listing"
                   >
                     <Users className="w-4 h-4 mr-2" />
                     Delegate Account
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                      Allow team members to manage your business
+                    </div>
                   </Button>
 
                   {currentStep === 4 ? (
