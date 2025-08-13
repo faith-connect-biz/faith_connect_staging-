@@ -12,12 +12,10 @@ from rest_framework_simplejwt.serializers import (
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from utils.communication import send_email_verification_code
-from utils.zeptomail import send_password_reset_email, send_email_verification_code as send_zeptomail_verification
+from utils.zeptomail import send_email_verification_code
 from .UserSerializer.Serializers import RegisterSerializer, LoginSerializer, ForgotPasswordOTPSerializer, \
     ResetPasswordWithOTPSerializer
 from .utils import success_response, error_response
-from utils.communication import send_email_verification_code, send_sms, send_welcome_message, send_password_reset_message
 
 
 logger = logging.getLogger('user_auth')
@@ -43,6 +41,52 @@ class RegisterAPIView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             logger.info(f"[REGISTER SUCCESS] - User {user.id}")
+            
+            # Automatically send email verification if email is provided
+            if user.email:
+                try:
+                    # Generate OTP for email verification
+                    otp = str(random.randint(100000, 999999))
+                    user.email_token = otp  # Use email_token for email verification
+                    user.save()
+                    
+                    # Send email verification using ZeptoMail
+                    success, response = send_email_verification_code(
+                        email=user.email, 
+                        token=otp, 
+                        user_name=f"{user.first_name} {user.last_name}"
+                    )
+                    
+                    if success:
+                        logger.info(f"[EMAIL VERIFICATION SENT] - User {user.id}, Email: {user.email}")
+                    else:
+                        logger.error(f"[EMAIL VERIFICATION FAILED] - User {user.id}, Email: {user.email}, Response: {response}")
+                        # Log the specific error for debugging
+                        if 'error' in response:
+                            logger.error(f"[EMAIL VERIFICATION ERROR DETAIL] - {response['error']}")
+                except Exception as e:
+                    logger.error(f"[EMAIL VERIFICATION ERROR] - User {user.id}, Email: {user.email}, Error: {str(e)}")
+                    # Continue with registration even if email fails
+            
+            # Automatically send phone OTP if phone is provided and no email
+            elif user.phone:
+                try:
+                    # Generate OTP for phone verification
+                    otp = str(random.randint(100000, 999999))
+                    user.otp = otp  # Use otp field for phone verification
+                    user.save()
+                    
+                    # Send phone OTP using SMS service
+                    from utils.communication import send_otp_sms
+                    success, response = send_otp_sms(user.phone, otp)
+                    
+                    if success:
+                        logger.info(f"[PHONE OTP SENT] - User {user.id}, Phone: {user.phone}")
+                    else:
+                        logger.error(f"[PHONE OTP FAILED] - User {user.id}, Phone: {user.phone}, Response: {response}")
+                except Exception as e:
+                    logger.error(f"[PHONE OTP ERROR] - User {user.id}, Phone: {user.phone}, Error: {str(e)}")
+                    # Continue with registration even if phone OTP fails
             
             # Generate authentication tokens for the new user
             token = RefreshToken.for_user(user)
@@ -172,7 +216,7 @@ class ForgotPasswordOTPView(APIView):
                     logger.info(f"[FORGOT PASSWORD SUCCESS] - Email: {identifier}, User: {user.id}")
                     
                     # Send email via ZeptoMail with reset link
-                    success, response = send_password_reset_email(
+                    success, response = send_email_verification_code(
                         email=identifier, 
                         token=otp, 
                         user_name=f"{user.first_name} {user.last_name}",
@@ -194,7 +238,7 @@ class ForgotPasswordOTPView(APIView):
 
                     logger.info(f"[FORGOT PASSWORD SUCCESS] - Phone: {identifier}, User: {user.id}")
 
-                    success, response = send_password_reset_message(identifier, otp)
+                    success, response = send_email_verification_code(identifier, otp)
 
                     if success:
                         return success_response(message="OTP sent successfully to your phone.")
@@ -254,7 +298,7 @@ class SendEmailVerificationView(APIView):
         user.save()
 
         # Use ZeptoMail for email verification
-        success, response = send_zeptomail_verification(
+        success, response = send_email_verification_code(
             email=email, 
             token=token, 
             user_name=f"{user.first_name} {user.last_name}"
@@ -280,7 +324,7 @@ class SendPhoneOTPView(APIView):
         otp = str(random.randint(100000, 999999))
         user.otp = otp
         user.save()
-        success, response = send_sms(phone, otp)
+        success, response = send_email_verification_code(phone, otp)
         if success:
             return success_response(message="OTP sent successfully.")
         else:

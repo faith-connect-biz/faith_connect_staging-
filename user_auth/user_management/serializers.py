@@ -8,14 +8,14 @@ ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png']
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'email', 'phone', 'email_verified', 'phone_verified','partnership_number']
+        fields = ['id', 'first_name', 'last_name', 'email', 'phone', 'email_verified', 'phone_verified', 'partnership_number', 'bio', 'address', 'county', 'city', 'user_type', 'is_verified', 'profile_image_url']
 
 
 
 class UpdateUserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['first_name', 'last_name']  # Only allow updating these fields
+        fields = ['first_name', 'last_name', 'bio', 'address', 'county', 'city']  # Allow updating these fields
 
 
 class ProfileImageURLSerializer(serializers.ModelSerializer):

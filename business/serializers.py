@@ -55,10 +55,32 @@ class BusinessSerializer(serializers.ModelSerializer):
     products = ProductSerializer(many=True, read_only=True)
     reviews = ReviewSerializer(many=True, read_only=True)
     category = CategorySerializer(read_only=True)
+    category_id = serializers.IntegerField(write_only=True, required=True)
+    user = serializers.SerializerMethodField()
 
     class Meta:
         model = Business
-        exclude = ['user']
+        fields = [
+            'id', 'user', 'business_name', 'category', 'category_id', 'description', 'long_description',
+            'phone', 'email', 'website', 'address', 'city', 'county', 'state', 'zip_code',
+            'latitude', 'longitude', 'rating', 'review_count', 'is_verified', 'is_featured',
+            'is_active', 'business_image_url', 'business_logo_url', 'facebook_url',
+            'instagram_url', 'twitter_url', 'youtube_url', 'created_at', 'updated_at',
+            'hours', 'services', 'products', 'reviews'
+        ]
+
+    def get_user(self, obj):
+        """Return user information for the business"""
+        if obj.user:
+            return {
+                'id': obj.user.id,
+                'first_name': obj.user.first_name,
+                'last_name': obj.user.last_name,
+                'email': obj.user.email,
+                'phone': obj.user.phone,
+                'partnership_number': getattr(obj.user, 'partnership_number', None)
+            }
+        return None
 
     def create(self, validated_data):
         try:
@@ -71,6 +93,19 @@ class BusinessSerializer(serializers.ModelSerializer):
             # Remove 'user' from validated_data if present
             validated_data.pop('user', None)
 
+            # Extract category_id and look up the Category object
+            category_id = validated_data.pop('category_id', None)
+            if category_id is None:
+                raise serializers.ValidationError("Business category is required")
+            
+            try:
+                category = Category.objects.get(id=category_id)
+            except Category.DoesNotExist:
+                available_categories = Category.objects.values_list('name', flat=True)
+                raise serializers.ValidationError(
+                    f"Category with ID {category_id} not found. Available categories: {', '.join(available_categories)}"
+                )
+
             hours_data = validated_data.pop('hours', [])
             services_data = validated_data.pop('services', [])
             products_data = validated_data.pop('products', [])
@@ -82,14 +117,11 @@ class BusinessSerializer(serializers.ModelSerializer):
             if not validated_data.get('business_name'):
                 raise serializers.ValidationError("Business name is required")
             
-            if not validated_data.get('category'):
-                raise serializers.ValidationError("Business category is required")
-            
             if not validated_data.get('address'):
                 raise serializers.ValidationError("Business address is required")
 
-            # Create the business
-            business = Business.objects.create(user=user, **validated_data)
+            # Create the business with the category
+            business = Business.objects.create(user=user, category=category, **validated_data)
 
             try:
                 # Create business hours
@@ -119,13 +151,26 @@ class BusinessSerializer(serializers.ModelSerializer):
                 print(f"Error creating business hours: {str(e)}")
 
             try:
-                # Create services from string names
-                for service_name in services_data:
-                    if isinstance(service_name, str) and service_name.strip():
+                # Create services from service objects
+                for service_data in services_data:
+                    if isinstance(service_data, dict):
+                        name = service_data.get('name', '').strip()
+                        if name:
+                            Service.objects.create(
+                                business=business,
+                                name=name,
+                                description=service_data.get('description', f"Service: {name}"),
+                                price_range=service_data.get('price_range', ''),
+                                duration=service_data.get('duration', ''),
+                                service_image_url=service_data.get('photo', ''),
+                                is_active=service_data.get('is_available', True)
+                            )
+                    elif isinstance(service_data, str) and service_data.strip():
+                        # Handle legacy string format
                         Service.objects.create(
                             business=business,
-                            name=service_name.strip(),
-                            description=f"Service: {service_name.strip()}",
+                            name=service_data.strip(),
+                            description=f"Service: {service_data.strip()}",
                             is_active=True
                         )
 
@@ -153,7 +198,7 @@ class BusinessSerializer(serializers.ModelSerializer):
                         price=str(price),
                         price_currency='KES',
                         product_image_url=product.get('photo', ''),
-                        is_active=True,
+                        is_active=product.get('is_available', True),
                         in_stock=True
                     )
 
@@ -188,6 +233,35 @@ class BusinessSerializer(serializers.ModelSerializer):
             # Log the error and raise a generic error
             print(f"Error creating business: {str(e)}")
             raise serializers.ValidationError(f"Failed to create business: {str(e)}")
+
+    def update(self, instance, validated_data):
+        try:
+            # Extract category_id and look up the Category object if provided
+            category_id = validated_data.pop('category_id', None)
+            if category_id is not None:
+                try:
+                    category = Category.objects.get(id=category_id)
+                    instance.category = category
+                except Category.DoesNotExist:
+                    available_categories = Category.objects.values_list('name', flat=True)
+                    raise serializers.ValidationError(
+                        f"Category with ID {category_id} not found. Available categories: {', '.join(available_categories)}"
+                    )
+
+            # Update other fields
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+
+            instance.save()
+            return instance
+
+        except serializers.ValidationError:
+            # Re-raise validation errors
+            raise
+        except Exception as e:
+            # Log the error and raise a generic error
+            print(f"Error updating business: {str(e)}")
+            raise serializers.ValidationError(f"Failed to update business: {str(e)}")
 
 
 class FavoriteSerializer(serializers.ModelSerializer):

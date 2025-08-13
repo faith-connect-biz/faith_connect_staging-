@@ -17,15 +17,16 @@ class RegisterSerializer(serializers.ModelSerializer):
             'password': {'write_only': True, 'min_length': 6},
             'first_name': {'required': True},
             'last_name': {'required': True},
-            'partnership_number': {'required': True},
+            'partnership_number': {'required': True},  # Required for everyone
             'user_type': {'required': True},
         }
 
     def validate_partnership_number(self, value):
+        # Partnership number is required for everyone
         if not value:
             raise serializers.ValidationError("Partnership number is required.")
-        if User.objects.filter(partnership_number=value).exists():
-            raise serializers.ValidationError("This partnership number is already registered.")
+        
+        # Don't check for duplicates - just store whatever is provided
         return value
 
     def validate_email(self, value):

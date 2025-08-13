@@ -25,15 +25,45 @@ AUTH_USER_MODEL = 'user_auth.User'
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
-SECRET_KEY = config('SECRET_KEY')
-DEBUG = config('DEBUG', cast=bool)
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-development-key-change-in-production')
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = config('DEBUG', cast=bool, default=True)
 ALLOWED_HOSTS =['*']
 
 # ZeptoMail API Configuration
-ZEPTO_API_KEY = config('ZEPTO_API_KEY')
-ZEPTO_FROM_EMAIL = config('ZEPTO_FROM_EMAIL')
-ZEPTO_FROM_NAME = config('ZEPTO_FROM_NAME')
-ZEPTO_VERIFICATION_TEMPLATE_KEY = config('ZEPTO_VERIFICATION_TEMPLATE_KEY')
+ZEPTO_API_KEY = config('ZEPTO_API_KEY', default='')
+ZEPTO_FROM_EMAIL = config('ZEPTO_FROM_EMAIL', default='noreply@faithconnect.biz')
+ZEPTO_FROM_NAME = config('ZEPTO_FROM_NAME', default='FaithConnect')
+ZEPTO_VERIFICATION_TEMPLATE_KEY = config('ZEPTO_VERIFICATION_TEMPLATE_KEY', default='')
+ZEPTO_PASSWORD_RESET_TEMPLATE_KEY = config('ZEPTO_PASSWORD_RESET_TEMPLATE_KEY', default='')
+ZEPTO_WELCOME_TEMPLATE_KEY = config('ZEPTO_WELCOME_TEMPLATE_KEY', default='')
+
+# SMS Configuration (Ndovubase)
+SMS_API_KEY = config('SMS_API_KEY', default='')
+SMS_API_SECRET = config('SMS_SECRET', default='')
+SMS_FROM_NUMBER = config('SMS_FROM_NUMBER', default='CHOSENGCM')
+
+# AWS S3 Configuration
+AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
+AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
+AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', default='')
+AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-1')
+AWS_S3_CUSTOM_DOMAIN = config('AWS_S3_CUSTOM_DOMAIN', default='')
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',
+}
+AWS_DEFAULT_ACL = 'public-read'
+AWS_QUERYSTRING_AUTH = False
+
+# File Storage Configuration
+USE_S3 = config('USE_S3', cast=bool, default=False)
+if USE_S3:
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+else:
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
 
 # Application definition
@@ -46,12 +76,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'drf_yasg',
+    'rest_framework_simplejwt',
     'corsheaders',
+    'django_filters',
+    'drf_spectacular',
+    'storages',
     'user_auth',
     'business',
-    'rest_framework_simplejwt.token_blacklist',
-    'django_filters',
 ]
 
 MIDDLEWARE = [
@@ -85,17 +116,27 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
+# DRF Spectacular settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'FEM Family Business Directory API',
+    'DESCRIPTION': 'API for managing family businesses and services',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}
+
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
+    'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
-    'DEFAULT_FILTER_BACKENDS': (
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
-    ),
+    ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 
@@ -178,11 +219,12 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',
-]
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Media files (User uploaded content)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

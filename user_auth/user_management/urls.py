@@ -1,14 +1,14 @@
 from django.urls import path
-
-from business.views import UserFavoritesListView
-from user_auth.user_management.views import UserProfileView, UserProfileUpdateView, UploadAvatarView
+from .views import (
+    UserProfileView, UserProfileUpdateView,
+    get_profile_photo_upload_url, update_profile_photo
+)
 
 urlpatterns = [
     path('profile', UserProfileView.as_view(), name='user-profile'),
     path('profile-update', UserProfileUpdateView.as_view(), name='user-profile-update'),
-
-    path('upload-avatar', UploadAvatarView.as_view(),name='upload-avatar'),
-
-    path('favorites', UserFavoritesListView.as_view(), name='user-favorites'),
-
+    
+    # Profile Photo Upload URLs
+    path('profile-photo-upload-url', get_profile_photo_upload_url, name='profile-photo-upload-url'),
+    path('profile-photo-update', update_profile_photo, name='profile-photo-update'),
 ]

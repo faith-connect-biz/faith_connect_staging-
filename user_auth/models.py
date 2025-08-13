@@ -30,7 +30,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
-    partnership_number = models.CharField(max_length=50, unique=True)
+    partnership_number = models.CharField(max_length=50, unique=True)  # Must be unique as USERNAME_FIELD
     email = models.EmailField(unique=True, null=True, blank=True)
     phone = models.CharField(unique=True, max_length=20, null=True, blank=True)
     user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, default='community')

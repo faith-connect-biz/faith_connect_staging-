@@ -14,6 +14,22 @@ from django.db import transaction
 from django.utils import timezone
 from datetime import datetime, time
 import json
+from utils.s3_service import S3Service
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from .models import Business, Service, Product, Category
+from .serializers import BusinessSerializer, ServiceSerializer, ProductSerializer, CategorySerializer
+import boto3
+from botocore.exceptions import ClientError
+import os
+from django.conf import settings
+import uuid
+from datetime import datetime, timedelta
+from django.http import Http404
+from django.db import models
 
 
 # Create your views here.
@@ -22,7 +38,7 @@ import json
 class BusinessDetailAPIView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]  # Allow public access to view business details
     serializer_class = BusinessSerializer
-    queryset = Business.objects.filter(is_active=True).select_related('category')
+    queryset = Business.objects.filter(is_active=True).select_related('category', 'user')
     lookup_field = 'id'
 
 
@@ -31,7 +47,7 @@ class BusinessDetailAPIView(generics.RetrieveAPIView):
 class BusinessListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = BusinessSerializer
     permission_classes = [AllowAny]  # Allow public access to list businesses, but require auth for creation
-    queryset = Business.objects.filter(is_active=True).select_related('category').order_by('-created_at')
+    queryset = Business.objects.filter(is_active=True).select_related('category', 'user').order_by('-created_at')
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['category', 'city', 'county', 'is_featured']
@@ -305,11 +321,11 @@ class BusinessHoursView(APIView):
 
 
 class BusinessImageUploadView(APIView):
-    """Handle business image and logo uploads"""
+    """Handle business image and logo uploads using S3 pre-signed URLs"""
     permission_classes = [IsAuthenticated]
     
     def post(self, request, business_id):
-        """Upload business image or logo"""
+        """Get a pre-signed URL for uploading business image or logo"""
         try:
             business = get_object_or_404(Business, id=business_id)
             
@@ -321,18 +337,87 @@ class BusinessImageUploadView(APIView):
                 }, status=status.HTTP_403_FORBIDDEN)
             
             image_type = request.data.get('image_type')  # 'image' or 'logo'
-            image_url = request.data.get('image_url')
+            file_name = request.data.get('file_name', '')
+            content_type = request.data.get('content_type', 'image/jpeg')
             
-            if not image_url:
+            if not image_type:
                 return Response({
                     'success': False,
-                    'message': 'Image URL is required'
+                    'message': 'Image type is required (use "image" or "logo")'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
+            # Generate file key for S3
             if image_type == 'logo':
-                business.business_logo_url = image_url
+                folder = 'business_logos'
+            else:
+                folder = 'business_images'
+            
+            # Generate unique filename
+            import uuid
+            file_extension = content_type.split('/')[-1] if '/' in content_type else 'jpg'
+            file_key = f"{folder}/{business_id}/{uuid.uuid4()}.{file_extension}"
+            
+            # Generate pre-signed URL
+            s3_service = S3Service()
+            result = s3_service.generate_presigned_upload_url(
+                file_key=file_key,
+                content_type=content_type,
+                expiration_minutes=5
+            )
+            
+            if not result['success']:
+                return Response({
+                    'success': False,
+                    'message': f'Failed to generate upload URL: {result["error"]}'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            return Response({
+                'success': True,
+                'message': f'Upload URL generated for {image_type}',
+                'data': {
+                    'presigned_url': result['presigned_url'],
+                    'file_key': result['file_key'],
+                    'expires_in_minutes': result['expires_in_minutes'],
+                    'image_type': image_type
+                }
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, business_id):
+        """Update business with the uploaded image URL"""
+        try:
+            business = get_object_or_404(Business, id=business_id)
+            
+            # Check if user owns this business
+            if business.user != request.user:
+                return Response({
+                    'success': False,
+                    'message': 'You can only update images for your own business'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            image_type = request.data.get('image_type')
+            file_key = request.data.get('file_key')
+            
+            if not image_type or not file_key:
+                return Response({
+                    'success': False,
+                    'message': 'Image type and file key are required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Get the S3 URL for the uploaded file
+            s3_service = S3Service()
+            s3_url = s3_service.get_file_url(file_key)
+            
+            # Update the business model
+            if image_type == 'logo':
+                business.business_logo_url = s3_url
             elif image_type == 'image':
-                business.business_image_url = image_url
+                business.business_image_url = s3_url
             else:
                 return Response({
                     'success': False,
@@ -346,7 +431,8 @@ class BusinessImageUploadView(APIView):
                 'message': f'Business {image_type} updated successfully',
                 'data': {
                     'business_image_url': business.business_image_url,
-                    'business_logo_url': business.business_logo_url
+                    'business_logo_url': business.business_logo_url,
+                    's3_url': s3_url
                 }
             })
             
@@ -355,4 +441,304 @@ class BusinessImageUploadView(APIView):
                 'success': False,
                 'message': str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
+
+
+# Service Image Upload Endpoints
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def get_service_image_upload_url(request, service_id):
+    """Get pre-signed URL for service image upload"""
+    try:
+        service = get_object_or_404(Service, id=service_id)
+        
+        # Check if user owns the business
+        if service.business.user != request.user:
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get file info from request
+        file_name = request.data.get('file_name')
+        content_type = request.data.get('content_type')
+        image_type = request.data.get('image_type', 'main')  # 'main' or 'additional'
+        
+        if not file_name or not content_type:
+            return Response({'error': 'file_name and content_type are required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Generate unique file key
+        file_extension = file_name.split('.')[-1]
+        file_key = f"services/{service.business.id}/{service.id}/{image_type}_{uuid.uuid4()}.{file_extension}"
+        
+        # Generate pre-signed URL
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        
+        presigned_url = s3_client.generate_presigned_url(
+            'put_object',
+            Params={
+                'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                'Key': file_key,
+                'ContentType': content_type
+            },
+            ExpiresIn=3600  # 1 hour
+        )
+        
+        return Response({
+            'presigned_url': presigned_url,
+            'file_key': file_key,
+            'expires_in_minutes': 60,
+            'image_type': image_type
+        })
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_service_image(request, service_id):
+    """Update service with uploaded image"""
+    try:
+        service = get_object_or_404(Service, id=service_id)
+        
+        # Check if user owns the business
+        if service.business.user != request.user:
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+        
+        file_key = request.data.get('file_key')
+        image_type = request.data.get('image_type', 'main')
+        
+        if not file_key:
+            return Response({'error': 'file_key is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Generate S3 URL
+        s3_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{file_key}"
+        
+        # Update service image
+        if image_type == 'main':
+            service.service_image_url = s3_url
+        elif image_type == 'additional':
+            if not service.images:
+                service.images = []
+            service.images.append(s3_url)
+            # Keep only last 10 images
+            if len(service.images) > 10:
+                service.images = service.images[-10:]
+        
+        service.save()
+        
+        return Response({
+            'service_image_url': service.service_image_url,
+            'images': service.images,
+            's3_url': s3_url
+        })
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# Product Image Upload Endpoints
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def get_product_image_upload_url(request, product_id):
+    """Get pre-signed URL for product image upload"""
+    try:
+        product = get_object_or_404(Product, id=product_id)
+        
+        # Check if user owns the business
+        if product.business.user != request.user:
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get file info from request
+        file_name = request.data.get('file_name')
+        content_type = request.data.get('content_type')
+        image_type = request.data.get('image_type', 'main')  # 'main' or 'additional'
+        
+        if not file_name or not content_type:
+            return Response({'error': 'file_name and content_type are required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Generate unique file key
+        file_extension = file_name.split('.')[-1]
+        file_key = f"products/{product.business.id}/{product.id}/{image_type}_{uuid.uuid4()}.{file_extension}"
+        
+        # Generate pre-signed URL
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        
+        presigned_url = s3_client.generate_presigned_url(
+            'put_object',
+            Params={
+                'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                'Key': file_key,
+                'ContentType': content_type
+            },
+            ExpiresIn=3600  # 1 hour
+        )
+        
+        return Response({
+            'presigned_url': presigned_url,
+            'file_key': file_key,
+            'expires_in_minutes': 60,
+            'image_type': image_type
+        })
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_product_image(request, product_id):
+    """Update product with uploaded image"""
+    try:
+        product = get_object_or_404(Product, id=product_id)
+        
+        # Check if user owns the business
+        if product.business.user != request.user:
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+        
+        file_key = request.data.get('file_key')
+        image_type = request.data.get('image_type', 'main')
+        
+        if not file_key:
+            return Response({'error': 'file_key is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Generate S3 URL
+        s3_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{file_key}"
+        
+        # Update product image
+        if image_type == 'main':
+            product.product_image_url = s3_url
+        elif image_type == 'additional':
+            if not product.images:
+                product.images = []
+            product.images.append(s3_url)
+            # Keep only last 10 images
+            if len(product.images) > 10:
+                product.images = product.images[-10:]
+        
+        product.save()
+        
+        return Response({
+            'product_image_url': product.product_image_url,
+            'images': product.images,
+            's3_url': s3_url
+        })
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UserBusinessView(generics.RetrieveAPIView):
+    """Get business for a specific user"""
+    serializer_class = BusinessSerializer
+    permission_classes = [AllowAny]  # Allow public access to view user business
+    
+    def get_object(self):
+        user_id = self.kwargs.get('user_id')
+        business = Business.objects.filter(
+            user_id=user_id,
+            is_active=True
+        ).select_related('category', 'user').order_by('-created_at').first()
+        
+        if not business:
+            raise Http404(f"No active business found for user {user_id}")
+        
+        return business
+
+
+class BusinessServiceListCreateView(generics.ListCreateAPIView):
+    """List and create services for a business"""
+    serializer_class = ServiceSerializer
+    permission_classes = [AllowAny]  # Allow public access to list services, but require auth for creation
+    
+    def get_queryset(self):
+        business_id = self.kwargs.get('business_id')
+        return Service.objects.filter(business_id=business_id, is_active=True)
+    
+    def perform_create(self, serializer):
+        # Check if user is authenticated for creation
+        if not self.request.user.is_authenticated:
+            raise PermissionDenied("Authentication required to create a service.")
+        
+        business_id = self.kwargs.get('business_id')
+        try:
+            business = Business.objects.get(id=business_id)
+        except ObjectDoesNotExist:
+            raise PermissionDenied("Business not found")
+        
+        serializer.save(business=business)
+
+
+class BusinessAnalyticsView(APIView):
+    """Get business analytics including recent reviews and ratings"""
+    permission_classes = [AllowAny]  # Allow public access to view analytics
+    
+    def get(self, request, business_id):
+        """Get business analytics data"""
+        try:
+            business = get_object_or_404(Business, id=business_id)
+            
+            # Get recent reviews (last 10)
+            recent_reviews = Review.objects.filter(
+                business=business
+            ).select_related('user').order_by('-created_at')[:10]
+            
+            # Calculate rating statistics
+            all_reviews = Review.objects.filter(business=business)
+            total_reviews = all_reviews.count()
+            avg_rating = all_reviews.aggregate(avg_rating=models.Avg('rating'))['avg_rating'] or 0
+            
+            # Rating distribution
+            rating_distribution = {}
+            for i in range(1, 6):
+                rating_distribution[i] = all_reviews.filter(rating=i).count()
+            
+            # Serialize reviews
+            review_serializer = ReviewSerializer(recent_reviews, many=True)
+            
+            return Response({
+                'success': True,
+                'data': {
+                    'business_id': str(business.id),
+                    'business_name': business.business_name,
+                    'total_reviews': total_reviews,
+                    'average_rating': round(avg_rating, 2),
+                    'rating_distribution': rating_distribution,
+                    'recent_reviews': review_serializer.data
+                }
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ServiceListAPIView(generics.ListAPIView):
+    """List all active services across all businesses"""
+    serializer_class = ServiceSerializer
+    permission_classes = [AllowAny]  # Allow public access to list all services
+    queryset = Service.objects.filter(is_active=True).select_related('business', 'business__category')
+    
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['business__category', 'price_range']
+    search_fields = ['name', 'description', 'business__business_name']
+    ordering_fields = ['created_at', 'name']
+
+
+class ProductListAPIView(generics.ListAPIView):
+    """List all active products across all businesses"""
+    serializer_class = ProductSerializer
+    permission_classes = [AllowAny]  # Allow public access to list all products
+    queryset = Product.objects.filter(is_active=True).select_related('business', 'business__category')
+    
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['business__category', 'in_stock', 'price_currency']
+    search_fields = ['name', 'description', 'business__business_name']
+    ordering_fields = ['created_at', 'name', 'price']
 

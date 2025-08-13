@@ -99,6 +99,8 @@ class Service(models.Model):
     description = models.TextField(blank=True, null=True)
     price_range = models.CharField(max_length=100, blank=True, null=True)  # e.g., "KSh 500 - 1000"
     duration = models.CharField(max_length=100, blank=True, null=True)     # e.g., "30 mins", "1 hour"
+    service_image_url = models.URLField(max_length=500, blank=True, null=True)  # Main service image
+    images = models.JSONField(default=list, blank=True)  # Multiple service images (up to 10)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -154,7 +156,8 @@ class Product(models.Model):
     description = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     price_currency = models.CharField(max_length=3, default='KES')
-    product_image_url = models.URLField(max_length=500, blank=True, null=True)
+    product_image_url = models.URLField(max_length=500, blank=True, null=True)  # Main product image
+    images = models.JSONField(default=list, blank=True)  # Multiple product images (up to 10)
     is_active = models.BooleanField(default=True)
     in_stock = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

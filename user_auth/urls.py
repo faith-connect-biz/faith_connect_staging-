@@ -1,6 +1,6 @@
 # authapp/urls.py
 
-from django.urls import path
+from django.urls import path, include
 from .views import RegisterAPIView, LoginView, LogoutAPIView, CustomTokenRefreshView, ForgotPasswordOTPView, \
     ResetPasswordWithOTPView, SendEmailVerificationView, SendPhoneOTPView, ConfirmEmailVerificationView, \
     ConfirmPhoneOTPView
@@ -16,4 +16,7 @@ urlpatterns = [
     path('verify-email-confirm', ConfirmEmailVerificationView.as_view(),name='confirm_email'),
     path('verify-phone', SendPhoneOTPView.as_view(), name='verify_phone'),
     path('verify-phone-confirm', ConfirmPhoneOTPView.as_view(), name='confirm_phone'),
+    
+    # Include user management URLs
+    path('', include('user_auth.user_management.urls')),
 ]
