@@ -177,7 +177,17 @@ SIMPLE_JWT = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True
+#CORS_ALLOW_ALL_ORIGINS = True
+# Add your production domain to allowed origins
+CORS_ALLOWED_ORIGINS = [
+    "https://www.faithconnect.biz",
+    "https://faithconnect.biz",
+    "http://localhost:3000",
+    "http://localhost:5173", 
+    "http://localhost:8080",
+    "https://fem-family-business-directory-rosy.vercel.app/",
+
+]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
     'DELETE',
