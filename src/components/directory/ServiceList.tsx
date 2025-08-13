@@ -65,7 +65,9 @@ export const ServiceList = ({ filters }: ServiceListProps) => {
   // Filter services based on filters
   const filteredServices = Array.isArray(services) ? services.filter(service => {
     // Get the business for this service
-    const business = businesses.find(b => b.id === service.business);
+    // Handle both string and object business references
+    const businessId = typeof service.business === 'string' ? service.business : service.business.id;
+    const business = businesses.find(b => b.id === businessId);
     if (!business) return false;
 
     // Filter by search term
@@ -99,14 +101,18 @@ export const ServiceList = ({ filters }: ServiceListProps) => {
 
   const handleServiceClick = (service: Service) => {
     // Navigate to the business page when service is clicked
-    const business = businesses.find(b => b.id === service.business);
+    // Handle both string and object business references
+    const businessId = typeof service.business === 'string' ? service.business : service.business.id;
+    const business = businesses.find(b => b.id === businessId);
     if (business) {
       navigate(`/business/${business.id}`);
     }
   };
 
   const ServiceCard = ({ service }: { service: Service }) => {
-    const business = businesses.find(b => b.id === service.business);
+    // Handle both string and object business references
+    const businessId = typeof service.business === 'string' ? service.business : service.business.id;
+    const business = businesses.find(b => b.id === businessId);
     
     if (!business) return null;
 
@@ -129,8 +135,8 @@ export const ServiceList = ({ filters }: ServiceListProps) => {
               
               {/* Service Status Badge */}
               <div className="absolute top-3 left-3">
-                <Badge variant={service.is_active ? "default" : "secondary"} className="bg-fem-navy/90 text-white">
-                  {service.is_active ? "Available" : "Unavailable"}
+                <Badge variant={(service.is_active || service.is_available) ? "default" : "secondary"} className="bg-fem-navy/90 text-white">
+                  {(service.is_active || service.is_available) ? "Available" : "Unavailable"}
                 </Badge>
               </div>
 
@@ -149,13 +155,13 @@ export const ServiceList = ({ filters }: ServiceListProps) => {
                 variant="ghost"
                 size="sm"
                 className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/80 hover:bg-white"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleFavorite(service.id.toString());
-                }}
+                                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleFavorite(service.id?.toString() || '');
+                  }}
               >
                 <Heart 
-                  className={`w-4 h-4 ${favorites.includes(service.id.toString()) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} 
+                  className={`w-4 h-4 ${favorites.includes(service.id?.toString() || '') ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} 
                 />
               </Button>
             </div>
@@ -210,7 +216,7 @@ export const ServiceList = ({ filters }: ServiceListProps) => {
                     {typeof business.rating === 'number' ? business.rating.toFixed(1) : business.rating}
                   </span>
                   <span className="text-sm text-gray-500 ml-1">
-                    ({business.review_count} reviews)
+                    ({business.review_count || 0} reviews)
                   </span>
                 </div>
                 
@@ -294,8 +300,8 @@ export const ServiceList = ({ filters }: ServiceListProps) => {
         : "space-y-4"
       }>
         <AnimatePresence>
-          {filteredServices.map((service) => (
-            <ServiceCard key={service.id} service={service} />
+          {filteredServices.map((service, index) => (
+            <ServiceCard key={service.id || `service-${index}`} service={service} />
           ))}
         </AnimatePresence>
       </div>

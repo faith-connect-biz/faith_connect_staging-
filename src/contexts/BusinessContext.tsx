@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { apiService, Business, Category, BusinessCreateRequest } from '@/services/api';
 
 interface BusinessContextType {
@@ -27,8 +27,6 @@ interface BusinessContextType {
   }) => Promise<void>;
   
   fetchCategories: () => Promise<void>;
-  fetchServices: (params?: any) => Promise<void>;
-  fetchProducts: (params?: any) => Promise<void>;
   createBusiness: (data: BusinessCreateRequest) => Promise<Business>;
   updateBusiness: (id: string, data: BusinessCreateRequest) => Promise<Business>;
   deleteBusiness: (id: string) => Promise<void>;
@@ -48,8 +46,6 @@ interface BusinessProviderProps {
 export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) => {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [services, setServices] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
@@ -58,9 +54,58 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
   // Computed featured businesses
-  const featuredBusinesses = Array.isArray(businesses) ? businesses.filter(business => 
-    business.is_featured && business.is_active && business.is_verified
-  ) : [];
+  const featuredBusinesses = useMemo(() => 
+    Array.isArray(businesses) ? businesses.filter(business => 
+      business.is_featured && business.is_active && business.is_verified
+    ) : [], [businesses]
+  );
+
+  // Computed services and products from businesses
+  const computedServices = useMemo(() => 
+    Array.isArray(businesses) ? businesses.flatMap(business => {
+      console.log(`Processing business ${business.id}:`, business);
+      console.log(`Business services:`, business.services);
+      return business.services?.map((service, index) => ({
+        ...service,
+        id: `${business.id}-service-${index}`, // Generate unique ID
+        business: {
+          id: business.id,
+          business_name: business.business_name,
+          category: business.category,
+          city: business.city,
+          county: business.county,
+          rating: business.rating,
+          is_verified: business.is_verified,
+          is_active: business.is_active
+        }
+      })) || [];
+    }) : [], [businesses]
+  );
+
+  const computedProducts = useMemo(() => 
+    Array.isArray(businesses) ? businesses.flatMap(business => {
+      console.log(`Processing business ${business.id} products:`, business.products);
+      return business.products?.map((product, index) => ({
+        ...product,
+        id: `${business.id}-product-${index}`, // Generate unique ID
+        business: {
+          id: business.id,
+          business_name: business.business_name,
+          category: business.category,
+          city: business.city,
+          county: business.county,
+          rating: business.rating,
+          is_verified: business.is_verified,
+          is_active: business.is_active
+        }
+      })) || [];
+    }) : [], [businesses]
+  );
+
+  // Debug logging
+  console.log('BusinessContext - businesses:', businesses);
+  console.log('BusinessContext - computedServices:', computedServices);
+  console.log('BusinessContext - computedProducts:', computedProducts);
 
   const fetchBusinesses = async (params?: {
     search?: string;
@@ -77,14 +122,18 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       setError(null);
       
       const response = await apiService.getBusinesses(params);
+      console.log('fetchBusinesses - API response:', response);
+      
       // Ensure businesses is always an array
       if (response && response.results && Array.isArray(response.results)) {
+        console.log('fetchBusinesses - Using response.results:', response.results);
         setBusinesses(response.results);
         setTotalCount(response.count || 0);
         setCurrentPage(params?.page || 1);
         setHasNextPage(!!response.next);
         setHasPreviousPage(!!response.previous);
       } else if (Array.isArray(response)) {
+        console.log('fetchBusinesses - Using direct response array:', response);
         setBusinesses(response);
         setTotalCount(response.length);
         setCurrentPage(1);
@@ -137,49 +186,7 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     }
   };
 
-  const fetchServices = async (params?: any) => {
-    try {
-      setError(null);
-      const response = await apiService.getAllServices(params);
-      // Ensure services is always an array
-      if (response && response.results && Array.isArray(response.results)) {
-        setServices(response.results);
-      } else if (Array.isArray(response)) {
-        setServices(response);
-      } else {
-        console.error('Services API returned unexpected response format:', response);
-        setServices([]);
-        setError('Services API returned invalid format');
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch services';
-      setError(errorMessage);
-      console.error('Failed to fetch services:', err);
-      setServices([]); // Set empty array on error
-    }
-  };
 
-  const fetchProducts = async (params?: any) => {
-    try {
-      setError(null);
-      const response = await apiService.getAllProducts(params);
-      // Ensure products is always an array
-      if (response && response.results && Array.isArray(response.results)) {
-        setProducts(response.results);
-      } else if (Array.isArray(response)) {
-        setProducts(response);
-      } else {
-        console.error('Products API returned unexpected response format:', response);
-        setProducts([]);
-        setError('Products API returned invalid format');
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products';
-      setError(errorMessage);
-      console.error('Failed to fetch products:', err);
-      setProducts([]); // Set empty array on error
-    }
-  };
 
   const createBusiness = async (data: BusinessCreateRequest): Promise<Business> => {
     try {
@@ -272,16 +279,14 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   useEffect(() => {
     fetchBusinesses();
     fetchCategories();
-    fetchServices();
-    fetchProducts();
   }, []);
 
   const value: BusinessContextType = {
     businesses,
     categories,
     featuredBusinesses,
-    services,
-    products,
+    services: computedServices,
+    products: computedProducts,
     isLoading,
     error,
     totalCount,
@@ -290,8 +295,6 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     hasPreviousPage,
     fetchBusinesses,
     fetchCategories,
-    fetchServices,
-    fetchProducts,
     createBusiness,
     updateBusiness,
     deleteBusiness,

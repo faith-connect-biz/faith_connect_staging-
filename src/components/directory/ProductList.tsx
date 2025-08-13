@@ -66,7 +66,9 @@ export const ProductList = ({ filters }: ProductListProps) => {
   // Filter products based on filters
   const filteredProducts = Array.isArray(products) ? products.filter(product => {
     // Get the business for this product
-    const business = businesses.find(b => b.id === product.business);
+    // Handle both string and object business references
+    const businessId = typeof product.business === 'string' ? product.business : product.business.id;
+    const business = businesses.find(b => b.id === businessId);
     if (!business) return false;
 
     // Filter by search term
@@ -103,14 +105,18 @@ export const ProductList = ({ filters }: ProductListProps) => {
 
   const handleProductClick = (product: Product) => {
     // Navigate to the business page when product is clicked
-    const business = businesses.find(b => b.id === product.business);
+    // Handle both string and object business references
+    const businessId = typeof product.business === 'string' ? product.business : product.business.id;
+    const business = businesses.find(b => b.id === businessId);
     if (business) {
       navigate(`/business/${business.id}`);
     }
   };
 
   const ProductCard = ({ product }: { product: Product }) => {
-    const business = businesses.find(b => b.id === product.business);
+    // Handle both string and object business references
+    const businessId = typeof product.business === 'string' ? product.business : product.business.id;
+    const business = businesses.find(b => b.id === businessId);
     
     if (!business) return null;
 
@@ -156,13 +162,13 @@ export const ProductList = ({ filters }: ProductListProps) => {
                 variant="ghost"
                 size="sm"
                 className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/80 hover:bg-white"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleFavorite(product.id);
-                }}
+                                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleFavorite(product.id || '');
+                  }}
               >
                 <Heart 
-                  className={`w-4 h-4 ${favorites.includes(product.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} 
+                  className={`w-4 h-4 ${favorites.includes(product.id || '') ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} 
                 />
               </Button>
             </div>
@@ -215,7 +221,7 @@ export const ProductList = ({ filters }: ProductListProps) => {
                     {typeof business.rating === 'number' ? business.rating.toFixed(1) : business.rating}
                   </span>
                   <span className="text-sm text-gray-500 ml-1">
-                    ({business.review_count} reviews)
+                    ({business.review_count || 0} reviews)
                   </span>
                 </div>
                 
@@ -299,8 +305,8 @@ export const ProductList = ({ filters }: ProductListProps) => {
         : "space-y-4"
       }>
         <AnimatePresence>
-          {filteredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+          {filteredProducts.map((product, index) => (
+            <ProductCard key={product.id || `product-${index}`} product={product} />
           ))}
         </AnimatePresence>
       </div>

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -32,10 +33,50 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   });
   const [signupUserId, setSignupUserId] = useState('');
   const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
+  const [usePhone, setUsePhone] = useState(false); // Toggle between phone and email
 
   const { login, register } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Handle toggle between phone and email
+  const handleToggleChange = (checked: boolean) => {
+    setUsePhone(checked);
+    if (checked) {
+      // Switching to phone - clear email and set auth method
+      setSignupData(prev => ({ ...prev, email: '' }));
+      setAuthMethod('phone');
+    } else {
+      // Switching to email - clear phone and set auth method
+      setSignupData(prev => ({ ...prev, phone: '' }));
+      setAuthMethod('email');
+    }
+  };
+
+  // Send OTP to phone number when phone is selected
+  const sendPhoneOTP = async (phoneNumber: string) => {
+    try {
+      setIsLoading(true);
+      const response = await apiService.post('/verify-phone', { phone_number: phoneNumber });
+      if (response.success) {
+        toast({
+          title: "OTP Sent!",
+          description: "A 6-digit code has been sent to your phone number.",
+        });
+      } else {
+        throw new Error(response.error || 'Failed to send OTP');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send OTP to phone number.",
+        variant: "destructive"
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -55,16 +96,34 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       });
       setSignupUserId('');
       setAuthMethod('email');
+      setUsePhone(false); // Reset toggle to email
     }
   }, [isOpen]);
+
+  // Update toggle when switching between login and signup tabs
+  useEffect(() => {
+    if (activeTab === 'signup') {
+      // Set default to phone for signup
+      setUsePhone(true);
+      setAuthMethod('phone');
+      setSignupData(prev => ({ ...prev, email: '' }));
+    } else {
+      // Set default to email for login
+      setUsePhone(false);
+      setAuthMethod('email');
+      setSignupData(prev => ({ ...prev, phone: '' }));
+    }
+  }, [activeTab]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
-    const email = formData.get('email') as string;
+    const identifier = usePhone 
+      ? formData.get('phone') as string 
+      : formData.get('email') as string;
     const password = formData.get('password') as string;
 
-    if (!email || !password) {
+    if (!identifier || !password) {
       toast({
         title: "Error",
         description: "Please fill in all fields.",
@@ -75,7 +134,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
     setIsLoading(true);
     try {
-      await login({ identifier: email, password, auth_method: 'email' });
+      await login({ 
+        identifier, 
+        password, 
+        auth_method: usePhone ? 'phone' : 'email' 
+      });
       toast({
         title: "Success!",
         description: "Welcome back!",
@@ -104,10 +167,20 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       return;
     }
 
-    if (!signupData.email && !signupData.phone) {
+    // Validate that only one contact method is provided based on toggle
+    if (usePhone && !signupData.phone) {
       toast({
         title: "Error",
-        description: "Please provide either email or phone number.",
+        description: "Please provide your phone number.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!usePhone && !signupData.email) {
+      toast({
+        title: "Error",
+        description: "Please provide your email address.",
         variant: "destructive"
       });
       return;
@@ -120,8 +193,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         first_name: signupData.firstName,
         last_name: signupData.lastName,
         partnership_number: signupData.partnershipNumber,
-        email: signupData.email || undefined,
-        phone: signupData.phone || undefined,
+        email: usePhone ? undefined : signupData.email,
+        phone: usePhone ? signupData.phone : undefined,
         password: signupData.password,
         user_type: signupData.userType as 'community' | 'business'
       });
@@ -129,26 +202,34 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       console.log('Registration successful:', registerResponse);
       
       // Store signup data for OTP verification
-      localStorage.setItem('signup_email', signupData.email || '');
-      localStorage.setItem('signup_phone', signupData.phone || '');
+      localStorage.setItem('signup_email', usePhone ? '' : signupData.email);
+      localStorage.setItem('signup_phone', usePhone ? signupData.phone : '');
       localStorage.setItem('signup_user_id', registerResponse.user.id);
       localStorage.setItem('signup_user_type', signupData.userType);
       localStorage.setItem('signup_partnership_number', signupData.partnershipNumber);
+      localStorage.setItem('signup_auth_method', usePhone ? 'phone' : 'email');
 
-      // Determine auth method and move to OTP step
-      if (signupData.email) {
-        setAuthMethod('email');
-        console.log('Using email verification');
-      } else {
-        setAuthMethod('phone');
-        console.log('Using phone verification');
-      }
+      // Set auth method based on toggle and move to OTP step
+      setAuthMethod(usePhone ? 'phone' : 'email');
       setSignupUserId(registerResponse.user.id);
       setSignupStep('otp');
 
+      console.log(`Using ${usePhone ? 'phone' : 'email'} verification`);
+
+      // If using phone, send OTP automatically
+      if (usePhone && signupData.phone) {
+        try {
+          await sendPhoneOTP(signupData.phone);
+        } catch (error) {
+          // If OTP sending fails, stay on form step
+          setSignupStep('form');
+          return;
+        }
+      }
+
       toast({
         title: "Registration successful!",
-        description: `Please verify your ${signupData.email ? 'email' : 'phone'} to complete registration.`,
+        description: `Please verify your ${usePhone ? 'phone number' : 'email address'} to complete registration.`,
       });
     } catch (error: any) {
       console.error('Registration failed:', error);
@@ -289,14 +370,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               {/* OTP Input Component - This will handle all the display */}
               <OTPInput
                 type="signup"
-                email={signupData.email}
-                phone={signupData.phone}
+                email={usePhone ? undefined : signupData.email}
+                phone={usePhone ? signupData.phone : undefined}
                 onVerify={handleVerifyOTP}
                 onResend={handleResendOTP}
                 onBack={handleBackToSignup}
                 title={authMethod === 'email' ? 'Verify Your Email' : 'Verify Your Phone'}
                 description={authMethod === 'email' 
-                  ? 'We sent a 6-digit verification code to your email address'
+                  ? 'We sent a verification link to your email address'
                   : 'We sent a 6-digit verification code to your phone number'
                 }
               />
@@ -323,27 +404,68 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </TabsList>
 
                 <TabsContent value="login" className="space-y-4">
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                      <Label htmlFor="login-email">Email</Label>
-                <Input
-                        id="login-email"
-                        name="email"
-                        type="email"
-                        placeholder="Enter your email"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="login-password">Password</Label>
-                  <Input
-                    id="login-password"
+                  {/* Login Contact Method Toggle */}
+                  <div className="space-y-3">
+                    <div className="text-center mb-2">
+                      <p className="text-xs text-gray-600">
+                        🔐 Choose your preferred login method
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Login with</Label>
+                      <div className="flex items-center space-x-2">
+                        <span className={`text-xs ${!usePhone ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
+                          Email
+                        </span>
+                        <Switch
+                          checked={usePhone}
+                          onCheckedChange={handleToggleChange}
+                          className="data-[state=checked]:bg-blue-600"
+                        />
+                        <span className={`text-xs ${usePhone ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
+                          Phone
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    {/* Contact Field - Shows only one based on toggle */}
+                    {usePhone ? (
+                      <div>
+                        <Label htmlFor="login-phone">Phone Number</Label>
+                        <Input
+                          id="login-phone"
+                          name="phone"
+                          type="tel"
+                          placeholder="Enter your phone number"
+                          required
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <Label htmlFor="login-email">Email Address</Label>
+                        <Input
+                          id="login-email"
+                          name="email"
+                          type="email"
+                          placeholder="Enter your email address"
+                          required
+                        />
+                      </div>
+                    )}
+                    
+                    <div>
+                      <Label htmlFor="login-password">Password</Label>
+                      <Input
+                        id="login-password"
                         name="password"
                         type="password"
                         placeholder="Enter your password"
-                    required
-                  />
+                        required
+                      />
                     </div>
+                    
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? (
                         <>
@@ -408,31 +530,65 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 />
               </div>
 
-                    {/* Compact Contact Fields */}
-                    <div className="grid grid-cols-2 gap-4">
-              <div>
-                        <Label htmlFor="email" className="text-sm">Email</Label>
-                  <Input
-                          id="email"
-                          type="email"
-                          value={signupData.email}
-                          onChange={(e) => setSignupData({...signupData, email: e.target.value})}
-                          placeholder="Email"
-                          className="text-sm"
-                        />
-                </div>
-                      <div>
-                        <Label htmlFor="phone" className="text-sm">Phone</Label>
-                        <Input
-                          id="phone"
-                          type="tel"
-                          value={signupData.phone}
-                          onChange={(e) => setSignupData({...signupData, phone: e.target.value})}
-                          placeholder="Phone"
-                          className="text-sm"
-                        />
-                </div>
-              </div>
+                    {/* Contact Method Toggle */}
+                    <div className="space-y-3">
+                      <div className="text-center mb-2">
+                        <p className="text-xs text-gray-600">
+                          💡 Phone number is recommended for faster verification
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Contact Method</Label>
+                        <div className="flex items-center space-x-2">
+                          <span className={`text-xs ${!usePhone ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
+                            Email
+                          </span>
+                          <Switch
+                            checked={usePhone}
+                            onCheckedChange={handleToggleChange}
+                            className="data-[state=checked]:bg-blue-600"
+                          />
+                          <span className={`text-xs ${usePhone ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
+                            Phone (Default)
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Contact Field - Shows only one based on toggle */}
+                      {usePhone ? (
+                        <div>
+                          <Label htmlFor="phone" className="text-sm">Phone Number</Label>
+                          <Input
+                            id="phone"
+                            type="tel"
+                            value={signupData.phone}
+                            onChange={(e) => setSignupData({...signupData, phone: e.target.value})}
+                            placeholder="Enter your phone number"
+                            className="text-sm"
+                            required
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            OTP will be sent to this phone number
+                          </p>
+                        </div>
+                      ) : (
+                        <div>
+                          <Label htmlFor="email" className="text-sm">Email Address</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={signupData.email}
+                            onChange={(e) => setSignupData({...signupData, email: e.target.value})}
+                            placeholder="Enter your email address"
+                            className="text-sm"
+                            required
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Verification link will be sent to this email
+                          </p>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Password Fields */}
                     <div className="grid grid-cols-2 gap-4">

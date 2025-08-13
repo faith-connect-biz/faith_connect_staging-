@@ -65,6 +65,11 @@ export interface Business {
   youtube_url?: string;
   created_at: string;
   updated_at: string;
+  // Embedded services and products from API response
+  services?: Service[];
+  products?: Product[];
+  hours?: BusinessHour[];
+  reviews?: Review[];
 }
 
 export interface Category {
@@ -74,21 +79,41 @@ export interface Category {
 }
 
 export interface Service {
-  id: number;
-  business: string;
+  id?: string | number; // Make optional since we generate it dynamically
+  business: string | {
+    id: string;
+    business_name: string;
+    category?: Category | null;
+    city?: string;
+    county?: string;
+    rating: number | string;
+    is_verified: boolean;
+    is_active: boolean;
+  };
   name: string;
   description?: string;
   price_range?: string;
   duration?: string;
-  is_active: boolean;
+  service_image_url?: string;
+  is_active?: boolean; // Make optional
+  is_available?: boolean; // Add this field for business services
   // Multiple images support (up to 10)
   images?: string[];
-  created_at: string;
+  created_at?: string; // Make optional since business services might not have this
 }
 
 export interface Product {
-  id: string;
-  business: string;
+  id?: string; // Make optional since we generate it dynamically
+  business: string | {
+    id: string;
+    business_name: string;
+    category?: Category | null;
+    city?: string;
+    county?: string;
+    rating: number | string;
+    is_verified: boolean;
+    is_active: boolean;
+  };
   name: string;
   description?: string;
   price: number;
@@ -96,9 +121,16 @@ export interface Product {
   product_image_url?: string;
   // Multiple images support (up to 10)
   images?: string[];
-  is_active: boolean;
+  is_active?: boolean; // Make optional
   in_stock: boolean;
-  created_at: string;
+  created_at?: string; // Make optional since business products might not have this
+}
+
+export interface BusinessHour {
+  day_of_week: number;
+  open_time: string;
+  close_time: string;
+  is_closed: boolean;
 }
 
 export interface Review {
@@ -420,9 +452,28 @@ class ApiService {
     ordering?: string;
     page?: number;
   }): Promise<{ results: Business[]; count: number; next?: string; previous?: string }> {
-    const response = await this.api.get('/', { params }); // Business list is at root /api/ endpoint
+    const response = await this.api.get('/business/', { params }); // Business list is at /api/business/ endpoint
+    console.log('API getBusinesses - Raw response:', response);
+    console.log('API getBusinesses - response.data:', response.data);
+    
     // The backend returns a direct array, not wrapped in results
     const businesses = response.data;
+    
+    // Check if businesses have services and products
+    if (Array.isArray(businesses)) {
+      businesses.forEach((business, index) => {
+        console.log(`API getBusinesses - Business ${index}:`, {
+          id: business.id,
+          business_name: business.business_name,
+          hasServices: !!business.services,
+          servicesCount: business.services?.length || 0,
+          hasProducts: !!business.products,
+          productsCount: business.products?.length || 0,
+          allKeys: Object.keys(business)
+        });
+      });
+    }
+    
     return {
       results: businesses,
       count: businesses.length,
