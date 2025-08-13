@@ -233,12 +233,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS Configuration
 CORS_ALLOWED_ORIGINS = [
+    "https://www.faithconnect.biz",  # ✅ Add your production domain
+    "https://faithconnect.biz",      # ✅ Add without www too
     "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:8080",  # Add frontend port
+    "http://localhost:5173", 
+    "http://localhost:8080",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
-    "http://127.0.0.1:8080",  # Add frontend port
+    "http://127.0.0.1:8080",
+    "https://fem-family-business-directory-rosy.vercel.app/"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
