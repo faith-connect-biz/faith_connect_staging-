@@ -58,9 +58,9 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
   // Computed featured businesses
-  const featuredBusinesses = businesses?.filter(business => 
+  const featuredBusinesses = Array.isArray(businesses) ? businesses.filter(business => 
     business.is_featured && business.is_active && business.is_verified
-  ) || [];
+  ) : [];
 
   const fetchBusinesses = async (params?: {
     search?: string;
@@ -77,15 +77,37 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       setError(null);
       
       const response = await apiService.getBusinesses(params);
-      setBusinesses(response.results);
-      setTotalCount(response.count);
-      setCurrentPage(params?.page || 1);
-      setHasNextPage(!!response.next);
-      setHasPreviousPage(!!response.previous);
+      // Ensure businesses is always an array
+      if (response && response.results && Array.isArray(response.results)) {
+        setBusinesses(response.results);
+        setTotalCount(response.count || 0);
+        setCurrentPage(params?.page || 1);
+        setHasNextPage(!!response.next);
+        setHasPreviousPage(!!response.previous);
+      } else if (Array.isArray(response)) {
+        setBusinesses(response);
+        setTotalCount(response.length);
+        setCurrentPage(1);
+        setHasNextPage(false);
+        setHasPreviousPage(false);
+      } else {
+        console.error('Businesses API returned unexpected response format:', response);
+        setBusinesses([]);
+        setTotalCount(0);
+        setCurrentPage(1);
+        setHasNextPage(false);
+        setHasPreviousPage(false);
+        setError('Businesses API returned invalid format');
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch businesses';
       setError(errorMessage);
       console.error('Failed to fetch businesses:', err);
+      setBusinesses([]); // Set empty array on error
+      setTotalCount(0);
+      setCurrentPage(1);
+      setHasNextPage(false);
+      setHasPreviousPage(false);
     } finally {
       setIsLoading(false);
     }
@@ -119,11 +141,21 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     try {
       setError(null);
       const response = await apiService.getAllServices(params);
-      setServices(response.results || []);
+      // Ensure services is always an array
+      if (response && response.results && Array.isArray(response.results)) {
+        setServices(response.results);
+      } else if (Array.isArray(response)) {
+        setServices(response);
+      } else {
+        console.error('Services API returned unexpected response format:', response);
+        setServices([]);
+        setError('Services API returned invalid format');
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch services';
       setError(errorMessage);
       console.error('Failed to fetch services:', err);
+      setServices([]); // Set empty array on error
     }
   };
 
@@ -131,11 +163,21 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     try {
       setError(null);
       const response = await apiService.getAllProducts(params);
-      setProducts(response.results || []);
+      // Ensure products is always an array
+      if (response && response.results && Array.isArray(response.results)) {
+        setProducts(response.results);
+      } else if (Array.isArray(response)) {
+        setProducts(response);
+      } else {
+        console.error('Products API returned unexpected response format:', response);
+        setProducts([]);
+        setError('Products API returned invalid format');
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products';
       setError(errorMessage);
       console.error('Failed to fetch products:', err);
+      setProducts([]); // Set empty array on error
     }
   };
 
