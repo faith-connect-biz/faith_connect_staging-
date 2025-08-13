@@ -5,6 +5,8 @@ interface BusinessContextType {
   businesses: Business[];
   categories: Category[];
   featuredBusinesses: Business[];
+  services: any[];
+  products: any[];
   isLoading: boolean;
   error: string | null;
   totalCount: number;
@@ -25,8 +27,10 @@ interface BusinessContextType {
   }) => Promise<void>;
   
   fetchCategories: () => Promise<void>;
+  fetchServices: (params?: any) => Promise<void>;
+  fetchProducts: (params?: any) => Promise<void>;
   createBusiness: (data: BusinessCreateRequest) => Promise<Business>;
-  updateBusiness: (id: string, data: Partial<BusinessCreateRequest>) => Promise<Business>;
+  updateBusiness: (id: string, data: BusinessCreateRequest) => Promise<Business>;
   deleteBusiness: (id: string) => Promise<void>;
   toggleFavorite: (businessId: string) => Promise<void>;
   
@@ -44,6 +48,8 @@ interface BusinessProviderProps {
 export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) => {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
@@ -52,9 +58,9 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
   // Computed featured businesses
-  const featuredBusinesses = businesses.filter(business => 
+  const featuredBusinesses = businesses?.filter(business => 
     business.is_featured && business.is_active && business.is_verified
-  );
+  ) || [];
 
   const fetchBusinesses = async (params?: {
     search?: string;
@@ -109,6 +115,30 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     }
   };
 
+  const fetchServices = async (params?: any) => {
+    try {
+      setError(null);
+      const response = await apiService.getAllServices(params);
+      setServices(response.results || []);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch services';
+      setError(errorMessage);
+      console.error('Failed to fetch services:', err);
+    }
+  };
+
+  const fetchProducts = async (params?: any) => {
+    try {
+      setError(null);
+      const response = await apiService.getAllProducts(params);
+      setProducts(response.results || []);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products';
+      setError(errorMessage);
+      console.error('Failed to fetch products:', err);
+    }
+  };
+
   const createBusiness = async (data: BusinessCreateRequest): Promise<Business> => {
     try {
       setError(null);
@@ -129,7 +159,7 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     }
   };
 
-  const updateBusiness = async (id: string, data: Partial<BusinessCreateRequest>): Promise<Business> => {
+  const updateBusiness = async (id: string, data: BusinessCreateRequest): Promise<Business> => {
     try {
       setError(null);
       const updatedBusiness = await apiService.updateBusiness(id, data);
@@ -189,7 +219,7 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   };
 
   const getBusinessById = (id: string): Business | undefined => {
-    return businesses.find(business => business.id === id);
+    return businesses?.find(business => business.id === id);
   };
 
   const clearError = () => {
@@ -200,12 +230,16 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   useEffect(() => {
     fetchBusinesses();
     fetchCategories();
+    fetchServices();
+    fetchProducts();
   }, []);
 
   const value: BusinessContextType = {
     businesses,
     categories,
     featuredBusinesses,
+    services,
+    products,
     isLoading,
     error,
     totalCount,
@@ -214,6 +248,8 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     hasPreviousPage,
     fetchBusinesses,
     fetchCategories,
+    fetchServices,
+    fetchProducts,
     createBusiness,
     updateBusiness,
     deleteBusiness,

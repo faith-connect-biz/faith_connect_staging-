@@ -14,7 +14,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { 
   Plus, 
-  Building2, 
   Star, 
   Phone, 
   Mail, 
@@ -33,11 +32,11 @@ import {
   Globe,
   TrendingUp,
   User,
-  Briefcase,
   Clock,
   Eye,
   PenTool,
-  X
+  X,
+  Upload
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -52,7 +51,6 @@ gsap.registerPlugin(ScrollTrigger);
 
 const ProfilePage = () => {
   const { user, isAuthenticated, isLoading: authLoading, updateUser } = useAuth();
-  const { forceReAuth } = useAuth();
   const { businesses } = useBusiness();
   const [profileData, setProfileData] = useState({
     firstName: "",
@@ -277,6 +275,73 @@ const ProfilePage = () => {
     }
   };
 
+  const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      // Get pre-signed URL for upload
+      const uploadData = await apiService.getProfilePhotoUploadUrl(file.name, file.type);
+      
+      // Upload file to S3
+      const uploadSuccess = await apiService.uploadFileToS3(uploadData.presigned_url, file);
+      
+      if (uploadSuccess) {
+        // Update profile with uploaded image
+        const updatedProfile = await apiService.updateProfilePhoto(uploadData.file_key);
+        
+        // Update local user state
+        updateUser({
+          ...user,
+          profile_image_url: updatedProfile.profile_image_url
+        });
+        
+        toast({
+          title: "Photo Updated",
+          description: "Your profile photo has been updated!",
+          variant: "default"
+        });
+      } else {
+        throw new Error('Failed to upload file to S3');
+      }
+    } catch (error) {
+      console.error('ProfilePage: Error uploading profile photo:', error);
+      toast({
+        title: "Photo Upload Failed",
+        description: "Failed to upload profile photo. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRemoveProfilePhoto = async () => {
+    try {
+      // Update profile to remove photo
+      const updatedProfile = await apiService.updateProfile({
+        profile_image_url: null
+      });
+      
+      // Update local user state
+      updateUser({
+        ...user,
+        profile_image_url: null
+      });
+      
+      toast({
+        title: "Photo Removed",
+        description: "Your profile photo has been removed.",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error('ProfilePage: Error removing profile photo:', error);
+      toast({
+        title: "Photo Removal Failed",
+        description: "Failed to remove profile photo. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -301,12 +366,10 @@ const ProfilePage = () => {
   };
 
   // Calculate user stats
-  const userBusinesses = Array.isArray(businesses) ? businesses.filter(b => b.user === user?.id) : [];
   const userStats = {
     favorites: 0, // TODO: Implement favorites
     conversations: 0, // TODO: Implement conversations
     reviewsGiven: 0, // TODO: Implement reviews
-    businesses: userBusinesses.length
   };
 
   if (authLoading || loading) {
@@ -383,74 +446,10 @@ const ProfilePage = () => {
                 <Sparkles className="w-6 h-6 animate-pulse" />
               </div>
               <p className="text-gray-600 max-w-3xl mx-auto text-lg leading-relaxed">
-                Manage your account information, business listings, and community connections with our comprehensive profile dashboard
+                Manage your account information and community connections with our comprehensive profile dashboard
               </p>
             </div>
           </motion.div>
-
-          {/* Debug Section */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Debug & Troubleshooting
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <h4 className="font-medium">Authentication Status</h4>
-                  <div className="text-sm space-y-1">
-                    <p>User: {user?.partnership_number || 'None'} ({user?.user_type || 'None'})</p>
-                    <p>Access Token: {apiService.getAuthToken() ? 'Present' : 'Missing'}</p>
-                    <p>Refresh Token: {localStorage.getItem('refresh_token') ? 'Present' : 'Missing'}</p>
-                    <p>Is Authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <h4 className="font-medium">Debug Actions</h4>
-                  <div className="space-y-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => forceReAuth()}
-                      className="w-full"
-                    >
-                      Force Re-authentication
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => fetchUserProfile()}
-                      className="w-full"
-                    >
-                      Refresh Profile Data
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => {
-                        console.log('Current user state:', user);
-                        console.log('Current profile data:', profileData);
-                      }}
-                      className="w-full"
-                    >
-                      Log Current State
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => apiService.logAuthStatus()}
-                      className="w-full"
-                    >
-                      Log Auth Status
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
             
@@ -573,20 +572,13 @@ const ProfilePage = () => {
                 </CardHeader>
                 <CardContent className="p-8">
                   <Tabs defaultValue="personal" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 bg-gray-100/50 backdrop-blur-sm p-1 rounded-xl mb-8">
+                    <TabsList className="grid w-full grid-cols-2 bg-gray-100/50 backdrop-blur-sm p-1 rounded-xl mb-8">
                       <TabsTrigger 
                         value="personal" 
                         className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-fem-terracotta data-[state=active]:to-fem-gold data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg py-3 px-6 transition-all duration-200"
                       >
                         <User className="w-4 h-4" />
                         Personal Info
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="business" 
-                        className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-fem-terracotta data-[state=active]:to-fem-gold data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg py-3 px-6 transition-all duration-200"
-                      >
-                        <Briefcase className="w-4 h-4" />
-                        Business
                       </TabsTrigger>
                       <TabsTrigger 
                         value="activity" 
@@ -599,6 +591,75 @@ const ProfilePage = () => {
                     
                     <TabsContent value="personal" className="mt-8">
                       <motion.div variants={itemVariants} className="space-y-8">
+                        {/* Profile Photo Section */}
+                        <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-gray-200 shadow-sm">
+                          <div className="flex items-center gap-4">
+                            <div className="relative">
+                              {user.profile_image_url ? (
+                                <img
+                                  src={user.profile_image_url}
+                                  alt="Profile"
+                                  className="w-24 h-24 rounded-full object-cover border-4 border-fem-gold shadow-lg"
+                                />
+                              ) : (
+                                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-fem-navy to-fem-terracotta flex items-center justify-center text-white text-2xl font-bold border-4 border-fem-gold shadow-lg">
+                                  {user.first_name?.[0]}{user.last_name?.[0]}
+                                </div>
+                              )}
+                              
+                              {isEditing && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => document.getElementById('profile-photo-upload')?.click()}
+                                  className="absolute -bottom-2 -right-2 w-8 h-8 p-0 bg-fem-gold text-white hover:bg-fem-gold/90 border-fem-gold rounded-full"
+                                >
+                                  <Camera className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                            
+                            <div className="flex-1">
+                              <h3 className="text-lg font-semibold text-gray-900 mb-2">Profile Photo</h3>
+                              <p className="text-sm text-gray-600 mb-3">
+                                Upload a professional photo to make your profile stand out
+                              </p>
+                              
+                              {isEditing && (
+                                <div className="space-y-2">
+                                  <input
+                                    type="file"
+                                    id="profile-photo-upload"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleProfilePhotoUpload}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => document.getElementById('profile-photo-upload')?.click()}
+                                    className="border-fem-gold text-fem-gold hover:bg-fem-gold hover:text-white"
+                                  >
+                                    <Upload className="w-4 h-4 mr-2" />
+                                    Upload Photo
+                                  </Button>
+                                  {user.profile_image_url && (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      onClick={handleRemoveProfilePhoto}
+                                      className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white ml-2"
+                                    >
+                                      <X className="w-4 h-4 mr-2" />
+                                      Remove
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-2">
                             <Label htmlFor="firstName" className="text-sm font-semibold text-gray-700">First Name</Label>
@@ -735,69 +796,6 @@ const ProfilePage = () => {
                       </motion.div>
                     </TabsContent>
                     
-                    <TabsContent value="business" className="mt-8">
-                      <motion.div variants={itemVariants} className="space-y-6">
-                        {userBusinesses.length > 0 ? (
-                          <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                              <h3 className="text-2xl font-bold text-fem-navy">Your Businesses</h3>
-                              <Button className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white font-semibold px-6 py-2 rounded-xl shadow-lg">
-                                <Plus className="w-4 h-4 mr-2" />
-                                Add New
-                              </Button>
-                            </div>
-                            {userBusinesses.map((business) => (
-                              <Card key={business.id} className="p-6 border-2 border-gray-100 hover:border-fem-terracotta/30 transition-all duration-200 rounded-2xl shadow-lg hover:shadow-xl">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1">
-                                    <h4 className="text-xl font-bold text-fem-navy mb-2">{business.business_name}</h4>
-                                    <p className="text-gray-600 mb-3 flex items-center gap-2">
-                                      <MapPin className="w-4 h-4 text-fem-terracotta" />
-                                      {business.city}, {business.county}
-                                    </p>
-                                    <div className="flex items-center gap-4">
-                                      <div className="flex items-center gap-2">
-                                        <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                                        <span className="text-sm font-medium">{business.rating} ({business.review_count} reviews)</span>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <Clock className="w-4 h-4 text-gray-500" />
-                                        <span className="text-sm text-gray-600">Updated recently</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="flex gap-3">
-                                    <Button size="sm" variant="outline" className="border-2 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white rounded-xl px-4 py-2">
-                                      <PenTool className="w-4 h-4 mr-2" />
-                                      Edit
-                                    </Button>
-                                    <Button size="sm" variant="outline" className="border-2 border-gray-300 text-gray-700 hover:bg-gray-100 rounded-xl px-4 py-2">
-                                      <Eye className="w-4 h-4 mr-2" />
-                                      View
-                                    </Button>
-                                  </div>
-                                </div>
-                              </Card>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-16">
-                            <div className="w-24 h-24 bg-gradient-to-br from-fem-terracotta/20 to-fem-gold/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                              <Building2 className="w-12 h-12 text-fem-terracotta" />
-                            </div>
-                            <h3 className="text-2xl font-bold text-fem-navy mb-3">No Businesses Yet</h3>
-                            <p className="text-gray-600 mb-8 max-w-md mx-auto text-lg leading-relaxed">
-                              Start building your business presence by adding your first business listing to our directory
-                            </p>
-                            <Button className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white font-semibold px-8 py-4 rounded-xl shadow-lg text-lg transform hover:scale-105 transition-all duration-200">
-                              <Plus className="w-5 h-5 mr-2" />
-                              Add Your First Business
-                            </Button>
-                          </div>
-                        )}
-                      </motion.div>
-                    </TabsContent>
-                    
                     <TabsContent value="activity" className="mt-8">
                       <motion.div variants={itemVariants} className="space-y-6">
                         <div className="text-center py-8">
@@ -849,7 +847,7 @@ const ProfilePage = () => {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12"
+            className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12"
           >
             <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 text-center shadow-2xl border border-white/20 hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2">
               <div className="w-16 h-16 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -865,14 +863,6 @@ const ProfilePage = () => {
               </div>
               <div className="text-3xl font-bold text-fem-navy mb-2">{userStats.reviewsGiven}</div>
               <div className="text-sm text-gray-600 font-medium">Reviews Given</div>
-            </motion.div>
-            
-            <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 text-center shadow-2xl border border-white/20 hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2">
-              <div className="w-16 h-16 bg-gradient-to-br from-fem-terracotta to-fem-navy rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <Award className="w-8 h-8 text-white" />
-              </div>
-              <div className="text-3xl font-bold text-fem-navy mb-2">{userStats.businesses}</div>
-              <div className="text-sm text-gray-600 font-medium">Businesses</div>
             </motion.div>
           </motion.div>
         </div>

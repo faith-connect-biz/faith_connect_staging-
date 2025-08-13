@@ -3,27 +3,29 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { AuthModal } from '@/components/auth/AuthModal';
-import { Menu, X, User, Building2 } from 'lucide-react';
+import AuthModal from '@/components/auth/AuthModal';
+import { Menu, X, User, Building2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalTab, setAuthModalTab] = useState<'login' | 'signup'>('login');
-  const { user, isAuthenticated, logout, isBusinessUser } = useAuth();
+  const { 
+    user: currentUser, 
+    isAuthenticated, 
+    logout, 
+    isLoggingOut 
+  } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
 
   // Ensure we have the latest user data
-  const currentUser = user;
   const isBusiness = currentUser?.user_type === 'business';
   const isCommunity = currentUser?.user_type === 'community';
 
   // Force re-render when user changes
   useEffect(() => {
-    // This will trigger a re-render when user state changes
     console.log('Navbar: User state changed:', {
       user: currentUser,
       isAuthenticated,
@@ -31,7 +33,7 @@ const Navbar: React.FC = () => {
       isCommunity,
       userType: currentUser?.user_type
     });
-  }, [user, isAuthenticated, currentUser, isBusiness, isCommunity]);
+  }, [currentUser, isAuthenticated, isBusiness, isCommunity]);
 
   const handleLogout = async () => {
     try {
@@ -56,8 +58,7 @@ const Navbar: React.FC = () => {
     setIsMenuOpen(false);
   };
 
-  const openAuthModal = (tab: 'login' | 'signup') => {
-    setAuthModalTab(tab);
+  const openAuthModal = () => {
     setIsAuthModalOpen(true);
   };
 
@@ -66,14 +67,14 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className="bg-white shadow-sm py-4 relative">
+         <nav className="bg-[#faf9f8] shadow-sm py-4 relative">
       <div className="container mx-auto px-4 flex justify-between items-center">
         <Link to="/" className="flex items-center gap-2" onClick={closeMenu}>
-          <img 
-            src="/lovable-uploads/f1a3f2a4-bbe7-46e5-be66-1ad39e35defa.png" 
-            alt="FEM Family Church Logo" 
-            className="h-10 w-auto sm:h-12" 
-          />
+                     <img 
+             src="/Faithconnectnew.svg" 
+             alt="Faith Connect Logo" 
+             className="h-12 w-auto sm:h-16" 
+           />
           <div className="hidden sm:flex flex-col">
             <span className="font-heading font-semibold text-fem-navy text-sm sm:text-base">Faith Connect</span>
             <span className="text-xs text-fem-darkgray">Business Directory</span>
@@ -118,9 +119,19 @@ const Navbar: React.FC = () => {
                 variant="ghost" 
                 className="text-fem-navy hover:text-fem-terracotta"
                 onClick={handleLogout}
+                disabled={isLoggingOut}
               >
-                <X className="h-4 w-4 mr-2" />
-                <span>Logout</span>
+                {isLoggingOut ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <span>Logging out...</span>
+                  </>
+                ) : (
+                  <>
+                    <X className="h-4 w-4 mr-2" />
+                    <span>Logout</span>
+                  </>
+                )}
               </Button>
             </div>
           ) : (
@@ -128,13 +139,13 @@ const Navbar: React.FC = () => {
                <Button 
                  variant="outline" 
                  className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
-                 onClick={() => openAuthModal('login')}
+                 onClick={openAuthModal}
                >
                  Sign In
                </Button>
                <Button 
                  className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white"
-                 onClick={() => openAuthModal('signup')}
+                 onClick={openAuthModal}
                >
                  Register
                </Button>
@@ -211,9 +222,19 @@ const Navbar: React.FC = () => {
                     variant="ghost" 
                     className="w-full text-fem-navy hover:text-fem-terracotta"
                     onClick={handleLogout}
+                    disabled={isLoggingOut}
                   >
-                    <X className="h-4 w-4 mr-2" />
-                    Logout
+                    {isLoggingOut ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <span>Logging out...</span>
+                      </>
+                    ) : (
+                      <>
+                        <X className="h-4 w-4 mr-2" />
+                        <span>Logout</span>
+                      </>
+                    )}
                   </Button>
                 </>
               ) : (
@@ -221,19 +242,13 @@ const Navbar: React.FC = () => {
                   <Button 
                     variant="outline" 
                     className="w-full border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
-                    onClick={() => {
-                      closeMenu();
-                      openAuthModal('login');
-                    }}
+                    onClick={openAuthModal}
                   >
                     Sign In
                   </Button>
                   <Button 
                     className="w-full bg-fem-terracotta hover:bg-fem-terracotta/90 text-white"
-                    onClick={() => {
-                      closeMenu();
-                      openAuthModal('signup');
-                    }}
+                    onClick={openAuthModal}
                   >
                     Register
                   </Button>
@@ -248,7 +263,6 @@ const Navbar: React.FC = () => {
       <AuthModal 
         isOpen={isAuthModalOpen}
         onClose={closeAuthModal}
-        defaultTab={authModalTab}
       />
     </nav>
   );

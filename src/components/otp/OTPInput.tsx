@@ -1,219 +1,302 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2, RefreshCw, Phone, Mail } from 'lucide-react';
 
 interface OTPInputProps {
-  length?: number;
-  onComplete: (otp: string) => void;
-  onResend: () => void;
-  isLoading?: boolean;
-  error?: string;
-  success?: string;
-  disabled?: boolean;
-  resendDisabled?: boolean;
-  resendCooldown?: number; // in seconds
+  type: 'signup' | 'password-reset';
+  phone?: string;
+  email?: string;
+  onVerify: (otp: string) => Promise<boolean>;
+  onResend: () => Promise<void>;
+  title?: string;
+  description?: string;
+  onBack?: () => void;
 }
 
 export const OTPInput: React.FC<OTPInputProps> = ({
-  length = 6,
-  onComplete,
+  type,
+  phone,
+  email,
+  onVerify,
   onResend,
-  isLoading = false,
-  error,
-  success,
-  disabled = false,
-  resendDisabled = false,
-  resendCooldown = 60
+  title,
+  description,
+  onBack
 }) => {
-  const [otp, setOtp] = useState<string[]>(new Array(length).fill(''));
-  const [activeIndex, setActiveIndex] = useState<number>(0);
-  const [resendTimer, setResendTimer] = useState<number>(0);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [attempts, setAttempts] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const { toast } = useToast();
 
-  // Handle resend timer
+  const maxAttempts = 3;
+
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (resendTimer > 0) {
-      interval = setInterval(() => {
-        setResendTimer((prev) => prev - 1);
-      }, 1000);
+    // Start countdown for resend
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
     }
-    return () => clearInterval(interval);
-  }, [resendTimer]);
+  }, [countdown]);
 
-  // Handle OTP input change
-  const handleChange = (index: number, value: string) => {
-    if (disabled || isLoading) return;
+  useEffect(() => {
+    // Auto-focus first input
+    if (inputRefs.current[0]) {
+      inputRefs.current[0].focus();
+    }
+  }, []);
 
-    // Only allow numbers
-    if (!/^\d*$/.test(value)) return;
+  const handleOtpChange = (index: number, value: string) => {
+    if (value.length > 1) return; // Prevent multiple characters
 
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
 
-    // Move to next input if current is filled
-    if (value && index < length - 1) {
-      setActiveIndex(index + 1);
+    // Auto-focus next input
+    if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
-
-    // Check if OTP is complete
-    const otpString = newOtp.join('');
-    if (otpString.length === length) {
-      onComplete(otpString);
-    }
   };
 
-  // Handle backspace
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (disabled || isLoading) return;
-
-    if (e.key === 'Backspace') {
-      if (otp[index]) {
-        // Clear current input
-        const newOtp = [...otp];
-        newOtp[index] = '';
-        setOtp(newOtp);
-      } else if (index > 0) {
-        // Move to previous input
-        setActiveIndex(index - 1);
-        inputRefs.current[index - 1]?.focus();
-      }
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      // Move to previous input on backspace
+      inputRefs.current[index - 1]?.focus();
     }
   };
 
-  // Handle paste
   const handlePaste = (e: React.ClipboardEvent) => {
-    if (disabled || isLoading) return;
-
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text/plain').replace(/\D/g, '');
-    
-    if (pastedData.length === length) {
-      const newOtp = pastedData.split('').slice(0, length);
-      setOtp(newOtp);
-      onComplete(pastedData);
+    const pastedData = e.clipboardData.getData('text/plain').slice(0, 6);
+    if (/^\d{6}$/.test(pastedData)) {
+      const newOtp = pastedData.split('');
+      setOtp([...newOtp, ...Array(6 - newOtp.length).fill('')]);
+      // Focus last filled input
+      const lastFilledIndex = Math.min(newOtp.length - 1, 5);
+      inputRefs.current[lastFilledIndex]?.focus();
     }
   };
 
-  // Handle resend
-  const handleResend = () => {
-    if (resendDisabled || resendTimer > 0) return;
-    
-    onResend();
-    setResendTimer(resendCooldown);
+  const handleVerify = async () => {
+    const otpString = otp.join('');
+    if (otpString.length !== 6) {
+      toast({
+        title: "Invalid OTP",
+        description: "Please enter the complete 6-digit code",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (attempts >= maxAttempts) {
+      toast({
+        title: "Too Many Attempts",
+        description: "Please wait before trying again or request a new code",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const success = await onVerify(otpString);
+      if (success) {
+        toast({
+          title: "Success!",
+          description: type === 'signup' 
+            ? "Email verified successfully! You can now sign in." 
+            : "Password reset code verified!",
+        });
+      } else {
+        setAttempts(prev => prev + 1);
+        toast({
+          title: "Invalid Code",
+          description: `Invalid verification code. ${maxAttempts - attempts - 1} attempts remaining.`,
+          variant: "destructive"
+        });
+        // Clear OTP on failed attempt
+        setOtp(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Clear OTP
-  const clearOtp = () => {
-    setOtp(new Array(length).fill(''));
-    setActiveIndex(0);
-    inputRefs.current[0]?.focus();
+  const handleResend = async () => {
+    setIsResending(true);
+    try {
+      await onResend();
+      setCountdown(60); // 60 second cooldown
+      setAttempts(0); // Reset attempts
+      toast({
+        title: "Code Sent!",
+        description: "A new verification code has been sent.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send new code. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  const canResend = countdown === 0 && !isResending;
+  const isOtpComplete = otp.every(digit => digit !== '');
+  const isMaxAttemptsReached = attempts >= maxAttempts;
+
+  const getTitle = () => {
+    if (title) return title;
+    return type === 'signup' ? 'Verify Your Email' : 'Reset Your Password';
+  };
+
+  const getDescription = () => {
+    if (description) return description;
+    return type === 'signup' 
+      ? 'We sent a 6-digit verification code to your email'
+      : 'Enter the 6-digit code sent to your email';
   };
 
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="text-center">
-        <CardTitle className="text-xl font-semibold text-fem-navy">
-          Enter Verification Code
-        </CardTitle>
-        <p className="text-gray-600 text-sm">
-          We've sent a {length}-digit code to your phone/email
-        </p>
+        <CardTitle className="text-2xl font-bold">{getTitle()}</CardTitle>
+        <CardDescription className="text-muted-foreground">
+          {getDescription()}
+        </CardDescription>
       </CardHeader>
+      
       <CardContent className="space-y-6">
-        {/* OTP Input Fields */}
-        <div className="flex justify-center space-x-2">
-          {otp.map((digit, index) => (
-            <div key={index} className="relative">
-              <Input
-                ref={(el) => (inputRefs.current[index] = el)}
-                type="text"
-                value={digit}
-                onChange={(e) => handleChange(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                onPaste={handlePaste}
-                onFocus={() => setActiveIndex(index)}
-                className={`
-                  w-12 h-12 text-center text-lg font-semibold
-                  border-2 rounded-lg transition-all duration-200
-                  ${activeIndex === index 
-                    ? 'border-fem-terracotta ring-2 ring-fem-terracotta/20' 
-                    : 'border-gray-300'
-                  }
-                  ${digit ? 'bg-fem-gold/10 border-fem-gold' : ''}
-                  ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}
-                  ${isLoading ? 'opacity-50' : ''}
-                `}
-                maxLength={1}
-                disabled={disabled || isLoading}
-              />
-              {digit && (
-                <div className="absolute -top-1 -right-1">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                </div>
-              )}
+        {/* Contact Info Display */}
+        <div className="flex flex-col items-center justify-center space-y-2 text-sm text-muted-foreground">
+          {phone && (
+            <div className="flex items-center space-x-2">
+              <Phone className="h-4 w-4" />
+              <span>{phone}</span>
             </div>
-          ))}
+          )}
+          {email && (
+            <div className="flex items-center space-x-2">
+              <Mail className="h-4 w-4" />
+              <span>{email}</span>
+            </div>
+          )}
         </div>
 
-        {/* Error/Success Messages */}
-        {error && (
-          <Alert variant="destructive">
-            <XCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+        {/* OTP Input Fields */}
+        <div className="space-y-4">
+          <Label htmlFor="otp" className="text-sm font-medium">
+            Enter 6-digit code
+          </Label>
+        <div className="flex justify-center space-x-2">
+          {otp.map((digit, index) => (
+              <Input
+                key={index}
+                ref={(el) => (inputRefs.current[index] = el)}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={1}
+                value={digit}
+                onChange={(e) => handleOtpChange(index, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(index, e)}
+                onPaste={index === 0 ? handlePaste : undefined}
+                className="w-12 h-12 text-center text-lg font-semibold"
+                disabled={isLoading || isMaxAttemptsReached}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Attempts Warning */}
+        {attempts > 0 && (
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">
+              {maxAttempts - attempts} attempts remaining
+            </p>
+          </div>
         )}
 
-        {success && (
-          <Alert className="border-green-200 bg-green-50">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
-          </Alert>
+        {/* Max Attempts Warning */}
+        {isMaxAttemptsReached && (
+          <div className="text-center p-3 bg-destructive/10 rounded-md">
+            <p className="text-sm text-destructive font-medium">
+              Too many failed attempts. Please wait before trying again.
+            </p>
+          </div>
         )}
 
         {/* Action Buttons */}
-        <div className="flex flex-col space-y-3">
+        <div className="space-y-3">
           <Button
-            onClick={clearOtp}
-            variant="outline"
-            disabled={disabled || isLoading}
+            onClick={handleVerify}
+            disabled={!isOtpComplete || isLoading || isMaxAttemptsReached}
             className="w-full"
           >
-            Clear Code
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              'Verify Code'
+            )}
           </Button>
 
-          <div className="flex items-center justify-center space-x-2">
-            <span className="text-sm text-gray-500">Didn't receive the code?</span>
+          {onBack && (
             <Button
-              onClick={handleResend}
-              variant="link"
-              disabled={resendDisabled || resendTimer > 0 || isLoading}
-              className="p-0 h-auto text-fem-terracotta hover:text-fem-terracotta/80"
+              variant="outline"
+              onClick={onBack}
+              disabled={isLoading}
+              className="w-full"
             >
-              {resendTimer > 0 ? (
-                <span className="flex items-center space-x-1">
-                  <RefreshCw className="w-3 h-3 animate-spin" />
-                  <span>Resend in {resendTimer}s</span>
-                </span>
-              ) : (
-                'Resend Code'
+              Back
+            </Button>
+          )}
+        </div>
+
+        {/* Resend Section */}
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground mb-2">
+            Didn't receive the code?
+          </p>
+            <Button
+            variant="link"
+              onClick={handleResend}
+            disabled={!canResend}
+            className="p-0 h-auto text-sm"
+          >
+            {isResending ? (
+              <>
+                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                Sending...
+              </>
+            ) : countdown > 0 ? (
+              `Resend in ${countdown}s`
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-3 w-3" />
+                Resend Code
+              </>
               )}
             </Button>
           </div>
-        </div>
-
-        {/* Loading State */}
-        {isLoading && (
-          <div className="flex items-center justify-center space-x-2 text-fem-terracotta">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-sm">Verifying code...</span>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

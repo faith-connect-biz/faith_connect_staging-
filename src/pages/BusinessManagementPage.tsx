@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,11 +30,15 @@ import {
   Instagram,
   Twitter,
 
-  Youtube
+  Youtube,
+
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
+import { ServiceForm } from '@/components/ServiceForm';
+import { ProductForm } from '@/components/ProductForm';
+
 
 interface BusinessData {
   id: string;
@@ -86,6 +90,7 @@ export const BusinessManagementPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const { forceReAuth } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('overview');
   const [businessData, setBusinessData] = useState<BusinessData | null>(null);
   const [services, setServices] = useState<Service[]>([]);
@@ -96,8 +101,30 @@ export const BusinessManagementPage: React.FC = () => {
     close_time: string | null;
     is_closed: boolean;
   }>>([]);
+  const [analytics, setAnalytics] = useState<{
+    business_id: string;
+    business_name: string;
+    total_reviews: number;
+    average_rating: number;
+    rating_distribution: { [key: number]: number };
+    recent_reviews: Array<{
+      id: number;
+      user: string;
+      rating: number;
+      review_text: string;
+      is_verified: boolean;
+      created_at: string;
+      updated_at: string;
+    }>;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  
+  // Form state variables
+  const [showServiceForm, setShowServiceForm] = useState(false);
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     // Check if user is authenticated and is a business user
@@ -118,6 +145,85 @@ export const BusinessManagementPage: React.FC = () => {
   const loadBusinessData = async () => {
     try {
       setIsLoading(true);
+      
+      // Check if we have a business ID from navigation state (e.g., after creation)
+      const businessIdFromState = location.state?.businessId;
+      
+      if (businessIdFromState) {
+        console.log('Loading business from state ID:', businessIdFromState);
+        try {
+          const business = await apiService.getBusiness(businessIdFromState);
+          console.log('Business loaded from ID:', business);
+          
+          if (business) {
+            // Transform the API response to match our local interface
+            const transformedBusinessData: BusinessData = {
+              id: business.id,
+              business_name: business.business_name,
+              category: business.category || { name: 'Uncategorized', slug: 'uncategorized' },
+              description: business.description || '',
+              long_description: business.long_description || '',
+              phone: business.phone || '',
+              email: business.email || '',
+              website: business.website || '',
+              address: business.address,
+              city: business.city || '',
+              county: business.county || '',
+              rating: typeof business.rating === 'string' ? parseFloat(business.rating) : business.rating,
+              review_count: business.review_count,
+              is_verified: business.is_verified,
+              is_featured: business.is_featured,
+              is_active: business.is_active,
+              business_image_url: business.business_image_url,
+              business_logo_url: business.business_logo_url,
+              // Social media links
+              facebook_url: business.facebook_url,
+              instagram_url: business.instagram_url,
+              twitter_url: business.twitter_url,
+              youtube_url: business.youtube_url
+            };
+
+            console.log('Transformed business data:', transformedBusinessData);
+            setBusinessData(transformedBusinessData);
+
+            // Fetch services, products, and hours for the business
+            try {
+              const [servicesData, productsData, hoursData, analyticsData] = await Promise.all([
+                apiService.getBusinessServices(business.id),
+                apiService.getBusinessProducts(business.id),
+                apiService.getBusinessHours(business.id),
+                apiService.getBusinessAnalytics(business.id)
+              ]);
+
+              setServices(servicesData);
+              setProducts(productsData);
+              setBusinessHours(hoursData);
+              setAnalytics(analyticsData);
+              
+              console.log('Business hours data:', hoursData);
+              console.log('Analytics data:', analyticsData);
+              
+              // Clear the location state to avoid issues on subsequent renders
+              if (location.state?.businessId) {
+                navigate(location.pathname, { replace: true });
+              }
+              
+              return; // Exit early since we successfully loaded the business
+            } catch (error) {
+              console.error('Error fetching business details:', error);
+              // Set empty arrays as fallback
+              setServices([]);
+              setProducts([]);
+              setBusinessHours([]);
+              setAnalytics(null);
+            }
+            
+          }
+        } catch (error) {
+          console.error('Error loading business from ID:', error);
+          // Fall back to the original method
+        }
+      }
       
       // Try the simple method first
       let business = await apiService.getCurrentUserBusinessSimple();
@@ -163,23 +269,27 @@ export const BusinessManagementPage: React.FC = () => {
 
         // Fetch services, products, and hours for the business
         try {
-          const [servicesData, productsData, hoursData] = await Promise.all([
+          const [servicesData, productsData, hoursData, analyticsData] = await Promise.all([
             apiService.getBusinessServices(business.id),
             apiService.getBusinessProducts(business.id),
-            apiService.getBusinessHours(business.id)
+            apiService.getBusinessHours(business.id),
+            apiService.getBusinessAnalytics(business.id)
           ]);
 
           setServices(servicesData);
           setProducts(productsData);
           setBusinessHours(hoursData);
+          setAnalytics(analyticsData);
           
           console.log('Business hours data:', hoursData);
+          console.log('Analytics data:', analyticsData);
         } catch (error) {
           console.error('Error fetching business details:', error);
           // Set empty arrays as fallback
           setServices([]);
           setProducts([]);
           setBusinessHours([]);
+          setAnalytics(null);
         }
       } else {
         // No business found
@@ -200,24 +310,64 @@ export const BusinessManagementPage: React.FC = () => {
     }
   };
 
+  const loadBusinessServices = async () => {
+    if (!businessData) return;
+    try {
+      const servicesData = await apiService.getBusinessServices(businessData.id);
+      setServices(servicesData);
+    } catch (error) {
+      console.error('Error fetching business services:', error);
+      setServices([]);
+    }
+  };
+
+  const loadBusinessProducts = async () => {
+    if (!businessData) return;
+    try {
+      const productsData = await apiService.getBusinessProducts(businessData.id);
+      setProducts(productsData);
+    } catch (error) {
+      console.error('Error fetching business products:', error);
+      setProducts([]);
+    }
+  };
+
   const handleEditBusiness = () => {
     navigate('/register-business', { state: { editMode: true, businessId: businessData?.id } });
   };
 
   const handleAddService = () => {
-    // TODO: Implement add service functionality
-    toast({
-      title: "Add Service",
-      description: "This feature will be available soon!",
-    });
+    setEditingService(null);
+    setShowServiceForm(true);
   };
 
   const handleAddProduct = () => {
-    // TODO: Implement add product functionality
-    toast({
-      title: "Add Product",
-      description: "This feature will be available soon!",
-    });
+    setEditingProduct(null);
+    setShowProductForm(true);
+  };
+
+  const handleEditService = (service: Service) => {
+    setEditingService(service);
+    setShowServiceForm(true);
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setShowProductForm(true);
+  };
+
+  const handleServiceSuccess = () => {
+    // Refresh services data
+    if (businessData) {
+      loadBusinessServices();
+    }
+  };
+
+  const handleProductSuccess = () => {
+    // Refresh products data
+    if (businessData) {
+      loadBusinessProducts();
+    }
   };
 
   const handleProfilePictureClick = async () => {
@@ -231,15 +381,29 @@ export const BusinessManagementPage: React.FC = () => {
         try {
           setIsUploadingImage(true);
           
-          // For now, we'll use a placeholder URL
-          // In a real implementation, you'd upload to a cloud service like AWS S3
-          const imageUrl = URL.createObjectURL(file);
+          // Step 1: Get pre-signed URL from backend
+          const uploadData = await apiService.getImageUploadUrl(
+            businessData.id,
+            'image',
+            file.name,
+            file.type
+          );
           
-          // Upload the image to the backend
-          const result = await apiService.uploadBusinessImage(
-            businessData.id, 
-            'image', 
-            imageUrl
+          // Step 2: Upload file directly to S3
+          const uploadSuccess = await apiService.uploadFileToS3(
+            uploadData.presigned_url,
+            file
+          );
+          
+          if (!uploadSuccess) {
+            throw new Error('Failed to upload file to S3');
+          }
+          
+          // Step 3: Update business with the uploaded image
+          const result = await apiService.updateBusinessImage(
+            businessData.id,
+            'image',
+            uploadData.file_key
           );
           
           // Update the local state
@@ -279,21 +443,35 @@ export const BusinessManagementPage: React.FC = () => {
         try {
           setIsUploadingImage(true);
           
-          // For now, we'll use a placeholder URL
-          // In a real implementation, you'd upload to a cloud service like AWS S3
-          const imageUrl = URL.createObjectURL(file);
+          // Step 1: Get pre-signed URL from backend
+          const uploadData = await apiService.getImageUploadUrl(
+            businessData.id,
+            'logo',
+            file.name,
+            file.type
+          );
           
-          // Upload the image to the backend
-          const result = await apiService.uploadBusinessImage(
-            businessData.id, 
-            'logo', 
-            imageUrl
+          // Step 2: Upload file directly to S3
+          const uploadSuccess = await apiService.uploadFileToS3(
+            uploadData.presigned_url,
+            file
+          );
+          
+          if (!uploadSuccess) {
+            throw new Error('Failed to upload file to S3');
+          }
+          
+          // Step 3: Update business with the uploaded logo
+          const result = await apiService.updateBusinessImage(
+            businessData.id,
+            'logo',
+            uploadData.file_key
           );
           
           // Update the local state
           setBusinessData(prev => prev ? {
             ...prev,
-            business_logo_url: result.business_image_url
+            business_logo_url: result.business_logo_url
           } : null);
           
           toast({
@@ -440,6 +618,8 @@ export const BusinessManagementPage: React.FC = () => {
               </Button>
             </div>
             
+
+            
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="flex items-center space-x-2 text-gray-600">
                 <Star className="h-5 w-5 text-yellow-500" />
@@ -460,66 +640,7 @@ export const BusinessManagementPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Debug Section */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Debug & Troubleshooting
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <h4 className="font-medium">Authentication Status</h4>
-                  <div className="text-sm space-y-1">
-                    <p>User: {user?.partnership_number || 'None'} ({user?.user_type || 'None'})</p>
-                    <p>Access Token: {apiService.getAuthToken() ? 'Present' : 'Missing'}</p>
-                    <p>Refresh Token: {localStorage.getItem('refresh_token') ? 'Present' : 'Missing'}</p>
-                    <p>Is Authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <h4 className="font-medium">Debug Actions</h4>
-                  <div className="space-y-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => forceReAuth()}
-                      className="w-full"
-                    >
-                      Force Re-authentication
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => apiService.debugAllBusinesses()}
-                      className="w-full"
-                    >
-                      Debug All Businesses
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => loadBusinessData()}
-                      className="w-full"
-                    >
-                      Test Simple Method
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => apiService.logAuthStatus()}
-                      className="w-full"
-                    >
-                      Log Auth Status
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -532,146 +653,145 @@ export const BusinessManagementPage: React.FC = () => {
 
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Building2 className="h-5 w-5" />
-                      <span>Business Information</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
+              {/* Business Information Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Building2 className="h-5 w-5" />
+                    <span>Business Information</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Description</label>
+                    <p className="text-gray-900">{businessData.description}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Long Description</label>
+                    <p className="text-gray-900">
+                      {businessData.long_description || 'No detailed description provided yet.'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Address</label>
+                    <p className="text-gray-900">{businessData.address}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Location</label>
+                    <p className="text-gray-900">{businessData.city}, {businessData.county}</p>
+                  </div>
+                  {businessData.website && (
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Description</label>
-                      <p className="text-gray-900">{businessData.description}</p>
+                      <label className="text-sm font-medium text-gray-500">Website</label>
+                      <a 
+                        href={businessData.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-fem-terracotta hover:underline flex items-center space-x-1"
+                      >
+                        <span>Visit Website</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </a>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Long Description</label>
-                      <p className="text-gray-900">
-                        {businessData.long_description || 'No detailed description provided yet.'}
-                      </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Social Media Links */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Share2 className="h-5 w-5" />
+                    <span>Social Media</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {businessData.facebook_url && (
+                    <div className="flex items-center space-x-2">
+                      <Facebook className="h-4 w-4 text-blue-600" />
+                      <a 
+                        href={businessData.facebook_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline text-sm"
+                      >
+                        Facebook
+                      </a>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Address</label>
-                      <p className="text-gray-900">{businessData.address}</p>
+                  )}
+                  {businessData.instagram_url && (
+                    <div className="flex items-center space-x-2">
+                      <Instagram className="h-4 w-4 text-pink-600" />
+                      <a 
+                        href={businessData.instagram_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-pink-600 hover:underline text-sm"
+                      >
+                        Instagram
+                      </a>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Location</label>
-                      <p className="text-gray-900">{businessData.city}, {businessData.county}</p>
+                  )}
+                  {businessData.twitter_url && (
+                    <div className="flex items-center space-x-2">
+                      <Twitter className="h-4 w-4 text-blue-400" />
+                      <a 
+                        href={businessData.twitter_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:underline text-sm"
+                      >
+                        Twitter
+                      </a>
                     </div>
-                    {businessData.website && (
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Website</label>
-                        <a 
-                          href={businessData.website} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-fem-terracotta hover:underline flex items-center space-x-1"
-                        >
-                          <span>Visit Website</span>
-                          <ArrowRight className="h-4 w-4" />
-                        </a>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                  )}
 
-                {/* Social Media Links */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Share2 className="h-5 w-5" />
-                      <span>Social Media</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {businessData.facebook_url && (
-                      <div className="flex items-center space-x-2">
-                        <Facebook className="h-4 w-4 text-blue-600" />
-                        <a 
-                          href={businessData.facebook_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline text-sm"
-                        >
-                          Facebook
-                        </a>
-                      </div>
-                    )}
-                    {businessData.instagram_url && (
-                      <div className="flex items-center space-x-2">
-                        <Instagram className="h-4 w-4 text-pink-600" />
-                        <a 
-                          href={businessData.instagram_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-pink-600 hover:underline text-sm"
-                        >
-                          Instagram
-                        </a>
-                      </div>
-                    )}
-                    {businessData.twitter_url && (
-                      <div className="flex items-center space-x-2">
-                        <Twitter className="h-4 w-4 text-blue-400" />
-                        <a 
-                          href={businessData.twitter_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-400 hover:underline text-sm"
-                        >
-                          Twitter
-                        </a>
-                      </div>
-                    )}
+                  {businessData.youtube_url && (
+                    <div className="flex items-center space-x-2">
+                      <Youtube className="h-4 w-4 text-red-600" />
+                      <a 
+                        href={businessData.youtube_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-red-600 hover:underline text-sm"
+                      >
+                        YouTube
+                      </a>
+                    </div>
+                  )}
 
-                    {businessData.youtube_url && (
-                      <div className="flex items-center space-x-2">
-                        <Youtube className="h-4 w-4 text-red-600" />
-                        <a 
-                          href={businessData.youtube_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-red-600 hover:underline text-sm"
-                        >
-                          YouTube
-                        </a>
-                      </div>
-                    )}
+                  {!businessData.facebook_url && !businessData.instagram_url && !businessData.twitter_url && 
+                   !businessData.youtube_url && (
+                    <p className="text-gray-500 text-sm">No social media links added yet</p>
+                  )}
+                </CardContent>
+              </Card>
 
-                    {!businessData.facebook_url && !businessData.instagram_url && !businessData.twitter_url && 
-                     !businessData.youtube_url && (
-                      <p className="text-gray-500 text-sm">No social media links added yet</p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Quick Stats */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Users className="h-5 w-5" />
-                      <span>Quick Stats</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">{services.length}</div>
-                        <div className="text-sm text-blue-600">Active Services</div>
-                      </div>
-                      <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">{products.length}</div>
-                        <div className="text-sm text-green-600">Active Products</div>
-                      </div>
+              {/* Quick Stats */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Users className="h-5 w-5" />
+                    <span>Quick Stats</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">{services.length}</div>
+                      <div className="text-sm text-blue-600">Active Services</div>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">{products.length}</div>
+                      <div className="text-sm text-green-600">Active Products</div>
                     </div>
                     <div className="text-center p-4 bg-yellow-50 rounded-lg">
                       <div className="text-2xl font-bold text-yellow-600">{businessData.review_count}</div>
                       <div className="text-sm text-yellow-600">Total Reviews</div>
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Business Hours */}
               <Card>
@@ -697,7 +817,7 @@ export const BusinessManagementPage: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Business Features */}
+              {/* Business Features & Amenities */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
@@ -728,41 +848,62 @@ export const BusinessManagementPage: React.FC = () => {
                 </Button>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {services.map((service) => (
-                  <Card key={service.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className="font-semibold text-lg">{service.name}</h3>
-                        <Badge variant={service.is_active ? "default" : "secondary"}>
-                          {service.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                      </div>
-                      <p className="text-gray-600 mb-4">{service.description}</p>
-                      <div className="space-y-2 text-sm text-gray-500">
-                        <div className="flex items-center space-x-2">
-                          <Tag className="h-4 w-4" />
-                          <span>{service.price_range}</span>
+              {services.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {services.map((service, index) => (
+                    <Card key={service.id || `service-${service.name}-${index}`} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <h3 className="font-semibold text-lg">{service.name}</h3>
+                          <Badge variant={service.is_active ? "default" : "secondary"}>
+                            {service.is_active ? "Active" : "Inactive"}
+                          </Badge>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Clock className="h-4 w-4" />
-                          <span>{service.duration}</span>
+                        <p className="text-gray-600 mb-4">{service.description}</p>
+                        <div className="space-y-2 text-sm text-gray-500">
+                          <div className="flex items-center space-x-2">
+                            <Tag className="h-4 w-4" />
+                            <span>{service.price_range}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Clock className="h-4 w-4" />
+                            <span>{service.duration}</span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex space-x-2 mt-4">
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                        <div className="flex space-x-2 mt-4">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => handleEditService(service)}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </Button>
+                          <Button variant="outline" size="sm" className="flex-1">
+                            <Eye className="h-4 w-4 mr-2" />
+                            View
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Tag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No services yet</h3>
+                    <p className="text-gray-600 mb-4">
+                      Start by adding your first service to showcase what you offer.
+                    </p>
+                    <Button onClick={handleAddService} className="bg-fem-terracotta hover:bg-fem-terracotta/90">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Your First Service
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Products Tab */}
@@ -775,62 +916,228 @@ export const BusinessManagementPage: React.FC = () => {
                 </Button>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {products.map((product) => (
-                  <Card key={product.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className="font-semibold text-lg">{product.name}</h3>
-                        <Badge variant={product.is_active ? "default" : "secondary"}>
-                          {product.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                      </div>
-                      <p className="text-gray-600 mb-4">{product.description}</p>
-                      <div className="space-y-2 text-sm text-gray-500 mb-4">
-                        <div className="flex items-center justify-between">
-                          <span>Price:</span>
-                          <span className="font-semibold text-gray-900">
-                            ${product.price} {product.price_currency}
-                          </span>
+              {products.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {products.map((product, index) => (
+                    <Card key={product.id || `product-${product.name}-${index}`} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <h3 className="font-semibold text-lg">{product.name}</h3>
+                          <Badge variant={product.is_active ? "default" : "secondary"}>
+                            {product.is_active ? "Active" : "Inactive"}
+                          </Badge>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Package className="h-4 w-4" />
-                          <span>{product.in_stock ? "In Stock" : "Out of Stock"}</span>
+                        <p className="text-gray-600 mb-4">{product.description}</p>
+                        <div className="space-y-2 text-sm text-gray-500 mb-4">
+                          <div className="flex items-center justify-between">
+                            <span>Price:</span>
+                            <span className="font-semibold text-gray-900">
+                              ${product.price} {product.price_currency}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Package className="h-4 w-4" />
+                            <span>{product.in_stock ? "In Stock" : "Out of Stock"}</span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => handleEditProduct(product)}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </Button>
+                          <Button variant="outline" size="sm" className="flex-1">
+                            <Eye className="h-4 w-4 mr-2" />
+                            View
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No products yet</h3>
+                    <p className="text-gray-600 mb-4">
+                      Start by adding your first product to showcase what you sell.
+                    </p>
+                    <Button onClick={handleAddProduct} className="bg-fem-terracotta hover:bg-fem-terracotta/90">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Your First Product
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Analytics Tab */}
             <TabsContent value="analytics" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Business Analytics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">
-                    Analytics dashboard will be available soon! Track your business performance, 
-                    customer engagement, and growth metrics.
-                  </p>
-                </CardContent>
-              </Card>
+              {analytics ? (
+                <>
+                  {/* Overview Stats */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card>
+                      <CardContent className="p-6 text-center">
+                        <div className="text-3xl font-bold text-blue-600 mb-2">
+                          {analytics.average_rating.toFixed(1)}
+                        </div>
+                        <div className="text-sm text-gray-600">Average Rating</div>
+                        <div className="flex justify-center mt-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`h-4 w-4 ${
+                                star <= Math.round(analytics.average_rating)
+                                  ? 'text-yellow-400 fill-current'
+                                  : 'text-gray-300'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardContent className="p-6 text-center">
+                        <div className="text-3xl font-bold text-green-600 mb-2">
+                          {analytics.total_reviews}
+                        </div>
+                        <div className="text-sm text-gray-600">Total Reviews</div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardContent className="p-6 text-center">
+                        <div className="text-3xl font-bold text-purple-600 mb-2">
+                          {services.length + products.length}
+                        </div>
+                        <div className="text-sm text-gray-600">Total Offerings</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Rating Distribution */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Rating Distribution</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {[5, 4, 3, 2, 1].map((rating) => (
+                          <div key={rating} className="flex items-center space-x-3">
+                            <div className="flex items-center space-x-1 w-16">
+                              <span className="text-sm font-medium">{rating}</span>
+                              <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                            </div>
+                            <div className="flex-1 bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-yellow-400 h-2 rounded-full"
+                                style={{
+                                  width: `${analytics.total_reviews > 0 ? (analytics.rating_distribution[rating] / analytics.total_reviews) * 100 : 0}%`
+                                }}
+                              />
+                            </div>
+                            <span className="text-sm text-gray-600 w-12 text-right">
+                              {analytics.rating_distribution[rating]}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Recent Reviews */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Recent Reviews</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {analytics.recent_reviews.length > 0 ? (
+                        <div className="space-y-4">
+                          {analytics.recent_reviews.map((review) => (
+                            <div key={review.id} className="border-b border-gray-200 pb-4 last:border-b-0">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center space-x-2">
+                                  <div className="flex items-center space-x-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <Star
+                                        key={star}
+                                        className={`h-4 w-4 ${
+                                          star <= review.rating
+                                            ? 'text-yellow-400 fill-current'
+                                            : 'text-gray-300'
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                  <span className="text-sm font-medium text-gray-900">
+                                    {review.user}
+                                  </span>
+                                  {review.is_verified && (
+                                    <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
+                                      Verified
+                                    </Badge>
+                                  )}
+                                </div>
+                                <span className="text-sm text-gray-500">
+                                  {new Date(review.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                              {review.review_text && (
+                                <p className="text-gray-700">{review.review_text}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 text-center py-8">
+                          No reviews yet. Encourage your customers to leave reviews!
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Business Analytics</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">
+                      Loading analytics data...
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           </Tabs>
         </div>
       </main>
+      
+      {/* Service Form Modal */}
+      <ServiceForm
+        isOpen={showServiceForm}
+        onClose={() => setShowServiceForm(false)}
+        businessId={businessData?.id || ''}
+        service={editingService}
+        onSuccess={handleServiceSuccess}
+      />
+
+      {/* Product Form Modal */}
+      <ProductForm
+        isOpen={showProductForm}
+        onClose={() => setShowProductForm(false)}
+        businessId={businessData?.id || ''}
+        product={editingProduct}
+        onSuccess={handleProductSuccess}
+      />
+      
       <Footer />
     </div>
   );

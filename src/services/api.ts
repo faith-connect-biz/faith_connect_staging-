@@ -29,7 +29,14 @@ export interface User {
 
 export interface Business {
   id: string;
-  user: string;
+  user: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    partnership_number?: string;
+  } | null;
   business_name: string;
   category?: Category | null;
   description?: string;
@@ -129,7 +136,7 @@ export interface RegisterRequest {
 
 export interface BusinessCreateRequest {
   business_name: string;
-  category: number | string;
+  category_id: number;
   description?: string;
   long_description?: string;
   phone?: string;
@@ -256,38 +263,150 @@ class ApiService {
 
   // Authentication Methods
   async login(data: LoginRequest): Promise<{ user: User; tokens: AuthTokens }> {
-    const response = await this.api.post('/auth/login', data);
+    const response = await this.api.post('/login', data);
     // The backend wraps the response in a data field via success_response
     return response.data.data || response.data;
   }
 
   async register(data: RegisterRequest): Promise<{ user: User; tokens: AuthTokens }> {
-    const response = await this.api.post('/auth/register', data);
+    const response = await this.api.post('/register', data);
     // The backend wraps the response in a data field via success_response
     return response.data.data || response.data;
   }
 
   async logout(): Promise<void> {
-    await this.api.post('/auth/logout');
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    try {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
+        // Add timeout to prevent logout delays
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        await this.api.post('/logout', {
+          refresh: refreshToken
+        }, {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+      }
+    } catch (error) {
+      console.error('Logout API call failed:', error);
+      // Continue with local cleanup even if API call fails
+    } finally {
+      // Always clear local storage regardless of API response
+      this.clearAuthState();
+    }
+  }
+
+  // Generic HTTP methods for custom endpoints
+  async post(endpoint: string, data: any): Promise<any> {
+    const response = await this.api.post(endpoint, data);
+    return response.data;
+  }
+
+  async get(endpoint: string): Promise<any> {
+    const response = await this.api.get(endpoint);
+    return response.data;
   }
 
   async refreshToken(refreshToken: string): Promise<AuthTokens> {
-    const response = await this.api.post('/auth/refresh-token', {
+    const response = await this.api.post('/refresh-token', {
       refresh: refreshToken,
     });
     return response.data;
   }
 
   async sendOTP(data: OTPRequest): Promise<{ message: string }> {
-    const response = await this.api.post('/auth/verify-phone', data);
+    const response = await this.api.post('/verify-phone', data);
     return response.data;
   }
 
   async verifyOTP(data: OTPVerificationRequest): Promise<{ message: string }> {
-    const response = await this.api.post('/auth/verify-phone-confirm', data);
+    const response = await this.api.post('/verify-phone-confirm', data);
     return response.data;
+  }
+
+  // Verify email OTP for signup
+  async verifyEmailOTP(userId: string, otp: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await this.api.post('/verify-email-confirm', {
+        user_id: userId,
+        otp: otp
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error verifying email OTP:', error);
+      throw error;
+    }
+  }
+
+  // Resend email OTP for signup
+  async resendEmailOTP(userId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await this.api.post('/verify-email', {
+        user_id: userId
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error resending email OTP:', error);
+      throw error;
+    }
+  }
+
+  // Verify password reset OTP
+  async verifyPasswordResetOTP(token: string, otp: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await this.api.post('/forgot-password', {
+        token: token,
+        otp: otp
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error verifying password reset OTP:', error);
+      throw error;
+    }
+  }
+
+  // Resend password reset OTP
+  async resendPasswordResetOTP(email: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await this.api.post('/forgot-password', {
+        email: email
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error resending password reset OTP:', error);
+      throw error;
+    }
+  }
+
+  // Request password reset
+  async requestPasswordReset(identifier: string, method: 'email' | 'phone'): Promise<{ success: boolean; message: string; token?: string }> {
+    try {
+      const response = await this.api.post('/forgot-password', {
+        identifier: identifier,
+        method: method
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error requesting password reset:', error);
+      throw error;
+      }
+  }
+
+  // Reset password after OTP verification
+  async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await this.api.post('/reset-password', {
+        token: token,
+        new_password: newPassword
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      throw error;
+    }
   }
 
   // Business Methods
@@ -301,50 +420,28 @@ class ApiService {
     ordering?: string;
     page?: number;
   }): Promise<{ results: Business[]; count: number; next?: string; previous?: string }> {
-    const response = await this.api.get('/business/', { params });
-    return response.data;
+    const response = await this.api.get('/', { params }); // Business list is at root /api/ endpoint
+    // The backend returns a direct array, not wrapped in results
+    const businesses = response.data;
+    return {
+      results: businesses,
+      count: businesses.length,
+      next: undefined,
+      previous: undefined
+    };
   }
 
   async getBusiness(id: string): Promise<Business> {
-    const response = await this.api.get(`/business/${id}`);
+    const response = await this.api.get(`/business/${id}/`); // Business detail is at /api/business/{id}
     return response.data;
   }
 
   async createBusiness(data: BusinessCreateRequest): Promise<Business> {
     try {
-      // First, we need to get the category ID from the category name
-      let categoryId: number | undefined;
-      
-      if (data.category && typeof data.category === 'string') {
-        try {
-          const categoriesResponse = await this.getCategories();
-          const category = categoriesResponse.results.find(cat => 
-            cat.name.toLowerCase() === (data.category as string).toLowerCase()
-          );
-          
-          if (category) {
-            categoryId = category.id;
-          } else {
-            // If category doesn't exist, provide a helpful error message
-            const availableCategories = categoriesResponse.results.map(cat => cat.name).join(', ');
-            throw new Error(
-              `Category "${data.category}" not found. Available categories: ${availableCategories}. ` +
-              `Please select a valid category from the list.`
-            );
-          }
-        } catch (error) {
-          console.error('Error handling category:', error);
-          if (error instanceof Error) {
-            throw error;
-          }
-          throw new Error('Failed to validate business category. Please try again.');
-        }
-      }
-
       // Prepare the business data for the API
       const businessData = {
         business_name: data.business_name,
-        category: categoryId || data.category,
+        category_id: data.category_id,
         description: data.description,
         long_description: data.long_description,
         phone: data.phone,
@@ -373,13 +470,7 @@ class ApiService {
         photo_request_notes: data.photo_request_notes || null
       };
 
-      // Debug: Log the request data
-      console.log('Request data being sent:', businessData);
-
-      const response = await this.api.post('/business/', businessData);
-      
-      // Debug: Log the response
-      console.log('Backend response:', response);
+      const response = await this.api.post('/business/', businessData); // Business creation is at /api/business/ endpoint
       
       // Handle the response format from the backend
       if (response.data && response.data.data) {
@@ -395,39 +486,10 @@ class ApiService {
   // Update existing business
   async updateBusiness(id: string, data: BusinessCreateRequest): Promise<Business> {
     try {
-      // First, we need to get the category ID from the category name
-      let categoryId: number | undefined;
-      
-      if (data.category && typeof data.category === 'string') {
-        try {
-          const categoriesResponse = await this.getCategories();
-          const category = categoriesResponse.results.find(cat => 
-            cat.name.toLowerCase() === (data.category as string).toLowerCase()
-          );
-          
-          if (category) {
-            categoryId = category.id;
-          } else {
-            // If category doesn't exist, provide a helpful error message
-            const availableCategories = categoriesResponse.results.map(cat => cat.name).join(', ');
-            throw new Error(
-              `Category "${data.category}" not found. Available categories: ${availableCategories}. ` +
-              `Please select a valid category from the list.`
-            );
-          }
-        } catch (error) {
-          console.error('Error handling category:', error);
-          if (error instanceof Error) {
-            throw error;
-          }
-          throw new Error('Failed to validate business category. Please try again.');
-        }
-      }
-
       // Prepare the business data for the API
       const businessData = {
         business_name: data.business_name,
-        category: categoryId || data.category,
+        category_id: data.category_id,
         description: data.description,
         long_description: data.long_description,
         phone: data.phone,
@@ -456,14 +518,8 @@ class ApiService {
         photo_request_notes: data.photo_request_notes || null
       };
 
-      // Debug: Log the request data
-      console.log('Update request data being sent:', businessData);
-
       // Use the correct backend endpoint for updates
       const response = await this.api.put(`/business/${id}/update/`, businessData);
-      
-      // Debug: Log the response
-      console.log('Backend update response:', response);
       
       // Handle the response format from the backend
       if (response.data && response.data.data) {
@@ -584,18 +640,18 @@ class ApiService {
         return null;
       }
       
-      // Try to get business by user ID using query parameter
+      // Try to get business by user ID using path parameter (this should return a single business)
       try {
-        const response = await this.api.get(`/business/?user=${user.id}`);
-        console.log('getCurrentUserBusinessSimple: Response:', response.data);
+        const response = await this.api.get(`/business/user/${user.id}/`);
+        console.log('getCurrentUserBusinessSimple: Direct user endpoint response:', response.data);
+        console.log('getCurrentUserBusinessSimple: Response data type:', typeof response.data);
+        console.log('getCurrentUserBusinessSimple: Response data keys:', response.data ? Object.keys(response.data) : 'null');
         
-        if (response.data && response.data.results && response.data.results.length > 0) {
-          const business = response.data.results[0];
-          console.log('getCurrentUserBusinessSimple: Found business:', business);
-          return business;
+        if (response.data) {
+          return response.data;
         }
       } catch (error) {
-        console.log('getCurrentUserBusinessSimple: Query parameter method failed:', error);
+        console.log('getCurrentUserBusinessSimple: Direct user endpoint failed:', error);
       }
       
       // Try using partnership_number as fallback
@@ -614,25 +670,31 @@ class ApiService {
         }
       }
       
-      // Try to get business by user ID using path parameter
+      // Try to get business by user ID using query parameter
       try {
-        const response = await this.api.get(`/business/user/${user.id}/`);
-        console.log('getCurrentUserBusinessSimple: Direct user endpoint response:', response.data);
+        const response = await this.api.get(`/business/?user=${user.id}`);
+        console.log('getCurrentUserBusinessSimple: Response:', response.data);
         
-        if (response.data) {
-          return response.data;
+        if (response.data && response.data.results && response.data.results.length > 0) {
+          const business = response.data.results[0];
+          console.log('getCurrentUserBusinessSimple: Found business:', business);
+          return business;
         }
       } catch (error) {
-        console.log('getCurrentUserBusinessSimple: Direct user endpoint failed:', error);
+        console.log('getCurrentUserBusinessSimple: Query parameter method failed:', error);
       }
       
       // Try current user business endpoint
       try {
-        const response = await this.api.get('/business/current/');
-        console.log('getCurrentUserBusinessSimple: Current business endpoint response:', response.data);
-        
-        if (response.data) {
-          return response.data;
+        // Get current user ID from localStorage or context
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (user.id) {
+          const response = await this.api.get(`/business/user/${user.id}/`);
+          console.log('getCurrentUserBusinessSimple: Current business endpoint response:', response.data);
+          
+          if (response.data) {
+            return response.data;
+          }
         }
       } catch (error) {
         console.log('getCurrentUserBusinessSimple: Current business endpoint failed:', error);
@@ -668,6 +730,56 @@ class ApiService {
     }
   }
 
+  // Get all services across all businesses
+  async getAllServices(params?: {
+    search?: string;
+    category?: string;
+    price_range?: string;
+    ordering?: string;
+    page?: number;
+  }): Promise<{ results: Service[]; count: number; next?: string; previous?: string }> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.search) queryParams.append('search', params.search);
+      if (params?.category) queryParams.append('business__category', params.category);
+      if (params?.price_range) queryParams.append('price_range', params.price_range);
+      if (params?.ordering) queryParams.append('ordering', params.ordering);
+      if (params?.page) queryParams.append('page', params.page.toString());
+
+      const response = await this.api.get(`/business/services/${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching all services:', error);
+      return { results: [], count: 0 };
+    }
+  }
+
+  // Get all products across all businesses
+  async getAllProducts(params?: {
+    search?: string;
+    category?: string;
+    in_stock?: boolean;
+    price_currency?: string;
+    ordering?: string;
+    page?: number;
+  }): Promise<{ results: Product[]; count: number; next?: string; previous?: string }> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.search) queryParams.append('search', params.search);
+      if (params?.category) queryParams.append('business__category', params.category);
+      if (params?.in_stock !== undefined) queryParams.append('in_stock', params.in_stock.toString());
+      if (params?.price_currency) queryParams.append('price_currency', params.price_currency);
+      if (params?.ordering) queryParams.append('ordering', params.ordering);
+      if (params?.page) queryParams.append('page', params.page.toString());
+
+      const response = await this.api.get(`/business/products/${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching all products:', error);
+      return { results: [], count: 0 };
+    }
+  }
+
   // Get business hours
   async getBusinessHours(businessId: string): Promise<Array<{
     day_of_week: number;
@@ -677,10 +789,37 @@ class ApiService {
   }>> {
     try {
       const response = await this.api.get(`/business/${businessId}/hours/`);
+      // Backend returns { success: true, data: [...] }
       return response.data.data || [];
     } catch (error) {
       console.error('Error fetching business hours:', error);
       return [];
+    }
+  }
+
+  // Get business analytics
+  async getBusinessAnalytics(businessId: string): Promise<{
+    business_id: string;
+    business_name: string;
+    total_reviews: number;
+    average_rating: number;
+    rating_distribution: { [key: number]: number };
+    recent_reviews: Array<{
+      id: number;
+      user: string;
+      rating: number;
+      review_text: string;
+      is_verified: boolean;
+      created_at: string;
+      updated_at: string;
+    }>;
+  } | null> {
+    try {
+      const response = await this.api.get(`/business/${businessId}/analytics/`);
+      return response.data.data || null;
+    } catch (error) {
+      console.error('Error fetching business analytics:', error);
+      return null;
     }
   }
 
@@ -705,26 +844,122 @@ class ApiService {
     }
   }
 
-  // Upload business image
-  async uploadBusinessImage(businessId: string, imageType: 'image' | 'logo', imageUrl: string): Promise<{
-    business_image_url: string | null;
-    business_logo_url: string | null;
+  // Upload business image using S3 pre-signed URLs
+  async getImageUploadUrl(businessId: string, imageType: 'image' | 'logo', fileName: string, contentType: string): Promise<{
+    presigned_url: string;
+    file_key: string;
+    expires_in_minutes: number;
+    image_type: string;
   }> {
     try {
       const response = await this.api.post(`/business/${businessId}/upload-image/`, {
         image_type: imageType,
-        image_url: imageUrl
+        file_name: fileName,
+        content_type: contentType
       });
       return response.data.data;
     } catch (error) {
-      console.error('Error uploading business image:', error);
+      console.error('Error getting upload URL:', error);
       throw error;
     }
   }
 
-  async getCategories(): Promise<{ results: Category[]; count: number; next?: string; previous?: string }> {
-    const response = await this.api.get('/business/categories');
-    return response.data;
+  // Update business image using S3 pre-signed URLs
+  async updateBusinessImage(businessId: string, imageType: 'image' | 'logo', fileKey: string): Promise<{
+    business_image_url: string | null;
+    business_logo_url: string | null;
+    s3_url: string;
+  }> {
+    try {
+      const response = await this.api.put(`/business/${businessId}/upload-image/`, {
+        image_type: imageType,
+        file_key: fileKey
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error updating business image:', error);
+      throw error;
+    }
+  }
+
+  // Upload file directly to S3 using pre-signed URL
+  async uploadFileToS3(presignedUrl: string, file: File): Promise<boolean> {
+    try {
+      console.log('Starting S3 upload with presigned URL:', presignedUrl);
+      console.log('File details:', { name: file.name, type: file.type, size: file.size });
+      
+      const response = await fetch(presignedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+          'Cache-Control': 'no-cache',
+        },
+        mode: 'cors',
+        credentials: 'omit', // Don't send cookies to S3
+      });
+      
+      console.log('S3 upload response:', { status: response.status, statusText: response.statusText });
+      
+      if (response.ok) {
+        console.log('S3 upload successful');
+        return true;
+      } else {
+        console.error('S3 upload failed:', response.status, response.statusText);
+        // Try to get response text for more details
+        try {
+          const errorText = await response.text();
+          console.error('S3 error response:', errorText);
+        } catch (e) {
+          console.error('Could not read error response:', e);
+        }
+        return false;
+      }
+    } catch (error) {
+      console.error('Error uploading to S3:', error);
+      return false;
+    }
+  }
+
+  // Hardcoded categories that match the database (same as frontend)
+  private hardcodedCategories = [
+    { id: 1, name: 'Restaurant', slug: 'restaurant' },
+    { id: 2, name: 'Retail', slug: 'retail' },
+    { id: 3, name: 'Services', slug: 'services' },
+    { id: 4, name: 'Health & Wellness', slug: 'health-wellness' },
+    { id: 5, name: 'Automotive', slug: 'automotive' },
+    { id: 6, name: 'Real Estate', slug: 'real-estate' },
+    { id: 7, name: 'Education', slug: 'education' },
+    { id: 8, name: 'Technology', slug: 'technology' },
+    { id: 9, name: 'Beauty & Personal Care', slug: 'beauty-personal-care' },
+    { id: 10, name: 'Home & Garden', slug: 'home-garden' },
+    { id: 11, name: 'Legal Services', slug: 'legal-services' },
+    { id: 12, name: 'Financial Services', slug: 'financial-services' },
+    { id: 13, name: 'Entertainment', slug: 'entertainment' },
+    { id: 14, name: 'Professional Services', slug: 'professional-services' },
+    { id: 15, name: 'Construction', slug: 'construction' },
+    { id: 16, name: 'Transportation', slug: 'transportation' },
+    { id: 17, name: 'Non-Profit', slug: 'non-profit' }
+  ];
+
+  // Get categories from backend API
+  async getCategories(): Promise<{ results: Category[]; count: number }> {
+    try {
+      const response = await this.api.get('/business/categories/');
+      // The backend returns a direct array, not wrapped in results
+      const categories = response.data;
+      return {
+        results: categories,
+        count: categories.length
+      };
+    } catch (error) {
+      console.error('Error fetching categories from API, falling back to hardcoded:', error);
+      // Fallback to hardcoded categories if API fails
+      return {
+        results: this.hardcodedCategories,
+        count: this.hardcodedCategories.length
+      };
+    }
   }
 
   async toggleFavorite(businessId: string): Promise<{ message: string }> {
@@ -742,22 +977,26 @@ class ApiService {
     images?: string[]; // Up to 10 images
     in_stock?: boolean;
   }): Promise<Product> {
-    const response = await this.api.post(`/business/${businessId}/products`, data);
+    const productData = {
+      ...data,
+      business: businessId
+    };
+    const response = await this.api.post(`/business/${businessId}/products/`, productData);
     return response.data;
   }
 
   async updateProduct(productId: string, data: Partial<Product>): Promise<Product> {
-    const response = await this.api.put(`/business/products/${productId}`, data);
+    const response = await this.api.put(`/business/products/${productId}/`, data);
     return response.data;
   }
 
   async deleteProduct(productId: string): Promise<void> {
-    await this.api.delete(`/business/products/${productId}`);
+    await this.api.delete(`/business/products/${productId}/`);
   }
 
   // Review Methods
   async getBusinessReviews(businessId: string): Promise<Review[]> {
-    const response = await this.api.get(`/business/${businessId}/reviews`);
+    const response = await this.api.get(`/business/${businessId}/reviews/`);
     return response.data;
   }
 
@@ -765,7 +1004,11 @@ class ApiService {
     rating: number;
     review_text?: string;
   }): Promise<Review> {
-    const response = await this.api.post(`/business/${businessId}/reviews`, data);
+    const reviewData = {
+      ...data,
+      business: businessId
+    };
+    const response = await this.api.post(`/business/${businessId}/reviews/`, reviewData);
     return response.data;
   }
 
@@ -773,17 +1016,28 @@ class ApiService {
     rating?: number;
     review_text?: string;
   }): Promise<Review> {
-    const response = await this.api.put(`/business/${businessId}/reviews/${reviewId}`, data);
+    const response = await this.api.put(`/business/${businessId}/reviews/${reviewId}/`, data);
     return response.data;
   }
 
   async deleteReview(businessId: string, reviewId: number): Promise<void> {
-    await this.api.delete(`/business/${businessId}/reviews/${reviewId}`);
+    await this.api.delete(`/business/${businessId}/reviews/${reviewId}/`);
+  }
+
+  async getUserReview(businessId: string): Promise<Review | null> {
+    try {
+      const response = await this.api.get(`/business/${businessId}/reviews/`);
+      const reviews = response.data;
+      // Find the current user's review
+      return reviews.find((review: Review) => review.user === 'current_user') || null;
+    } catch (error) {
+      return null;
+    }
   }
 
   // User Methods
   async getCurrentUser(): Promise<User> {
-    const response = await this.api.get('/users/profile');
+    const response = await this.api.get('/profile');
     // Handle nested response structure: { success: true, message: "...", data: { user_data } }
     if (response.data && response.data.success && response.data.data) {
       return response.data.data;
@@ -793,7 +1047,7 @@ class ApiService {
   }
 
   async updateProfile(data: Partial<User>): Promise<User> {
-    const response = await this.api.put('/users/profile', data);
+    const response = await this.api.put('/profile-update', data);
     // Handle nested response structure: { success: true, message: "...", data: { user_data } }
     if (response.data && response.data.success && response.data.data) {
       return response.data.data;
@@ -830,7 +1084,7 @@ class ApiService {
       if (!token) return false;
       
       // Make a simple API call to validate the token
-      await this.api.get('/users/profile');
+      await this.api.get('/profile');
       return true;
     } catch (error) {
       console.log('Token validation failed:', error);
@@ -919,17 +1173,131 @@ class ApiService {
     images?: string[]; // Up to 10 images
     is_active?: boolean;
   }): Promise<Service> {
-    const response = await this.api.post(`/business/${businessId}/services`, data);
+    const serviceData = {
+      ...data,
+      business: businessId
+    };
+    const response = await this.api.post(`/business/${businessId}/services/`, serviceData);
     return response.data;
   }
 
   async updateService(serviceId: string, data: Partial<Service>): Promise<Service> {
-    const response = await this.api.put(`/business/services/${serviceId}`, data);
+    const response = await this.api.put(`/business/services/${serviceId}/`, data);
     return response.data;
   }
 
   async deleteService(serviceId: string): Promise<void> {
-    await this.api.delete(`/business/services/${serviceId}`);
+    await this.api.delete(`/business/services/${serviceId}/`);
+  }
+
+  // Service Image Upload using S3 pre-signed URLs
+  async getServiceImageUploadUrl(serviceId: string, imageType: 'main' | 'additional', fileName: string, contentType: string): Promise<{
+    presigned_url: string;
+    file_key: string;
+    expires_in_minutes: number;
+    image_type: string;
+  }> {
+    try {
+      const response = await this.api.post(`/business/services/${serviceId}/upload-image/`, {
+        image_type: imageType,
+        file_name: fileName,
+        content_type: contentType
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error getting service image upload URL:', error);
+      throw error;
+    }
+  }
+
+  // Update service with uploaded image
+  async updateServiceImage(serviceId: string, imageType: 'main' | 'additional', fileKey: string): Promise<{
+    service_image_url: string | null;
+    images: string[];
+    s3_url: string;
+  }> {
+    try {
+      const response = await this.api.put(`/business/services/${serviceId}/update-image/`, {
+        image_type: imageType,
+        file_key: fileKey
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating service image:', error);
+      throw error;
+    }
+  }
+
+  // Product Image Upload using S3 pre-signed URLs
+  async getProductImageUploadUrl(productId: string, imageType: 'main' | 'additional', fileName: string, contentType: string): Promise<{
+    presigned_url: string;
+    file_key: string;
+    expires_in_minutes: number;
+    image_type: string;
+  }> {
+    try {
+      const response = await this.api.post(`/business/products/${productId}/upload-image/`, {
+        image_type: imageType,
+        file_name: fileName,
+        content_type: contentType
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error getting product image upload URL:', error);
+      throw error;
+    }
+  }
+
+  // Update product with uploaded image
+  async updateProductImage(productId: string, imageType: 'main' | 'additional', fileKey: string): Promise<{
+    product_image_url: string | null;
+    images: string[];
+    s3_url: string;
+  }> {
+    try {
+      const response = await this.api.put(`/business/products/${productId}/update-image/`, {
+        image_type: imageType,
+        file_key: fileKey
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating product image:', error);
+      throw error;
+    }
+  }
+
+  // Profile Photo Upload using S3 pre-signed URLs
+  async getProfilePhotoUploadUrl(fileName: string, contentType: string): Promise<{
+    presigned_url: string;
+    file_key: string;
+    expires_in_minutes: number;
+  }> {
+    try {
+      const response = await this.api.post('/profile-photo-upload-url', {
+        file_name: fileName,
+        content_type: contentType
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error getting profile photo upload URL:', error);
+      throw error;
+    }
+  }
+
+  // Update profile with uploaded photo
+  async updateProfilePhoto(fileKey: string): Promise<{
+    profile_image_url: string | null;
+    s3_url: string;
+  }> {
+    try {
+      const response = await this.api.put('/profile-photo-update', {
+        file_key: fileKey
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating profile photo:', error);
+      throw error;
+    }
   }
 }
 

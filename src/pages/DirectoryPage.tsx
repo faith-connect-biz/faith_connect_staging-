@@ -46,7 +46,7 @@ import { useBusiness } from "@/contexts/BusinessContext";
 gsap.registerPlugin(ScrollTrigger);
 
 const DirectoryPage = () => {
-  const { businesses, categories, isLoading } = useBusiness();
+  const { businesses, categories, services, products, isLoading } = useBusiness();
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState("businesses");
@@ -197,8 +197,8 @@ const DirectoryPage = () => {
 
   // Calculate statistics
   const stats = {
-    totalServices: 0, // Will be populated when services are fetched
-    totalProducts: 0, // Will be populated when products are fetched
+    totalServices: Array.isArray(services) ? services.length : 0,
+    totalProducts: Array.isArray(products) ? products.length : 0,
     verifiedBusinesses: Array.isArray(businesses) ? businesses.filter(b => b.is_verified).length : 0,
     averageRating: (() => {
       if (!Array.isArray(businesses) || businesses.length === 0) return "0.0";

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,8 @@ import {
   ShoppingCart,
   DollarSign,
   Tag,
-  Truck
+  Truck,
+  CheckCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
@@ -33,6 +34,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { MotionWrapper, HoverCard, GlassmorphismCard, GlowingCard } from "@/components/ui/MotionWrapper";
 import { scrollAnimations, hoverAnimations } from "@/utils/animation";
 import { useBusiness } from "@/contexts/BusinessContext";
+import { Product } from "@/services/api";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
@@ -43,10 +45,10 @@ interface ProductListProps {
 
 export const ProductList = ({ filters }: ProductListProps) => {
   const navigate = useNavigate();
-  const { businesses, isLoading } = useBusiness();
+  const { products, businesses, isLoading } = useBusiness();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [selectedBusiness, setSelectedBusiness] = useState<any>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -59,13 +61,19 @@ export const ProductList = ({ filters }: ProductListProps) => {
     return () => {
       ScrollTrigger.getAll().forEach(trigger => trigger.kill());
     };
-  }, [businesses]);
+  }, [products]);
 
-  // Filter businesses that offer products
-  const filteredBusinesses = Array.isArray(businesses) ? businesses.filter(business => {
+  // Filter products based on filters
+  const filteredProducts = Array.isArray(products) ? products.filter(product => {
+    // Get the business for this product
+    const business = businesses.find(b => b.id === product.business);
+    if (!business) return false;
+
     // Filter by search term
-    if (filters.searchTerm && !business.business_name.toLowerCase().includes(filters.searchTerm.toLowerCase()) &&
-        !business.description?.toLowerCase().includes(filters.searchTerm.toLowerCase())) return false;
+    if (filters.searchTerm && 
+        !product.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) &&
+        !product.description?.toLowerCase().includes(filters.searchTerm.toLowerCase()) &&
+        !business.business_name.toLowerCase().includes(filters.searchTerm.toLowerCase())) return false;
     
     // Filter by category
     if (filters.category && filters.category !== "all" && business.category?.name !== filters.category) return false;
@@ -79,217 +87,220 @@ export const ProductList = ({ filters }: ProductListProps) => {
     // Filter by verified only
     if (filters.verifiedOnly && !business.is_verified) return false;
     
-    // Filter for product-oriented businesses (you can customize this logic)
-    const productCategories = [
-      "Retail", "Restaurant", "Technology", "Home & Garden"
-    ];
+    // Filter by in stock
+    if (filters.inStock && !product.in_stock) return false;
     
-    return productCategories.includes(business.category?.name) || true; // Show all for now
+    return true;
   }) : [];
 
-  const toggleFavorite = (businessId: string) => {
+  const toggleFavorite = (productId: string) => {
     setFavorites(prev => 
-      prev.includes(businessId) 
-        ? prev.filter(id => id !== businessId)
-        : [...prev, businessId]
+      prev.includes(productId) 
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
     );
   };
 
-  const ProductCard = ({ business }: { business: any }) => (
-    <MotionWrapper animation="fadeIn" delay={0.1}>
-      <HoverCard className="h-full">
-        <Card className="product-card h-full bg-white/90 backdrop-blur-sm border-2 border-green-100 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
-          <div className="relative">
-            <img 
-              src={business.business_image_url || business.business_logo_url || "/placeholder.svg"} 
-              alt={business.business_name}
-              className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
-            />
-            <div className="absolute top-4 right-4 flex gap-2">
+  const handleProductClick = (product: Product) => {
+    // Navigate to the business page when product is clicked
+    const business = businesses.find(b => b.id === product.business);
+    if (business) {
+      navigate(`/business/${business.id}`);
+    }
+  };
+
+  const ProductCard = ({ product }: { product: Product }) => {
+    const business = businesses.find(b => b.id === product.business);
+    
+    if (!business) return null;
+
+    return (
+      <MotionWrapper animation="fadeIn" delay={0.1}>
+        <HoverCard className="h-full">
+          <Card 
+            className="product-card h-full bg-white/90 backdrop-blur-sm border-2 border-fem-navy/10 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer"
+            onClick={() => handleProductClick(product)}
+          >
+            <div className="relative">
+              <img 
+                src={product.images?.[0] || product.product_image_url || business.business_image_url || business.business_logo_url || "/placeholder.svg"} 
+                alt={product.name}
+                className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/placeholder.svg";
+                }}
+              />
+              
+              {/* Product Status Badges */}
+              <div className="absolute top-3 left-3 flex flex-col gap-2">
+                <Badge variant={product.is_active ? "default" : "secondary"} className="bg-fem-navy/90 text-white">
+                  {product.is_active ? "Available" : "Unavailable"}
+                </Badge>
+                <Badge variant={product.in_stock ? "default" : "destructive"} className="bg-green-600 text-white">
+                  {product.in_stock ? "In Stock" : "Out of Stock"}
+                </Badge>
+              </div>
+
+              {/* Business Verification Badge */}
               {business.is_verified && (
-                <Badge className="bg-green-500 text-white">
-                  <Shield className="w-3 h-3 mr-1" />
-                  Verified
-                </Badge>
+                <div className="absolute top-3 right-3">
+                  <Badge variant="default" className="bg-green-600 text-white">
+                    <Shield className="w-3 h-3 mr-1" />
+                    Verified
+                  </Badge>
+                </div>
               )}
-              {business.is_featured && (
-                <Badge className="bg-fem-gold text-white">
-                  <Award className="w-3 h-3 mr-1" />
-                  Featured
-                </Badge>
-              )}
-              <Badge className="bg-green-500 text-white">
-                <Package className="w-3 h-3 mr-1" />
-                Products
-              </Badge>
+
+              {/* Favorite Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/80 hover:bg-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFavorite(product.id);
+                }}
+              >
+                <Heart 
+                  className={`w-4 h-4 ${favorites.includes(product.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} 
+                />
+              </Button>
             </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <div className="absolute bottom-4 left-4 right-4 flex gap-2">
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="flex-1 bg-white/90 text-gray-800 hover:bg-white"
-                  onClick={() => {
-                    setSelectedBusiness(business);
-                    setShowPhotoModal(true);
+
+            <CardContent className="p-4">
+              {/* Product Name */}
+              <h3 className="font-semibold text-lg text-fem-navy mb-2 group-hover:text-fem-blue transition-colors duration-200">
+                {product.name}
+              </h3>
+
+              {/* Business Name */}
+              <p className="text-sm text-gray-600 mb-2 flex items-center">
+                <Building2 className="w-4 h-4 mr-1" />
+                {business.business_name}
+              </p>
+
+              {/* Product Description */}
+              {product.description && (
+                <p className="text-gray-700 text-sm mb-3 line-clamp-2">
+                  {product.description}
+                </p>
+              )}
+
+              {/* Product Details */}
+              <div className="space-y-2 mb-3">
+                <div className="flex items-center text-sm text-gray-600">
+                  <DollarSign className="w-4 h-4 mr-1" />
+                  <span className="font-medium">
+                    {product.price} {product.price_currency}
+                  </span>
+                </div>
+                
+                <div className="flex items-center text-sm text-gray-600">
+                  <Tag className="w-4 h-4 mr-1" />
+                  <span>Product</span>
+                </div>
+              </div>
+
+              {/* Business Location */}
+              <div className="flex items-center text-sm text-gray-600 mb-3">
+                <MapPin className="w-4 h-4 mr-1" />
+                {business.city && business.county ? `${business.city}, ${business.county}` : business.address}
+              </div>
+
+              {/* Business Rating */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Star className="w-4 h-4 text-yellow-500 mr-1" />
+                  <span className="text-sm font-medium text-gray-700">
+                    {typeof business.rating === 'number' ? business.rating.toFixed(1) : business.rating}
+                  </span>
+                  <span className="text-sm text-gray-500 ml-1">
+                    ({business.review_count} reviews)
+                  </span>
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-fem-navy border-fem-navy hover:bg-fem-navy hover:text-white"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleProductClick(product);
                   }}
                 >
-                  <Camera className="w-4 h-4 mr-1" />
-                  View Photos
+                  View Details
                 </Button>
-                <Button 
-                  size="sm" 
-                  className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg"
-                  onClick={() => navigate(`/chat?business=${business.id}`)}
-                >
-                  <MessageCircle className="w-4 h-4 mr-1" />
-                  Order Products
-                </Button>
-              </div>
-            </div>
-          </div>
-          
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <h3 
-                  className="text-lg font-semibold text-fem-navy mb-2 cursor-pointer hover:text-fem-terracotta transition-colors duration-200 flex items-center gap-2 group"
-                  onClick={() => navigate(`/business/${business.id}`)}
-                  title="Click to view business details"
-                >
-                  {business.business_name}
-                  <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-fem-terracotta transition-colors duration-200" />
-                </h3>
-                <p className="text-sm text-gray-600 mb-3">{business.description}</p>
-                
-                <div className="flex items-center gap-4 mb-3">
-                  <div className="flex items-center gap-1">
-                    <Star className="w-4 h-4 text-yellow-500" />
-                    <span className="text-sm font-medium">{business.rating}</span>
-                    <span className="text-sm text-gray-500">({business.review_count} reviews)</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-gray-500">
-                    <MapPin className="w-3 h-3" />
-                    <span className="text-sm">{business.city}, {business.county}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 mb-3">
-                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                    <Package className="w-3 h-3 mr-1" />
-                    {business.category?.name}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                    <Truck className="w-3 h-3 mr-1" />
-                    Delivery Available
-                  </Badge>
-                </div>
-
-                {/* Product-specific information */}
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <ShoppingCart className="w-4 h-4 text-green-500" />
-                    <span>Physical products available</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <DollarSign className="w-4 h-4 text-green-500" />
-                    <span>Competitive pricing</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => toggleFavorite(business.id)}
-                  className={`${favorites.includes(business.id) ? 'text-red-500' : 'text-gray-400'} hover:text-red-500`}
-                >
-                  <Heart className={`w-4 h-4 ${favorites.includes(business.id) ? 'fill-current' : ''}`} />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => navigate(`/business/${business.id}`)}
-                  className="text-gray-400 hover:text-fem-navy"
-                  title="View business details"
-                >
-                  <Eye className="w-4 h-4" />
-                </Button>
-              </div>
-              
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
-                  onClick={() => navigate(`/business/${business.id}`)}
-                >
-                  <Building2 className="w-4 h-4 mr-1" />
-                  View Business
-                </Button>
-                <Button
-                  size="sm"
-                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
-                  onClick={() => navigate(`/business/${business.id}`)}
-                >
-                  <ShoppingCart className="w-4 h-4 mr-1" />
-                  View Products
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </HoverCard>
-    </MotionWrapper>
-  );
-
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[...Array(6)].map((_, index) => (
-          <Card key={index} className="h-full">
-            <Skeleton className="h-48 w-full" />
-            <CardContent className="p-6 space-y-4">
-              <Skeleton className="h-6 w-3/4" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-2/3" />
-              <div className="flex gap-2">
-                <Skeleton className="h-6 w-16" />
-                <Skeleton className="h-6 w-20" />
               </div>
             </CardContent>
           </Card>
+        </HoverCard>
+      </MotionWrapper>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="flex space-x-4">
+            <Skeleton className="h-48 w-48" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          </div>
         ))}
       </div>
     );
   }
 
-  if (filteredBusinesses.length === 0) {
+  if (!filteredProducts.length) {
     return (
       <div className="text-center py-12">
         <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-fem-navy mb-2">No Products Found</h3>
-        <p className="text-gray-600 mb-4">Try adjusting your filters or search terms</p>
-        <Button onClick={() => window.location.reload()} variant="outline">
-          Clear Filters
-        </Button>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+        <p className="text-gray-500">Try adjusting your filters or search terms.</p>
       </div>
     );
   }
 
   return (
-    <div ref={listRef}>
-      <div className={`grid gap-6 ${
-        viewMode === "grid" 
-          ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" 
-          : "grid-cols-1"
-      }`}>
+    <div ref={listRef} className="space-y-6">
+      {/* View Mode Toggle */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-2">
+          <Button
+            variant={viewMode === "grid" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("grid")}
+          >
+            <Grid3X3 className="w-4 h-4 mr-1" />
+            Grid
+          </Button>
+          <Button
+            variant={viewMode === "list" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+          >
+            <List className="w-4 h-4 mr-1" />
+            List
+          </Button>
+        </div>
+        
+        <div className="text-sm text-gray-500">
+          {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''} found
+        </div>
+      </div>
+
+      {/* Products Grid/List */}
+      <div className={viewMode === "grid" 
+        ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+        : "space-y-4"
+      }>
         <AnimatePresence>
-          {filteredBusinesses.map((business, index) => (
-            <ProductCard key={business.id} business={business} />
+          {filteredProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
           ))}
         </AnimatePresence>
       </div>

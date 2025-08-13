@@ -5,8 +5,9 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isLoggingOut: boolean;
   login: (data: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<{ user: User; tokens: AuthTokens }>;
   logout: () => Promise<void>;
   updateUser: (data: Partial<User>) => Promise<void>;
   setUser: (user: User | null) => void;
@@ -25,6 +26,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const isAuthenticated = !!user;
 
@@ -95,6 +97,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await apiService.register(data);
       apiService.setAuthTokens(response.tokens);
       setUser(response.user);
+      return response; // Return the response so we can access user data
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;
@@ -104,15 +107,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = async () => {
+    // Prevent multiple logout calls
+    if (isLoggingOut) {
+      return;
+    }
+    
     try {
+      setIsLoggingOut(true);
       await apiService.logout();
     } catch (error) {
       console.error('Logout failed:', error);
+      // Continue with local cleanup even if logout fails
     } finally {
+      // Always clear local state regardless of API response
       setUser(null);
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('user');
+      setIsLoggingOut(false);
     }
   };
 
@@ -148,6 +160,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     isAuthenticated,
     isLoading,
+    isLoggingOut,
     login,
     register,
     logout,

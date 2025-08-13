@@ -41,6 +41,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { MotionWrapper, HoverCard, GlassmorphismCard } from "@/components/ui/MotionWrapper";
 import { apiService } from "@/services/api";
+import type { Business, Review } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -61,6 +62,9 @@ const BusinessDetailPage = () => {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [userRating, setUserRating] = useState(0);
   const [userReview, setUserReview] = useState("");
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [userReviewData, setUserReviewData] = useState<Review | null>(null);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
@@ -84,45 +88,43 @@ const BusinessDetailPage = () => {
   const headerRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
 
-  // Fetch business data
+  // Fetch business data and reviews
   useEffect(() => {
-    const fetchBusiness = async () => {
+    const fetchBusinessData = async () => {
       if (!id) return;
       
       try {
         setIsLoading(true);
-        setError(null);
-        
         const businessData = await apiService.getBusiness(id);
         setBusiness(businessData);
         
-        // Fetch additional data like services, products, reviews
-        try {
-          const [products, services] = await Promise.all([
-            apiService.getBusinessProducts(id),
-            apiService.getBusinessServices(id)
-          ]);
-          
-          setBusiness(prev => ({
-            ...prev,
-            products: products || [],
-            services: services || []
-          }));
-        } catch (error) {
-          console.error('Error fetching additional business data:', error);
-          // Continue with basic business data
-        }
+        // Fetch reviews for this business
+        const reviewsData = await apiService.getBusinessReviews(id);
+        setReviews(reviewsData);
         
-      } catch (err) {
-        console.error('Error fetching business:', err);
-        setError('Failed to load business details');
+        // Check if current user has already reviewed this business
+        if (user) {
+          const userReview = reviewsData.find((review: Review) => review.user === user.partnership_number);
+          if (userReview) {
+            setUserReviewData(userReview);
+            setUserRating(userReview.rating);
+            setUserReview(userReview.review_text || '');
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching business data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load business information. Please try again.",
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchBusiness();
-  }, [id]);
+    fetchBusinessData();
+  }, [id, user]);
 
   // GSAP Animations
   useEffect(() => {
@@ -206,15 +208,110 @@ const BusinessDetailPage = () => {
     );
   };
 
-  const handleSubmitRating = () => {
-    if (userRating === 0) return;
+  const handleSubmitRating = async () => {
+    if (userRating === 0) {
+      toast({
+        title: "Rating Required",
+        description: "Please select a rating before submitting.",
+        variant: "destructive"
+      });
+      return;
+    }
     
-    // TODO: Implement review submission with API
-    console.log('Submitting review:', { rating: userRating, review: userReview });
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to submit a review.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsSubmittingReview(true);
+    
+    try {
+      if (userReviewData) {
+        // Update existing review
+        const updatedReview = await apiService.updateReview(id!, userReviewData.id, {
+          rating: userRating,
+          review_text: userReview
+        });
+        
+        // Update local state
+        setReviews(prev => prev.map(review => 
+          review.id === updatedReview.id ? updatedReview : review
+        ));
+        setUserReviewData(updatedReview);
+        
+        toast({
+          title: "Review Updated",
+          description: "Your review has been updated successfully!",
+          variant: "default"
+        });
+      } else {
+        // Create new review
+        const newReview = await apiService.createReview(id!, {
+          rating: userRating,
+          review_text: userReview
+        });
+        
+        // Add to local state
+        setReviews(prev => [...prev, newReview]);
+        setUserReviewData(newReview);
+        
+        toast({
+          title: "Review Submitted",
+          description: "Thank you for your review!",
+          variant: "default"
+        });
+      }
     
     setShowReviewForm(false);
+    } catch (error: any) {
+      console.error('Error submitting review:', error);
+      let errorMessage = "Failed to submit review. Please try again.";
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      toast({
+        title: "Review Submission Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  const handleDeleteReview = async () => {
+    if (!userReviewData) return;
+    
+    if (!confirm('Are you sure you want to delete your review?')) return;
+    
+    try {
+      await apiService.deleteReview(id!, userReviewData.id);
+      
+      // Remove from local state
+      setReviews(prev => prev.filter(review => review.id !== userReviewData.id));
+      setUserReviewData(null);
     setUserRating(0);
-    setUserReview("");
+      setUserReview('');
+      
+      toast({
+        title: "Review Deleted",
+        description: "Your review has been deleted successfully.",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error('Error deleting review:', error);
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete review. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Product Management Functions
@@ -778,7 +875,7 @@ const BusinessDetailPage = () => {
                       <div className="space-y-6">
                         <div className="flex items-center justify-between">
                           <h3 className="text-xl font-semibold text-fem-navy">Customer Reviews</h3>
-                          {user && (
+                          {user && !userReviewData && (
                             <Button
                               onClick={() => setShowReviewForm(true)}
                               className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
@@ -786,13 +883,72 @@ const BusinessDetailPage = () => {
                               Write Review
                             </Button>
                           )}
+                          {user && userReviewData && (
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => setShowReviewForm(true)}
+                                variant="outline"
+                                className="border-fem-gold text-fem-gold hover:bg-fem-gold hover:text-white"
+                              >
+                                Edit Review
+                              </Button>
+                              <Button
+                                onClick={handleDeleteReview}
+                                variant="outline"
+                                className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+                              >
+                                Delete Review
+                              </Button>
+                            </div>
+                          )}
                         </div>
 
+                        {/* Reviews List */}
+                        {reviews.length > 0 ? (
+                          <div className="space-y-4">
+                            {reviews.map((review) => (
+                              <div key={review.id} className="bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-gray-200">
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-fem-navy to-fem-terracotta flex items-center justify-center text-white text-sm font-bold">
+                                      {review.user?.[0] || 'U'}
+                                    </div>
+                                    <span className="font-medium text-gray-900">{review.user}</span>
+                                    {review.is_verified && (
+                                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                        Verified
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {[...Array(5)].map((_, index) => (
+                                      <Star
+                                        key={index}
+                                        className={`w-4 h-4 ${
+                                          index < review.rating
+                                            ? 'text-yellow-400 fill-current'
+                                            : 'text-gray-300'
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                                {review.review_text && (
+                                  <p className="text-gray-700 text-sm leading-relaxed">{review.review_text}</p>
+                                )}
+                                <div className="text-xs text-gray-500 mt-2">
+                                  {new Date(review.created_at).toLocaleDateString()}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
                         <div className="text-center py-12">
                           <MessageSquare className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                          <h3 className="text-lg font-semibold text-fem-navy mb-2">Reviews Coming Soon</h3>
-                          <p className="text-gray-600">Customer reviews will be displayed here once they start coming in.</p>
+                            <h3 className="text-lg font-semibold text-fem-navy mb-2">No Reviews Yet</h3>
+                            <p className="text-gray-600">Be the first to review this business!</p>
                         </div>
+                        )}
                       </div>
                     </TabsContent>
                   </Tabs>
@@ -1110,6 +1266,117 @@ const BusinessDetailPage = () => {
           </div>
         </div>
       )}
+
+      {/* Review Form Modal */}
+      <AnimatePresence>
+        {showReviewForm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowReviewForm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-fem-navy">
+                  {userReviewData ? 'Edit Review' : 'Write a Review'}
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowReviewForm(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Rating Selection */}
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-3 block">Your Rating *</Label>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((rating) => (
+                      <button
+                        key={rating}
+                        type="button"
+                        onClick={() => setUserRating(rating)}
+                        className="p-1 hover:scale-110 transition-transform"
+                      >
+                        <Star
+                          className={`w-8 h-8 ${
+                            rating <= userRating
+                              ? 'text-yellow-400 fill-current'
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {userRating === 0 && 'Click to select your rating'}
+                    {userRating === 1 && 'Poor'}
+                    {userRating === 2 && 'Fair'}
+                    {userRating === 3 && 'Good'}
+                    {userRating === 4 && 'Very Good'}
+                    {userRating === 5 && 'Excellent'}
+                  </p>
+                </div>
+
+                {/* Review Text */}
+                <div>
+                  <Label htmlFor="reviewText" className="text-sm font-medium text-gray-700">
+                    Your Review (Optional)
+                  </Label>
+                  <Textarea
+                    id="reviewText"
+                    value={userReview}
+                    onChange={(e) => setUserReview(e.target.value)}
+                    placeholder="Share your experience with this business..."
+                    rows={4}
+                    className="mt-1"
+                  />
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleSubmitRating}
+                    disabled={isSubmittingReview || userRating === 0}
+                    className="flex-1 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                  >
+                    {isSubmittingReview ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        {userReviewData ? 'Updating...' : 'Submitting...'}
+                      </>
+                    ) : (
+                      <>
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        {userReviewData ? 'Update Review' : 'Submit Review'}
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowReviewForm(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Footer />
     </div>

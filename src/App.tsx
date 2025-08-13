@@ -22,6 +22,11 @@ import BusinessOnboardingPage from "./pages/BusinessOnboardingPage";
 import { BusinessManagementPage } from "./pages/BusinessManagementPage";
 import { OTPVerificationPage } from "@/components/otp/OTPVerificationPage";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import SignupOTPPage from "./pages/otp/SignupOTPPage";
+import PasswordResetOTPPage from "./pages/otp/PasswordResetOTPPage";
+import OTPTestPage from "./pages/OTPTestPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import NewPasswordPage from "./pages/NewPasswordPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,6 +66,11 @@ const App = () => (
                   </ProtectedRoute>
                 } />
                 <Route path="/verify-otp" element={<OTPVerificationPage />} />
+                <Route path="/signup-otp" element={<SignupOTPPage />} />
+                <Route path="/password-reset-otp" element={<PasswordResetOTPPage />} />
+                <Route path="/otp-test" element={<OTPTestPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/new-password" element={<NewPasswordPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

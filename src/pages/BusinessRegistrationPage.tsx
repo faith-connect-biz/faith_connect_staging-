@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -46,13 +46,12 @@ gsap.registerPlugin(ScrollTrigger);
 const BusinessRegistrationPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, forceReAuth } = useAuth();
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Array<{id: number, name: string, slug: string}>>([]);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const headerRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -60,7 +59,7 @@ const BusinessRegistrationPage = () => {
   const [formData, setFormData] = useState({
     // Basic Information
     business_name: "",
-    category: "",
+    category: null as number | null,
     description: "",
     long_description: "",
     businessType: "both" as "products" | "services" | "both", // NEW FIELD
@@ -91,7 +90,7 @@ const BusinessRegistrationPage = () => {
     },
     
     // Services & Products
-    services: [] as string[],
+    services: [] as Array<{name: string, photo?: string}>,
     products: [] as Array<{name: string, price: string, description: string, photo?: string}>,
     features: [] as string[],
     tags: [] as string[],
@@ -100,6 +99,10 @@ const BusinessRegistrationPage = () => {
     photoRequest: false,
     photoRequestNotes: ""
   });
+
+  // State for new service/product inputs
+  const [newService, setNewService] = useState("");
+  const [newProduct, setNewProduct] = useState({ name: "", price: "", description: "" });
 
   // GSAP Animations
   useEffect(() => {
@@ -155,6 +158,7 @@ const BusinessRegistrationPage = () => {
 
   // Check if user is authenticated and is a business user
   useEffect(() => {
+    // Check if user is authenticated
     if (!user) {
       toast({
         title: "Authentication required",
@@ -182,17 +186,6 @@ const BusinessRegistrationPage = () => {
       // TODO: Load existing business data to populate the form
       loadExistingBusinessData(location.state.businessId);
     }
-
-    // Debug: Check authentication tokens
-    const accessToken = localStorage.getItem('access_token');
-    const refreshToken = localStorage.getItem('refresh_token');
-    console.log('Authentication debug:', {
-      user: user,
-      hasAccessToken: !!accessToken,
-      hasRefreshToken: !!refreshToken,
-      accessTokenLength: accessToken?.length || 0,
-      refreshTokenLength: refreshToken?.length || 0
-    });
   }, [user, navigate, location.state]);
 
   // Load existing business data for editing
@@ -201,13 +194,11 @@ const BusinessRegistrationPage = () => {
       // Fetch real business data from the API
       const business = await apiService.getBusiness(id);
       
-      console.log('Raw business data for editing:', business);
-      
       if (business) {
         // Transform API data to match our form structure
         const transformedData = {
           business_name: business.business_name,
-          category: business.category?.name || '',
+          category: business.category?.id || null,
           description: business.description || '',
           long_description: business.long_description || '',
           businessType: 'both' as "products" | "services" | "both", // Default to both
@@ -239,8 +230,6 @@ const BusinessRegistrationPage = () => {
           photoRequestNotes: ''
         };
 
-        console.log('Transformed data for edit mode:', transformedData);
-
         setFormData(transformedData);
         toast({
           title: "Edit Mode",
@@ -261,49 +250,40 @@ const BusinessRegistrationPage = () => {
     }
   };
 
-  // Fetch categories from API
+  // Hardcoded categories that match the database
+  const hardcodedCategories = [
+    { id: 1, name: 'Restaurant', slug: 'restaurant' },
+    { id: 2, name: 'Retail', slug: 'retail' },
+    { id: 3, name: 'Services', slug: 'services' },
+    { id: 4, name: 'Health & Wellness', slug: 'health-wellness' },
+    { id: 5, name: 'Automotive', slug: 'automotive' },
+    { id: 6, name: 'Real Estate', slug: 'real-estate' },
+    { id: 7, name: 'Education', slug: 'education' },
+    { id: 8, name: 'Technology', slug: 'technology' },
+    { id: 9, name: 'Beauty & Personal Care', slug: 'beauty-personal-care' },
+    { id: 10, name: 'Home & Garden', slug: 'home-garden' },
+    { id: 11, name: 'Legal Services', slug: 'legal-services' },
+    { id: 12, name: 'Financial Services', slug: 'financial-services' },
+    { id: 13, name: 'Entertainment', slug: 'entertainment' },
+    { id: 14, name: 'Professional Services', slug: 'professional-services' },
+    { id: 15, name: 'Construction', slug: 'construction' },
+    { id: 16, name: 'Transportation', slug: 'transportation' },
+    { id: 17, name: 'Non-Profit', slug: 'non-profit' }
+  ];
+
+  // Fetch categories from API instead of using hardcoded values
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        setIsLoadingCategories(true);
         const response = await apiService.getCategories();
         setCategories(response.results);
-      } catch (error: any) {
-        console.error('Failed to fetch categories:', error);
-        // Fallback to default categories if API fails
-        const fallbackCategories = [
-          { id: 1, name: 'Food & Dining', slug: 'food-dining' },
-          { id: 2, name: 'Health & Beauty', slug: 'health-beauty' },
-          { id: 3, name: 'Technology', slug: 'technology' },
-          { id: 4, name: 'Fashion & Clothing', slug: 'fashion-clothing' },
-          { id: 5, name: 'Home & Garden', slug: 'home-garden' },
-          { id: 6, name: 'Sports & Fitness', slug: 'sports-fitness' },
-          { id: 7, name: 'Education', slug: 'education' },
-          { id: 8, name: 'Automotive', slug: 'automotive' },
-          { id: 9, name: 'Entertainment', slug: 'entertainment' },
-          { id: 10, name: 'Professional Services', slug: 'professional-services' },
-          { id: 11, name: 'Restaurant', slug: 'restaurant' },
-          { id: 12, name: 'Retail', slug: 'retail' },
-          { id: 13, name: 'Services', slug: 'services' },
-          { id: 14, name: 'Real Estate', slug: 'real-estate' },
-          { id: 15, name: 'Legal Services', slug: 'legal-services' },
-          { id: 16, name: 'Financial Services', slug: 'financial-services' },
-          { id: 17, name: 'Construction', slug: 'construction' },
-          { id: 18, name: 'Transportation', slug: 'transportation' },
-          { id: 19, name: 'Non-Profit', slug: 'non-profit' },
-          { id: 20, name: 'Beauty & Personal Care', slug: 'beauty-personal-care' }
-        ];
-        setCategories(fallbackCategories);
-        toast({
-          title: "Using default categories",
-          description: "Could not load categories from server. Using default categories.",
-          variant: "default"
-        });
-      } finally {
-        setIsLoadingCategories(false);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        // Fallback to hardcoded categories if API fails
+        setCategories(hardcodedCategories);
       }
     };
-
+    
     fetchCategories();
   }, []);
 
@@ -336,37 +316,98 @@ const BusinessRegistrationPage = () => {
     return formErrors.find(error => error.toLowerCase().includes(fieldName.toLowerCase()));
   };
 
-  // Clear field error when user starts typing
-  const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Clear form errors when user starts typing
-    if (formErrors.length > 0) {
-      setFormErrors([]);
+  // Get step-specific errors
+  const getStepErrors = (step: number) => {
+    switch (step) {
+      case 1:
+        return formErrors.filter(error => 
+          error.toLowerCase().includes('business name') ||
+          error.toLowerCase().includes('category') ||
+          error.toLowerCase().includes('business type') ||
+          error.toLowerCase().includes('description')
+        );
+      case 2:
+        return formErrors.filter(error => 
+          error.toLowerCase().includes('phone') ||
+          error.toLowerCase().includes('email') ||
+          error.toLowerCase().includes('address')
+        );
+      case 3:
+        return formErrors.filter(error => 
+          error.toLowerCase().includes('service') ||
+          error.toLowerCase().includes('product')
+        );
+      default:
+        return [];
     }
   };
 
-  const handleArrayToggle = (field: string, value: string) => {
-    setFormData(prev => {
-      const currentArray = prev[field as keyof typeof prev] as string[];
-      if (currentArray.includes(value)) {
-        return { ...prev, [field]: currentArray.filter(item => item !== value) };
+  // Clear field error when user starts typing
+  const handleInputChange = useCallback((field: string, value: any) => {
+    // Convert category value to number if it's a string
+    if (field === 'category' && typeof value === 'string') {
+      if (value === '') {
+        value = null;
       } else {
-        // Limit features to maximum of 5
-        if (field === 'features' && currentArray.length >= 5) {
-          toast({
-            title: "Feature Limit Reached",
-            description: "You can select a maximum of 5 features. Please remove some features before adding new ones.",
-            variant: "destructive"
-          });
-          return prev;
+        value = parseInt(value, 10);
+      }
+    }
+    
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear only the error for this specific field, not all errors
+    if (formErrors.length > 0) {
+      const fieldError = formErrors.find(error => 
+        error.toLowerCase().includes(field.toLowerCase()) ||
+        error.toLowerCase().includes('business name') && field === 'business_name' ||
+        error.toLowerCase().includes('category') && field === 'category' ||
+        error.toLowerCase().includes('business type') && field === 'businessType' ||
+        error.toLowerCase().includes('description') && field === 'description' ||
+        error.toLowerCase().includes('phone') && field === 'phone' ||
+        error.toLowerCase().includes('email') && field === 'email' ||
+        error.toLowerCase().includes('address') && field === 'address'
+      );
+      
+      if (fieldError) {
+        setFormErrors(prev => prev.filter(error => error !== fieldError));
+      }
+    }
+  }, [formErrors]);
+
+  const handleArrayToggle = useCallback((field: string, value: string) => {
+    setFormData(prev => {
+      if (field === 'services') {
+        const currentServices = prev.services as Array<{name: string, photo?: string}>;
+        const existingService = currentServices.find(s => s.name === value);
+        
+        if (existingService) {
+          // Remove service
+          return { ...prev, [field]: currentServices.filter(s => s.name !== value) };
+        } else {
+          // Add service
+          return { ...prev, [field]: [...currentServices, { name: value, photo: '' }] };
         }
-        return { ...prev, [field]: [...currentArray, value] };
+      } else {
+        const currentArray = prev[field as keyof typeof prev] as string[];
+        if (currentArray.includes(value)) {
+          return { ...prev, [field]: currentArray.filter(item => item !== value) };
+        } else {
+          // Limit features to maximum of 5
+          if (field === 'features' && currentArray.length >= 5) {
+            toast({
+              title: "Feature Limit Reached",
+              description: "You can select a maximum of 5 features. Please remove some features before adding new ones.",
+              variant: "destructive"
+            });
+            return prev;
+          }
+          return { ...prev, [field]: [...currentArray, value] };
+        }
       }
     });
-  };
+  }, []);
 
-  const handleHoursChange = (day: string, field: string, value: string | boolean) => {
+  const handleHoursChange = useCallback((day: string, field: string, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       hours: {
@@ -377,19 +418,108 @@ const BusinessRegistrationPage = () => {
         }
       }
     }));
-  };
+  }, []);
 
-  const nextStep = () => {
-    if (currentStep < 3) {
-      setCurrentStep(currentStep + 1);
+  // Validate specific step data
+  const validateStep = useCallback((step: number): boolean => {
+    const errors: string[] = [];
+    
+    switch (step) {
+      case 1:
+        // Basic Information validation - only required fields
+        if (!formData.business_name.trim()) {
+          errors.push("Business name is required");
+        }
+        if (formData.category === null || formData.category === undefined) {
+          errors.push("Business category is required");
+        }
+        if (!formData.businessType) {
+          errors.push("Business type is required");
+        }
+        if (!formData.description.trim()) {
+          errors.push("Business description is required");
+        }
+        break;
+        
+      case 2:
+        // Contact Information validation - phone, email, and address are required
+        if (!formData.phone.trim()) {
+          errors.push("Phone number is required");
+        }
+        if (!formData.email.trim()) {
+          errors.push("Email address is required");
+        }
+        if (!formData.address.trim()) {
+          errors.push("Business address is required");
+        }
+        break;
+        
+      case 3:
+        // Services & Products validation - only required if business type requires them
+        if (formData.businessType === 'services' && formData.services.length === 0) {
+          errors.push("At least one service is required for service-based businesses");
+        }
+        if (formData.businessType === 'products' && formData.products.length === 0) {
+          errors.push("At least one product is required for product-based businesses");
+        }
+        if (formData.businessType === 'both' && formData.services.length === 0 && formData.products.length === 0) {
+          errors.push("At least one service or product is required");
+        }
+        break;
     }
-  };
+    
+    return errors.length === 0;
+  }, [formData.business_name, formData.category, formData.description, formData.address, formData.businessType, formData.services.length, formData.products.length]);
 
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+  // Handle next step with validation
+  const handleNextStep = useCallback(() => {
+    if (validateStep(currentStep)) {
+      setCurrentStep(prev => Math.min(3, prev + 1));
+      setFormErrors([]); // Clear errors when moving to next step
+    } else {
+      // Get validation errors for current step
+      const errors: string[] = [];
+      switch (currentStep) {
+        case 1:
+          if (!formData.business_name.trim()) errors.push("Business name is required");
+          if (formData.category === null || formData.category === undefined) errors.push("Business category is required");
+          if (!formData.businessType) errors.push("Business type is required");
+          if (!formData.description.trim()) errors.push("Business description is required");
+          break;
+        case 2:
+          if (!formData.phone.trim()) errors.push("Phone number is required");
+          if (!formData.email.trim()) errors.push("Email address is required");
+          if (!formData.address.trim()) errors.push("Business address is required");
+          break;
+        case 3:
+          if (formData.businessType === 'services' && formData.services.length === 0) {
+            errors.push("At least one service is required for service-based businesses");
+          }
+          if (formData.businessType === 'products' && formData.products.length === 0) {
+            errors.push("At least one product is required for product-based businesses");
+          }
+          if (formData.businessType === 'both' && formData.services.length === 0 && formData.products.length === 0) {
+            errors.push("At least one service or product is required");
+          }
+          break;
+      }
+      
+      if (errors.length > 0) {
+        setFormErrors(errors);
+        toast({
+          title: "Validation Error",
+          description: errors.join(", "),
+          variant: "destructive"
+        });
+      }
     }
-  };
+  }, [currentStep, validateStep, formData, setFormErrors]);
+
+  // Handle previous step
+  const handlePreviousStep = useCallback(() => {
+    setCurrentStep(prev => Math.max(1, prev - 1));
+    setFormErrors([]); // Clear errors when moving to previous step
+  }, [setFormErrors]);
 
   // Validate form data before submission
   const validateFormData = () => {
@@ -401,14 +531,18 @@ const BusinessRegistrationPage = () => {
       errors.push("Business name must be at least 2 characters long");
     }
 
-    if (!formData.category) {
+    if (formData.category === null || formData.category === undefined) {
       errors.push("Business category is required");
+    }
+
+    if (!formData.businessType) {
+      errors.push("Business type is required");
     }
 
     if (!formData.description.trim()) {
       errors.push("Business description is required");
-    } else if (formData.description.trim().length < 10) {
-      errors.push("Business description must be at least 10 characters long");
+    } else if (formData.description.trim().length < 5) {
+      errors.push("Business description must be at least 5 characters long");
     }
 
     if (!formData.phone.trim()) {
@@ -455,13 +589,7 @@ const BusinessRegistrationPage = () => {
       errors.push("Business address must be at least 5 characters long");
     }
 
-    if (!formData.city.trim()) {
-      errors.push("City is required");
-    }
-
-    if (!formData.county.trim()) {
-      errors.push("County is required");
-    }
+    // City and county are optional - no validation needed
 
     // Validate business hours - at least one day should have hours set (optional for now)
     // const hasValidHours = Object.values(formData.hours).some(day => 
@@ -527,13 +655,14 @@ const BusinessRegistrationPage = () => {
 
     // Convert services to the format expected by the API
     const services = formData.services
-      .filter(service => service.trim() !== '')
+      .filter(service => service.name.trim() !== '')
       .map(service => ({
-        name: service,
-        description: `${service} service`,
+        name: service.name,
+        description: `${service.name} service`,
         price_range: 'Varies',
         duration: 'Varies',
-        is_available: true
+        is_available: true,
+        photo: service.photo || null
       }));
 
     // Convert products to the format expected by the API
@@ -543,13 +672,14 @@ const BusinessRegistrationPage = () => {
         name: product.name,
         description: product.description || `${product.name} product`,
         price: product.price || '0.00',
-        is_available: true
+        is_available: true,
+        photo: product.photo || null
       }));
 
     // Clean and prepare the data
     const businessData = {
       business_name: formData.business_name.trim(),
-      category: formData.category,
+      category_id: formData.category as number,
       description: formData.description.trim(),
       long_description: formData.long_description.trim(),
       phone: formData.phone.trim(),
@@ -570,66 +700,60 @@ const BusinessRegistrationPage = () => {
       photo_request_notes: formData.photoRequestNotes.trim() || null
     };
 
-    console.log('Prepared business data structure:', {
-      hours: hours,
-      services: services,
-      products: products,
-      features: businessData.features
-    });
-
     return businessData;
   };
 
-  const handleSubmit = async () => {
-    // Clear previous errors
-    setFormErrors([]);
+  // Enhanced form submission with step validation
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    // Validate form data
-    const validationErrors = validateFormData();
-    if (validationErrors.length > 0) {
-      setFormErrors(validationErrors);
+    // Validate all required fields before submission
+    const allErrors = validateFormData();
+    if (allErrors.length > 0) {
+      setFormErrors(allErrors);
       toast({
-        title: "Validation errors",
-        description: validationErrors.join(", "),
+        title: "Form Incomplete",
+        description: "Please complete all required fields before submitting",
         variant: "destructive"
       });
       return;
     }
-
+    
     setIsSubmitting(true);
+    setFormErrors([]);
 
     try {
-      // Debug: Check authentication before API call
-      const accessToken = localStorage.getItem('access_token');
-      const refreshToken = localStorage.getItem('refresh_token');
-      console.log('Before API call - Authentication state:', {
-        user: user,
-        hasAccessToken: !!accessToken,
-        hasRefreshToken: !!refreshToken,
-        accessTokenLength: accessToken?.length || 0,
-        refreshTokenLength: refreshToken?.length || 0
-      });
-
       const businessData = prepareBusinessData();
-      
-      // Debug: Log the data being sent
-      console.log('Business data being sent to API:', businessData);
       
       if (isEditMode && businessId) {
         // Update existing business
         const updatedBusiness = await apiService.updateBusiness(businessId, businessData);
-        console.log('Business updated successfully:', updatedBusiness);
       } else {
         // Create new business
         const business = await apiService.createBusiness(businessData);
-        console.log('Business created successfully:', business);
+        
+        toast({
+          title: isEditMode ? "Business updated successfully!" : "Business registered successfully!",
+          description: isEditMode 
+            ? "Your business information has been updated successfully."
+            : "Your business has been added to the directory. Welcome to the Faith Connect community!",
+        });
+
+        // Navigate to the business management page with the business ID
+        navigate("/manage-business", { 
+          state: { 
+            businessId: business.id,
+            newlyCreated: true 
+          } 
+        });
+        return; // Exit early since we're redirecting
       }
       
       toast({
         title: isEditMode ? "Business updated successfully!" : "Business registered successfully!",
         description: isEditMode 
           ? "Your business information has been updated successfully."
-          : "Your business has been added to the directory. Welcome to the Faith Connect community!",
+          : "Your business has been updated successfully.",
       });
 
       // Navigate to the business management page
@@ -682,8 +806,30 @@ const BusinessRegistrationPage = () => {
     }
   };
 
+  // Render functions for each step
   const renderStep1 = () => (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+      {/* Step 1 Errors */}
+      {getStepErrors(1).length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 bg-red-50 border border-red-200 rounded-lg"
+        >
+          <div className="flex items-center gap-2 text-red-800 mb-2">
+            <span className="text-sm font-medium">Please fix the following issues:</span>
+          </div>
+          <ul className="text-sm text-red-700 space-y-1">
+            {getStepErrors(1).map((error, index) => (
+              <li key={index} className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                {error}
+              </li>
+            ))}
+          </ul>
+        </motion.div>
+      )}
+
       <motion.div variants={itemVariants}>
         <Label htmlFor="business_name">
           Business Name <span className="text-red-500">*</span>
@@ -693,11 +839,14 @@ const BusinessRegistrationPage = () => {
           value={formData.business_name}
           onChange={(e) => handleInputChange("business_name", e.target.value)}
           placeholder="Enter your business name"
-          className="mt-1"
+          className={`mt-1 ${getFieldError("business_name") ? 'border-red-500 focus:border-red-500' : ''}`}
           required
         />
         {getFieldError("business_name") && (
-          <p className="text-sm text-red-500 mt-1">{getFieldError("business_name")}</p>
+          <p className="text-sm text-red-500 mt-1 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+            {getFieldError("business_name")}
+          </p>
         )}
       </motion.div>
 
@@ -705,24 +854,25 @@ const BusinessRegistrationPage = () => {
         <Label htmlFor="category">
           Business Category <span className="text-red-500">*</span>
         </Label>
-        <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
-          <SelectTrigger className="mt-1">
+        <Select value={formData.category?.toString() || ""} onValueChange={(value) => handleInputChange("category", value)}>
+          <SelectTrigger className={`mt-1 ${getFieldError("category") ? 'border-red-500 focus:border-red-500' : ''}`}>
             <SelectValue placeholder="Select a category" />
           </SelectTrigger>
           <SelectContent>
-            {isLoadingCategories ? (
-              <SelectItem value="loading" disabled>Loading categories...</SelectItem>
-            ) : categories.length === 0 ? (
-              <SelectItem value="no-categories" disabled>No categories found.</SelectItem>
-            ) : (
+            {categories && categories.length > 0 ? (
               categories.map((category) => (
-                <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
+                <SelectItem key={category.id} value={category.id.toString()}>{category.name}</SelectItem>
               ))
+            ) : (
+              <SelectItem value="no-categories" disabled>No categories found.</SelectItem>
             )}
           </SelectContent>
         </Select>
         {getFieldError("category") && (
-          <p className="text-sm text-red-500 mt-1">{getFieldError("category")}</p>
+          <p className="text-sm text-red-500 mt-1 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+            {getFieldError("category")}
+          </p>
         )}
       </motion.div>
 
@@ -800,218 +950,236 @@ const BusinessRegistrationPage = () => {
               </div>
               <div>
                 <div className="font-medium text-fem-navy">Both</div>
-                <div className="text-sm text-gray-600">Products & services</div>
+                <div className="text-sm text-gray-600">Sell products & services</div>
               </div>
             </div>
           </div>
         </div>
-        {getFieldError("businessType") && (
-          <p className="text-sm text-red-500 mt-1">{getFieldError("businessType")}</p>
-        )}
       </motion.div>
 
       <motion.div variants={itemVariants}>
         <Label htmlFor="description">
-          Short Description <span className="text-red-500">*</span>
+          Business Description <span className="text-red-500">*</span>
         </Label>
-        <Input
+        <Textarea
           id="description"
           value={formData.description}
           onChange={(e) => handleInputChange("description", e.target.value)}
-          placeholder="Brief description of your business"
-          className="mt-1"
+          placeholder="Briefly describe your business and what makes it unique"
+          className={`mt-1 ${getFieldError("description") ? 'border-red-500 focus:border-red-500' : ''}`}
+          rows={3}
           required
         />
         {getFieldError("description") && (
-          <p className="text-sm text-red-500 mt-1">{getFieldError("description")}</p>
+          <p className="text-sm text-red-500 mt-1 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+            {getFieldError("description")}
+          </p>
         )}
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <Label htmlFor="long_description">Detailed Description</Label>
+        <Label htmlFor="long_description">
+          Detailed Description (Optional)
+        </Label>
         <Textarea
           id="long_description"
           value={formData.long_description}
           onChange={(e) => handleInputChange("long_description", e.target.value)}
-          placeholder="Tell us more about your business, services, and what makes you unique"
-          rows={4}
+          placeholder="Provide a more detailed description of your business, services, and mission"
           className="mt-1"
-          required
+          rows={5}
         />
-        {getFieldError("long_description") && (
-          <p className="text-sm text-red-500 mt-1">{getFieldError("long_description")}</p>
-        )}
       </motion.div>
     </motion.div>
   );
 
   const renderStep2 = () => (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <motion.div variants={itemVariants}>
-          <Label htmlFor="phone">
-            Phone Number <span className="text-red-500">*</span>
-          </Label>
+      {/* Step 2 Errors */}
+      {getStepErrors(2).length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 bg-red-50 border border-red-200 rounded-lg"
+        >
+          <div className="flex items-center gap-2 text-red-800 mb-2">
+            <span className="text-sm font-medium">Please fix the following issues:</span>
+          </div>
+          <ul className="text-sm text-red-700 space-y-1">
+            {getStepErrors(2).map((error, index) => (
+              <li key={index} className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                {error}
+              </li>
+            ))}
+          </ul>
+        </motion.div>
+      )}
+
+      {/* Contact Information */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <Label className="text-lg font-semibold">Contact Information</Label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="phone">
+              Phone Number <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="phone"
+              value={formData.phone}
+              onChange={(e) => handleInputChange("phone", e.target.value)}
+              placeholder="+254 XXX XXX XXX"
+              className={`mt-1 ${getFieldError("phone") ? 'border-red-500 focus:border-red-500' : ''}`}
+              required
+            />
+            {getFieldError("phone") && (
+              <p className="text-sm text-red-500 mt-1 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                {getFieldError("phone")}
+              </p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="email">
+              Email Address <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="email"
+              value={formData.email}
+              onChange={(e) => handleInputChange("email", e.target.value)}
+              placeholder="business@example.com"
+              className={`mt-1 ${getFieldError("email") ? 'border-red-500 focus:border-red-500' : ''}`}
+              required
+            />
+            {getFieldError("email") && (
+              <p className="text-sm text-red-500 mt-1 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                {getFieldError("email")}
+              </p>
+            )}
+          </div>
+        </div>
+        <div>
+          <Label htmlFor="website">Website (Optional)</Label>
           <Input
-            id="phone"
-            value={formData.phone}
-            onChange={(e) => handleInputChange("phone", e.target.value)}
-            placeholder="+254 XXX XXX XXX"
+            id="website"
+            value={formData.website}
+            onChange={(e) => handleInputChange("website", e.target.value)}
+            placeholder="https://www.yourbusiness.com"
             className="mt-1"
-            required
           />
-          {getFieldError("phone") && (
-            <p className="text-sm text-red-500 mt-1">{getFieldError("phone")}</p>
-          )}
-        </motion.div>
+        </div>
+      </motion.div>
 
-        <motion.div variants={itemVariants}>
-          <Label htmlFor="email">
-            Email Address <span className="text-red-500">*</span>
+      {/* Social Media Links */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <Label className="text-lg font-semibold">Social Media Links (Optional)</Label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="facebook_url">Facebook (Optional)</Label>
+            <Input
+              id="facebook_url"
+              value={formData.facebook_url}
+              onChange={(e) => handleInputChange("facebook_url", e.target.value)}
+              placeholder="https://facebook.com/yourbusiness"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="instagram_url">Instagram (Optional)</Label>
+            <Input
+              id="instagram_url"
+              value={formData.instagram_url}
+              onChange={(e) => handleInputChange("instagram_url", e.target.value)}
+              placeholder="https://instagram.com/yourbusiness"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="twitter_url">Twitter (Optional)</Label>
+            <Input
+              id="twitter_url"
+              value={formData.twitter_url}
+              onChange={(e) => handleInputChange("twitter_url", e.target.value)}
+              placeholder="https://twitter.com/yourbusiness"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="youtube_url">YouTube (Optional)</Label>
+            <Input
+              id="youtube_url"
+              value={formData.youtube_url}
+              onChange={(e) => handleInputChange("youtube_url", e.target.value)}
+              placeholder="https://youtube.com/yourbusiness"
+              className="mt-1"
+            />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Address Information */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <Label className="text-lg font-semibold">Address Information</Label>
+        <div>
+          <Label htmlFor="address">
+            Street Address <span className="text-red-500">*</span>
           </Label>
-          <Input
-            id="email"
-            type="email"
-            value={formData.email}
-            onChange={(e) => handleInputChange("email", e.target.value)}
-            placeholder="business@example.com"
-            className="mt-1"
+          <Textarea
+            id="address"
+            value={formData.address}
+            onChange={(e) => handleInputChange("address", e.target.value)}
+            placeholder="Enter your business address"
+            className={`mt-1 ${getFieldError("address") ? 'border-red-500 focus:border-red-500' : ''}`}
+            rows={2}
             required
           />
-          {getFieldError("email") && (
-            <p className="text-sm text-red-500 mt-1">{getFieldError("email")}</p>
+          {getFieldError("address") && (
+            <p className="text-sm text-red-500 mt-1 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+              {getFieldError("address")}
+            </p>
           )}
-        </motion.div>
-      </div>
-
-      <motion.div variants={itemVariants}>
-        <Label htmlFor="website">Website (Optional)</Label>
-        <Input
-          id="website"
-          value={formData.website}
-          onChange={(e) => handleInputChange("website", e.target.value)}
-          placeholder="https://www.yourbusiness.com"
-        />
-        {getFieldError("website") && (
-          <p className="text-sm text-red-500 mt-1">{getFieldError("website")}</p>
-        )}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor="city">City (Optional)</Label>
+            <Input
+              id="city"
+              value={formData.city}
+              onChange={(e) => handleInputChange("city", e.target.value)}
+              placeholder="Nairobi"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="county">County (Optional)</Label>
+            <Input
+              id="county"
+              value={formData.county}
+              onChange={(e) => handleInputChange("county", e.target.value)}
+              placeholder="Nairobi"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="zipCode">ZIP Code (Optional)</Label>
+            <Input
+              id="zipCode"
+              value={formData.zipCode}
+              onChange={(e) => handleInputChange("zipCode", e.target.value)}
+              placeholder="00100"
+              className="mt-1"
+            />
+          </div>
+        </div>
       </motion.div>
-
-      <motion.div variants={itemVariants}>
-        <Label htmlFor="facebook_url">Facebook URL (Optional)</Label>
-        <Input
-          id="facebook_url"
-          value={formData.facebook_url}
-          onChange={(e) => handleInputChange("facebook_url", e.target.value)}
-          placeholder="https://www.facebook.com/yourbusiness"
-        />
-        {getFieldError("facebook_url") && (
-          <p className="text-sm text-red-500 mt-1">{getFieldError("facebook_url")}</p>
-        )}
-      </motion.div>
-
-      <motion.div variants={itemVariants}>
-        <Label htmlFor="instagram_url">Instagram URL (Optional)</Label>
-        <Input
-          id="instagram_url"
-          value={formData.instagram_url}
-          onChange={(e) => handleInputChange("instagram_url", e.target.value)}
-          placeholder="https://www.instagram.com/yourbusiness"
-        />
-        {getFieldError("instagram_url") && (
-          <p className="text-sm text-red-500 mt-1">{getFieldError("instagram_url")}</p>
-        )}
-      </motion.div>
-
-      <motion.div variants={itemVariants}>
-        <Label htmlFor="twitter_url">Twitter URL (Optional)</Label>
-        <Input
-          id="twitter_url"
-          value={formData.twitter_url}
-          onChange={(e) => handleInputChange("twitter_url", e.target.value)}
-          placeholder="https://twitter.com/yourbusiness"
-        />
-        {getFieldError("twitter_url") && (
-          <p className="text-sm text-red-500 mt-1">{getFieldError("twitter_url")}</p>
-        )}
-      </motion.div>
-
-      <motion.div variants={itemVariants}>
-        <Label htmlFor="youtube_url">YouTube URL (Optional)</Label>
-        <Input
-          id="youtube_url"
-          value={formData.youtube_url}
-          onChange={(e) => handleInputChange("youtube_url", e.target.value)}
-          placeholder="https://www.youtube.com/channel/yourbusiness"
-        />
-        {getFieldError("youtube_url") && (
-          <p className="text-sm text-red-500 mt-1">{getFieldError("youtube_url")}</p>
-        )}
-      </motion.div>
-
-      <motion.div variants={itemVariants}>
-        <Label htmlFor="address">
-          Street Address <span className="text-red-500">*</span>
-        </Label>
-        <Input
-          id="address"
-          value={formData.address}
-          onChange={(e) => handleInputChange("address", e.target.value)}
-          placeholder="123 Main Street"
-          required
-        />
-        {getFieldError("address") && (
-          <p className="text-sm text-red-500 mt-1">{getFieldError("address")}</p>
-        )}
-      </motion.div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <motion.div variants={itemVariants}>
-          <Label htmlFor="city">
-            City <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            id="city"
-            value={formData.city}
-            onChange={(e) => handleInputChange("city", e.target.value)}
-            placeholder="Nairobi"
-            required
-          />
-          {getFieldError("city") && (
-            <p className="text-sm text-red-500 mt-1">{getFieldError("city")}</p>
-          )}
-        </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <Label htmlFor="county">
-            County <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            id="county"
-            value={formData.county}
-            onChange={(e) => handleInputChange("county", e.target.value)}
-            placeholder="Nairobi"
-            required
-          />
-          {getFieldError("county") && (
-            <p className="text-sm text-red-500 mt-1">{getFieldError("county")}</p>
-          )}
-        </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <Label htmlFor="zipCode">Postal Code</Label>
-          <Input
-            id="zipCode"
-            value={formData.zipCode}
-            onChange={(e) => handleInputChange("zipCode", e.target.value)}
-            placeholder="00100"
-          />
-        </motion.div>
-      </div>
 
       {/* Business Hours */}
       <motion.div variants={itemVariants} className="space-y-4">
-        <Label className="text-lg font-semibold">Business Hours</Label>
+        <Label className="text-lg font-semibold">Business Hours (Optional)</Label>
+        <p className="text-sm text-gray-600 mb-4">Set your business operating hours. Leave blank if not applicable.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.entries(formData.hours).map(([day, hours]) => (
             <div key={day} className={`border rounded-lg p-4 backdrop-blur-sm transition-all duration-200 ${
@@ -1067,34 +1235,168 @@ const BusinessRegistrationPage = () => {
 
   const renderStep3 = () => (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
+      {/* Step 3 Errors */}
+      {getStepErrors(3).length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 bg-red-50 border border-red-200 rounded-lg"
+        >
+          <div className="flex items-center gap-2 text-red-800 mb-2">
+            <span className="text-sm font-medium">Please fix the following issues:</span>
+          </div>
+          <ul className="text-sm text-red-700 space-y-1">
+            {getStepErrors(3).map((error, index) => (
+              <li key={index} className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                {error}
+              </li>
+            ))}
+          </ul>
+        </motion.div>
+      )}
+
       {/* Services Offered */}
       <motion.div variants={itemVariants} className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200 shadow-sm">
         <h3 className="text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2">
-          <Settings className="w-5 h-5" />
+          <Settings className="w-5 w-5" />
           Services Offered
         </h3>
         <p className="text-sm text-blue-700 mb-4">
-          Select the services you provide to your customers
+          Select the services you provide to your customers and add images
         </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {availableServices.map((service) => (
-            <div key={service} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-blue-100 transition-colors">
-              <Checkbox
-                id={service}
-                checked={formData.services.includes(service)}
-                onCheckedChange={() => handleArrayToggle("services", service)}
-              />
-              <Label htmlFor={service} className="text-sm cursor-pointer">{service}</Label>
+        
+        {/* Service List with Images */}
+        <div className="space-y-4 mb-4">
+          {formData.services.map((service, index) => (
+            <div key={index} className="bg-white p-4 rounded-lg border border-blue-200 shadow-sm">
+              <div className="flex items-start justify-between mb-3">
+                <h4 className="font-medium text-blue-900">{service.name}</h4>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const newServices = formData.services.filter((_, i) => i !== index);
+                    setFormData(prev => ({ ...prev, services: newServices }));
+                  }}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  Remove
+                </Button>
+              </div>
+              
+              {/* Service Image Upload */}
+              <div className="mt-4">
+                <Label className="text-sm font-medium text-blue-900 mb-2 block">
+                  Service Image
+                </Label>
+                <div className="border-2 border-dashed border-blue-300 rounded-lg p-4 text-center hover:border-blue-400 transition-colors">
+                  <Camera className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+                  <p className="text-sm text-blue-600 mb-2">
+                    Click to upload service image
+                  </p>
+                  <p className="text-xs text-blue-500">
+                    JPG, PNG up to 5MB
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    id={`service-photo-${index}`}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          const newServices = [...formData.services];
+                          newServices[index] = {
+                            name: service.name,
+                            photo: event.target?.result as string
+                          };
+                          setFormData(prev => ({ ...prev, services: newServices }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById(`service-photo-${index}`)?.click()}
+                    className="mt-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Choose Photo
+                  </Button>
+                </div>
+                
+                {/* Display uploaded photo */}
+                {service.photo && (
+                  <div className="mt-3">
+                    <div className="relative inline-block">
+                      <img
+                        src={service.photo}
+                        alt={`${service.name} photo`}
+                        className="w-24 h-24 object-cover rounded-lg border border-blue-200"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newServices = [...formData.services];
+                          newServices[index] = { name: service.name, photo: '' };
+                          setFormData(prev => ({ ...prev, services: newServices }));
+                        }}
+                        className="absolute -top-2 -right-2 w-6 h-6 p-0 bg-red-500 text-white hover:bg-red-600"
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
+        
+        {/* Add New Service */}
+        <div className="space-y-4">
+          <Label className="text-sm font-medium text-blue-900">Add New Service</Label>
+          <div className="flex gap-2">
+            <Input
+              placeholder="e.g., Consultation, Installation, Repair"
+              value={newService}
+              onChange={(e) => setNewService(e.target.value)}
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              onClick={() => {
+                if (newService.trim()) {
+                  setFormData(prev => ({
+                    ...prev,
+                    services: [...prev.services, { name: newService.trim(), photo: '' }]
+                  }));
+                  setNewService('');
+                }
+              }}
+              disabled={!newService.trim()}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Add Service
+            </Button>
+          </div>
+        </div>
       </motion.div>
 
-      {/* Products */}
+      {/* Products Offered */}
       <motion.div variants={itemVariants} className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200 shadow-sm">
         <h3 className="text-lg font-semibold text-green-900 mb-4 flex items-center gap-2">
-          <Package className="w-5 h-5" />
-          Products You Sell
+          <Package className="w-5 w-5" />
+          Products Offered
         </h3>
         <p className="text-sm text-green-700 mb-4">
           Add the products you sell with descriptions, pricing, and photos
@@ -1219,13 +1521,10 @@ const BusinessRegistrationPage = () => {
                         size="sm"
                         onClick={() => {
                           const newProducts = [...formData.products];
-                          newProducts[index] = {
-                            ...newProducts[index],
-                            photo: ""
-                          };
+                          newProducts[index] = { ...newProducts[index], photo: '' };
                           setFormData(prev => ({ ...prev, products: newProducts }));
                         }}
-                        className="absolute -top-2 -right-2 w-6 h-6 p-0 bg-red-500 text-white hover:bg-red-600 border-red-500"
+                        className="absolute -top-2 -right-2 w-6 h-6 p-0 bg-red-500 text-white hover:bg-red-600"
                       >
                         ×
                       </Button>
@@ -1233,389 +1532,244 @@ const BusinessRegistrationPage = () => {
                   </div>
                 )}
               </div>
-              
-              <div className="mt-3">
-                <Label htmlFor={`product-description-${index}`}>Description</Label>
-                <Textarea
-                  id={`product-description-${index}`}
-                  placeholder="Describe your product, its features, materials, etc."
-                  value={product.description}
-                  onChange={(e) => {
-                    const newProducts = [...formData.products];
-                    newProducts[index].description = e.target.value;
-                    setFormData(prev => ({ ...prev, products: newProducts }));
-                  }}
-                  rows={3}
-                  className="mt-1"
-                />
-              </div>
             </div>
           ))}
         </div>
         
-        {/* Add Product Button */}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            setFormData(prev => ({
-              ...prev,
-              products: [...prev.products, { name: "", price: "", description: "", photo: "" }]
-            }));
-          }}
-          className="w-full border-green-300 text-green-700 hover:bg-green-50 hover:text-green-800"
-        >
-          <Package className="w-4 h-4 mr-2" />
-          Add Another Product
-        </Button>
-      </motion.div>
-
-      {/* Features & Amenities */}
-      <motion.div variants={itemVariants} className="bg-gradient-to-br from-purple-50 to-violet-50 p-6 rounded-xl border border-purple-200 shadow-sm">
-        <h3 className="text-lg font-semibold text-purple-900 mb-4 flex items-center gap-2">
-          <CheckCircle className="w-5 h-5" />
-          Features & Amenities
-        </h3>
-        <p className="text-sm text-purple-700 mb-4">
-          Select the features and amenities your business offers (Maximum 5)
-        </p>
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-xs text-purple-600">
-            Selected: {formData.features.length}/5
-          </span>
-          {formData.features.length >= 5 && (
-            <span className="text-xs text-red-600 font-medium">
-              Maximum features reached
-            </span>
-          )}
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {availableFeatures.map((feature) => (
-            <div key={feature} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-purple-100 transition-colors">
-              <Checkbox
-                id={feature}
-                checked={formData.features.includes(feature)}
-                onCheckedChange={() => handleArrayToggle("features", feature)}
-                disabled={!formData.features.includes(feature) && formData.features.length >= 5}
-              />
-              <Label htmlFor={feature} className="text-sm cursor-pointer">{feature}</Label>
-            </div>
-          ))}
-        </div>
-      </motion.div>
-
-
-
-      {/* Professional Photography Request */}
-      <motion.div variants={itemVariants} className="bg-gradient-to-br from-pink-50 to-rose-50 p-6 rounded-xl border border-pink-200 shadow-sm">
-        <h3 className="text-lg font-semibold text-pink-900 mb-4 flex items-center gap-2">
-          <Camera className="w-5 h-5" />
-          Professional Photography
-        </h3>
-        <p className="text-sm text-pink-700 mb-4">
-          Request professional photos for your business to enhance your listing
-        </p>
-        
+        {/* Add New Product */}
         <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="photoRequest"
-              checked={formData.photoRequest}
-              onCheckedChange={(checked) => handleInputChange("photoRequest", checked)}
+          <Label className="text-sm font-medium text-green-900">Add New Product</Label>
+          <div className="flex gap-2">
+            <Input
+              placeholder="e.g., Handmade Jewelry"
+              value={newProduct.name}
+              onChange={(e) => setNewProduct(prev => ({ ...prev, name: e.target.value }))}
+              className="flex-1"
             />
-            <Label htmlFor="photoRequest" className="text-sm cursor-pointer">
-              Request professional photos for my business
-            </Label>
-          </div>
-          
-          {formData.photoRequest && (
-            <div className="bg-white p-4 rounded-lg border border-pink-200">
-              <Label htmlFor="photoRequestNotes" className="text-sm font-medium text-pink-900 mb-2 block">
-                Photo Request Details
-              </Label>
-              <Textarea
-                id="photoRequestNotes"
-                value={formData.photoRequestNotes}
-                onChange={(e) => handleInputChange("photoRequestNotes", e.target.value)}
-                placeholder="Describe your business, preferred photo style, specific areas to capture, or any special requirements..."
-                rows={4}
-                className="border-pink-200 focus:border-pink-400 focus:ring-pink-400"
-              />
-              <p className="text-xs text-pink-600 mt-2">
-                Our professional photographers will contact you to schedule a session and discuss your specific needs.
-              </p>
-            </div>
-          )}
-        </div>
-      </motion.div>
-
-      {/* Creative Summary */}
-      <motion.div variants={itemVariants} className="bg-gradient-to-br from-gray-50 to-slate-50 p-6 rounded-xl border border-gray-200 shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Users className="w-5 h-5" />
-          Your Business Summary
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div className="text-center p-3 bg-blue-100 rounded-lg">
-            <div className="font-semibold text-blue-900">{formData.services.length}</div>
-            <div className="text-blue-700">Services</div>
-          </div>
-          <div className="text-center p-3 bg-green-100 rounded-lg">
-            <div className="font-semibold text-green-900">{formData.products.length}</div>
-            <div className="text-green-700">Products</div>
-          </div>
-          <div className="text-center p-3 bg-purple-100 rounded-lg">
-            <div className="font-semibold text-purple-900">{formData.features.length}</div>
-            <div className="text-purple-700">Features</div>
+            <Input
+              placeholder="Price in KSH"
+              value={newProduct.price}
+              onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
+              className="w-32"
+            />
+            <Button
+              type="button"
+              onClick={() => {
+                if (newProduct.name.trim() && newProduct.price.trim()) {
+                  setFormData(prev => ({
+                    ...prev,
+                    products: [...prev.products, { name: newProduct.name.trim(), price: newProduct.price.trim(), description: '', photo: '' }]
+                  }));
+                  setNewProduct({ name: "", price: "", description: "" });
+                }
+              }}
+              disabled={!newProduct.name.trim() || !newProduct.price.trim()}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Add Product
+            </Button>
           </div>
         </div>
       </motion.div>
     </motion.div>
   );
 
-
-
-
-  const renderCurrentStep = () => {
-    switch (currentStep) {
-      case 1:
-        return renderStep1();
-      case 2:
-        return renderStep2();
-      case 3:
-        return renderStep3();
-      default:
-        return renderStep1();
-    }
-  };
-
+  // Main component return
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex flex-col">
+    <>
       <Navbar />
-      <OnboardingCheck userType="business" />
-      <main className="flex-grow">
-        <div className="container mx-auto px-4 py-8">
-          
-          {/* Enhanced Header */}
-          <motion.div 
-            ref={headerRef}
-            initial={{ y: -50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="mb-8 text-center"
-          >
-            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-fem-navy to-fem-terracotta text-white px-6 py-3 rounded-full shadow-lg mb-4">
-              <Sparkles className="w-5 h-5" />
-              <h1 className="text-2xl font-bold">
-                {isEditMode ? 'Edit Your Business' : 'Register Your Business'}
-              </h1>
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              {isEditMode 
-                ? 'Update your business information to keep your listing current and accurate'
-                : 'Join our faith community directory and connect with customers who share your values'
-              }
-            </p>
-          </motion.div>
-
-          <div className="max-w-4xl mx-auto">
-            
-            {/* Enhanced Progress Steps */}
-            <motion.div 
-              ref={progressRef}
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className="mb-8"
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+        {/* Header */}
+        <motion.div
+          ref={headerRef}
+          className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white py-16 px-4 sm:px-6 lg:px-8"
+        >
+          <div className="max-w-4xl mx-auto text-center">
+            <motion.h1 
+              className="text-4xl md:text-5xl font-bold mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
             >
-              <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    {steps.map((step, index) => {
-                      const StepIcon = step.icon;
-                      return (
-                        <div key={step.id} className="flex items-center">
-                          <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                            currentStep >= step.id 
-                              ? 'bg-fem-terracotta border-fem-terracotta text-white' 
-                              : 'bg-white border-gray-300 text-gray-500'
-                          }`}>
-                            {currentStep > step.id ? (
-                              <CheckCircle className="w-5 h-5" />
-                            ) : (
-                              <StepIcon className="w-5 h-5" />
-                            )}
-                          </div>
-                          <div className="ml-3">
-                            <p className={`text-sm font-medium ${
-                              currentStep >= step.id ? 'text-fem-terracotta' : 'text-gray-500'
-                            }`}>
-                              {step.title}
-                            </p>
-                          </div>
-                          {index < steps.length - 1 && (
-                            <div className={`flex-1 h-0.5 mx-4 ${
-                              currentStep > step.id ? 'bg-fem-terracotta' : 'bg-gray-300'
-                            }`} />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* Enhanced Form */}
-            <motion.div 
-              ref={formRef}
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
+              {isEditMode ? "Edit Your Business" : "Register Your Business"}
+            </motion.h1>
+            <motion.p 
+              className="text-xl md:text-2xl text-blue-100"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
             >
-              <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl">
-                <CardHeader className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white rounded-t-lg">
-                  <CardTitle className="flex items-center gap-2">
-                    {(() => {
-                      const StepIcon = steps[currentStep - 1].icon;
-                      return <StepIcon className="w-5 h-5" />;
-                    })()}
-                    Step {currentStep} of 3: {steps[currentStep - 1].title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  {/* Display form errors */}
-                  {formErrors.length > 0 && (
-                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                      <h3 className="text-sm font-medium text-red-800 mb-2">
-                        Please fix the following errors:
-                      </h3>
-                      <ul className="text-sm text-red-700 space-y-1">
-                        {formErrors.map((error, index) => (
-                          <li key={index} className="flex items-start">
-                            <span className="text-red-500 mr-2">•</span>
-                            {error}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Debug Authentication Status */}
-                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h3 className="text-sm font-medium text-blue-800 mb-2">
-                      Authentication Status (Debug)
-                    </h3>
-                    <div className="text-sm text-blue-700 space-y-1">
-                      <p>User: {user ? `${user.partnership_number} (${user.user_type})` : 'Not logged in'}</p>
-                      <p>Access Token: {localStorage.getItem('access_token') ? 'Present' : 'Missing'}</p>
-                      <p>Refresh Token: {localStorage.getItem('refresh_token') ? 'Present' : 'Missing'}</p>
-                      <p>Is Authenticated: {apiService.isAuthenticated() ? 'Yes' : 'No'}</p>
-                      <div className="mt-2 space-x-2">
-                        <Button
-                          onClick={() => forceReAuth()}
-                          variant="outline"
-                          size="sm"
-                          className="text-blue-600 border-blue-600 hover:bg-blue-50"
-                        >
-                          Force Re-authentication
-                        </Button>
-                        <Button
-                          onClick={() => apiService.logAuthStatus()}
-                          variant="outline"
-                          size="sm"
-                          className="text-blue-600 border-blue-600 hover:bg-blue-50"
-                        >
-                          Log Auth Status
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            localStorage.removeItem('access_token');
-                            localStorage.removeItem('refresh_token');
-                            window.location.href = '/';
-                          }}
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 border-red-600 hover:bg-red-50"
-                        >
-                          Force Re-login
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {renderCurrentStep()}
-                </CardContent>
-              </Card>
-
-              {/* Navigation Buttons */}
-              <div className="flex justify-between mt-8">
-                <Button
-                  variant="outline"
-                  onClick={prevStep}
-                  disabled={currentStep === 1}
-                  className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Previous
-                </Button>
-
-                <div className="flex gap-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      toast({
-                        title: "Delegate Account",
-                        description: "Allow team members or employees to manage your business listing. Coming soon!",
-                      });
-                    }}
-                    className="border-fem-gold text-fem-gold hover:bg-fem-gold hover:text-white group relative"
-                    title="Delegate Account - Allow team members to manage your business listing"
-                  >
-                    <Users className="w-4 h-4 mr-2" />
-                    Delegate Account
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                      Allow team members to manage your business
-                    </div>
-                  </Button>
-
-                  {currentStep === 3 ? (
-                    <Button 
-                      onClick={handleSubmit}
-                      className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          <span className="ml-2">{isEditMode ? 'Updating...' : 'Registering...'}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Award className="w-4 h-4 mr-2" />
-                          {isEditMode ? 'Update Business' : 'Complete Registration'}
-                        </>
-                      )}
-                    </Button>
-                  ) : (
-                    <Button onClick={nextStep} className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white">
-                      Next
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  )}
-                </div>
-              </div>
+              Join the Faith Connect community and showcase your business
+            </motion.p>
+            <motion.div 
+              className="mt-4 text-sm text-blue-100"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              <span className="text-red-300">*</span> Required fields
             </motion.div>
           </div>
-        </div>
-      </main>
+        </motion.div>
+
+        {/* Progress Bar */}
+        <motion.div
+          ref={progressRef}
+          className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 mb-8"
+        >
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Progress</h2>
+              <span className="text-sm text-gray-500">Step {currentStep} of 3</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <motion.div
+                className="bg-gradient-to-r from-fem-terracotta to-fem-navy h-2 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${(currentStep / 3) * 100}%` }}
+                transition={{ duration: 0.5 }}
+              />
+            </div>
+            <div className="flex justify-between mt-2 text-xs text-gray-500">
+              <span className={`${currentStep >= 1 ? 'text-fem-terracotta font-medium' : ''}`}>
+                Basic Info {currentStep > 1 && '✓'}
+              </span>
+              <span className={`${currentStep >= 2 ? 'text-fem-terracotta font-medium' : ''}`}>
+                Contact Details {currentStep > 2 && '✓'}
+              </span>
+              <span className={`${currentStep >= 3 ? 'text-fem-terracotta font-medium' : ''}`}>
+                Services & Products {currentStep === 3 && '✓'}
+              </span>
+            </div>
+            
+            {/* Required Fields Note */}
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2 text-blue-800">
+                <span className="text-sm font-medium">Required Fields:</span>
+              </div>
+              <div className="mt-2 text-xs text-blue-700 grid grid-cols-2 gap-2">
+                <div>• Business Name</div>
+                <div>• Business Category</div>
+                <div>• Business Type</div>
+                <div>• Business Description</div>
+                <div>• Phone Number</div>
+                <div>• Email Address</div>
+                <div>• Street Address</div>
+              </div>
+            </div>
+            
+            {/* Step Validation Status */}
+            {formErrors.length > 0 && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-center gap-2 text-red-800">
+                  <span className="text-sm font-medium">Validation Errors on Step {currentStep}:</span>
+                </div>
+                <ul className="mt-2 text-sm text-red-700 space-y-1">
+                  {formErrors.map((error, index) => (
+                    <li key={index} className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                      {error}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Form */}
+        <motion.div
+          ref={formRef}
+          className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mb-16"
+        >
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Step Content */}
+            <AnimatePresence mode="wait">
+              {currentStep === 1 && (
+                <motion.div
+                  key="step1"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {renderStep1()}
+                </motion.div>
+              )}
+              
+              {currentStep === 2 && (
+                <motion.div
+                  key="step2"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {renderStep2()}
+                </motion.div>
+              )}
+              
+              {currentStep === 3 && (
+                <motion.div
+                  key="step3"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {renderStep3()}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between pt-8">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePreviousStep}
+                disabled={currentStep === 1}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Previous
+              </Button>
+              
+              {currentStep < 3 ? (
+                <Button
+                  type="button"
+                  onClick={handleNextStep}
+                  className="flex items-center gap-2 bg-fem-terracotta hover:bg-fem-terracotta/90"
+                >
+                  Next
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 bg-fem-terracotta hover:bg-fem-terracotta/90"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      {isEditMode ? "Updating..." : "Registering..."}
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      {isEditMode ? "Update Business" : "Register Business"}
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </form>
+        </motion.div>
+      </div>
       <Footer />
-    </div>
+    </>
   );
 };
 
-export default BusinessRegistrationPage; 
+export default BusinessRegistrationPage;
