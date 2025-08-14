@@ -33,24 +33,24 @@ DEBUG = config('DEBUG', cast=bool, default=True)
 ALLOWED_HOSTS =['*']
 
 # ZeptoMail API Configuration
-ZEPTO_API_KEY = config('ZEPTO_API_KEY', default='')
-ZEPTO_FROM_EMAIL = config('ZEPTO_FROM_EMAIL', default='noreply@faithconnect.biz')
-ZEPTO_FROM_NAME = config('ZEPTO_FROM_NAME', default='FaithConnect')
-ZEPTO_VERIFICATION_TEMPLATE_KEY = config('ZEPTO_VERIFICATION_TEMPLATE_KEY', default='')
-ZEPTO_PASSWORD_RESET_TEMPLATE_KEY = config('ZEPTO_PASSWORD_RESET_TEMPLATE_KEY', default='')
-ZEPTO_WELCOME_TEMPLATE_KEY = config('ZEPTO_WELCOME_TEMPLATE_KEY', default='')
+ZEPTO_API_KEY = os.environ.get('ZEPTO_API_KEY', '')
+ZEPTO_FROM_EMAIL = os.environ.get('ZEPTO_FROM_EMAIL', 'noreply@faithconnect.biz')
+ZEPTO_FROM_NAME = os.environ.get('ZEPTO_FROM_NAME', 'FaithConnect')
+ZEPTO_VERIFICATION_TEMPLATE_KEY = os.environ.get('ZEPTO_VERIFICATION_TEMPLATE_KEY', '')
+ZEPTO_PASSWORD_RESET_TEMPLATE_KEY = os.environ.get('ZEPTO_PASSWORD_RESET_TEMPLATE_KEY', '')
+ZEPTO_WELCOME_TEMPLATE_KEY = os.environ.get('ZEPTO_WELCOME_TEMPLATE_KEY', '')
 
 # SMS Configuration (Ndovubase)
-SMS_API_KEY = config('SMS_API_KEY', default='')
-SMS_API_SECRET = config('SMS_SECRET', default='')
-SMS_FROM_NUMBER = config('SMS_FROM_NUMBER', default='CHOSENGCM')
+SMS_API_KEY = os.environ.get('SMS_API_KEY', '')
+SMS_API_SECRET = os.environ.get('SMS_SECRET', '')
+SMS_FROM_NUMBER = os.environ.get('SMS_FROM_NUMBER', 'CHOSENGCM')
 
 # AWS S3 Configuration
-AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
-AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
-AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', default='')
-AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-1')
-AWS_S3_CUSTOM_DOMAIN = config('AWS_S3_CUSTOM_DOMAIN', default='')
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', '')
+AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
+AWS_S3_CUSTOM_DOMAIN = os.environ.get('AWS_S3_CUSTOM_DOMAIN', '')
 AWS_S3_OBJECT_PARAMETERS = {
     'CacheControl': 'max-age=86400',
 }
@@ -58,7 +58,7 @@ AWS_DEFAULT_ACL = 'public-read'
 AWS_QUERYSTRING_AUTH = False
 
 # File Storage Configuration
-USE_S3 = config('USE_S3', cast=bool, default=False)
+USE_S3 = os.environ.get('USE_S3', 'False').lower() == 'true'
 if USE_S3:
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
     STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
@@ -241,7 +241,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:8080",
-    "https://fem-family-business-directory-rosy.vercel.app/"
+    "https://fem-family-business-directory-rosy.vercel.app"
 ]
 
 CORS_ALLOW_CREDENTIALS = True

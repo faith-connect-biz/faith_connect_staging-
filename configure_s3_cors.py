@@ -12,10 +12,10 @@ def configure_s3_cors():
     """Configure S3 bucket CORS settings"""
     
     # Get S3 configuration from environment
-    aws_access_key_id = config('AWS_ACCESS_KEY_ID')
-    aws_secret_access_key = config('AWS_SECRET_ACCESS_KEY')
-    aws_region = config('AWS_S3_REGION_NAME', default='af-south-1')
-    s3_bucket_name = config('AWS_STORAGE_BUCKET_NAME')
+    aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    aws_region = os.environ.get('AWS_S3_REGION_NAME', 'af-south-1')
+    s3_bucket_name = os.environ.get('AWS_STORAGE_BUCKET_NAME')
     
     if not all([aws_access_key_id, aws_secret_access_key, s3_bucket_name]):
         print("❌ Missing required environment variables:")
@@ -82,10 +82,10 @@ def configure_s3_cors():
 def verify_cors_configuration():
     """Verify the current CORS configuration"""
     
-    aws_access_key_id = config('AWS_ACCESS_KEY_ID')
-    aws_secret_access_key = config('AWS_SECRET_ACCESS_KEY')
-    aws_region = config('AWS_S3_REGION_NAME', default='af-south-1')
-    s3_bucket_name = config('AWS_STORAGE_BUCKET_NAME')
+    aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    aws_region = os.environ.get('AWS_S3_REGION_NAME', 'af-south-1')
+    s3_bucket_name = os.environ.get('AWS_STORAGE_BUCKET_NAME')
     
     if not all([aws_access_key_id, aws_secret_access_key, s3_bucket_name]):
         print("❌ Missing required environment variables")

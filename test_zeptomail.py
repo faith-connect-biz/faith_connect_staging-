@@ -28,26 +28,26 @@ def test_zeptomail_configuration():
     """Test ZeptoMail configuration"""
     print("🔧 Testing ZeptoMail Configuration...")
     
-    if not config('ZEPTO_API_KEY', default=''):
+    if not os.environ.get('ZEPTO_API_KEY', ''):
         print("❌ ZEPTO_API_KEY not configured")
         return False
     
-    if not config('ZEPTO_FROM_EMAIL', default=''):
+    if not os.environ.get('ZEPTO_FROM_EMAIL', ''):
         print("❌ ZEPTO_FROM_EMAIL not configured")
         return False
     
     # Check if at least one template key is configured
-    verification_key = config('ZEPTO_VERIFICATION_TEMPLATE_KEY', default='')
-    password_reset_key = config('ZEPTO_PASSWORD_RESET_TEMPLATE_KEY', default='')
-    welcome_key = config('ZEPTO_WELCOME_TEMPLATE_KEY', default='')
+    verification_key = os.environ.get('ZEPTO_VERIFICATION_TEMPLATE_KEY', '')
+    password_reset_key = os.environ.get('ZEPTO_PASSWORD_RESET_TEMPLATE_KEY', '')
+    welcome_key = os.environ.get('ZEPTO_WELCOME_TEMPLATE_KEY', '')
     
     if not any([verification_key, password_reset_key, welcome_key]):
         print("❌ No ZeptoMail template keys configured")
         return False
     
     print("✅ ZeptoMail configuration found")
-    print(f"  From Email: {config('ZEPTO_FROM_EMAIL')}")
-    print(f"  From Name: {config('ZEPTO_FROM_NAME', default='FEM Connect')}")
+    print(f"  From Email: {os.environ.get('ZEPTO_FROM_EMAIL', '')}")
+    print(f"  From Name: {os.environ.get('ZEPTO_FROM_NAME', 'FEM Connect')}")
     
     if verification_key:
         print(f"  Verification Template: {verification_key[:20]}...")

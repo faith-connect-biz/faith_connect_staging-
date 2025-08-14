@@ -25,8 +25,8 @@ def test_basic_email():
     """Test basic email sending"""
     print("📧 Testing Basic Email Sending...")
     
-    api_key = config('ZEPTO_API_KEY', default='')
-    from_email = config('ZEPTO_FROM_EMAIL', default='')
+    api_key = os.environ.get('ZEPTO_API_KEY', '')
+    from_email = os.environ.get('ZEPTO_FROM_EMAIL', '')
     
     if not api_key:
         print("❌ No API key found")

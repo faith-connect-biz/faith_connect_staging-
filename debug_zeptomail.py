@@ -20,10 +20,10 @@ def debug_zeptomail_config():
     print("🔍 Debugging ZeptoMail Configuration...")
     
     # Check environment variables
-    api_key = config('ZEPTO_API_KEY', default='')
-    from_email = config('ZEPTO_FROM_EMAIL', default='')
-    from_name = config('ZEPTO_FROM_NAME', default='')
-    verification_key = config('ZEPTO_VERIFICATION_TEMPLATE_KEY', default='')
+    api_key = os.environ.get('ZEPTO_API_KEY', '')
+    from_email = os.environ.get('ZEPTO_FROM_EMAIL', '')
+    from_name = os.environ.get('ZEPTO_FROM_NAME', '')
+    verification_key = os.environ.get('ZEPTO_VERIFICATION_TEMPLATE_KEY', '')
     
     print(f"API Key Length: {len(api_key)}")
     print(f"API Key (first 20 chars): {api_key[:20] if api_key else 'None'}...")

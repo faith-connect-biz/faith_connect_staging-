@@ -11,6 +11,6 @@ DATABASES = {
 }
 
 # SMS Configuration (Ndovu SMS)
-SMS_API_KEY = config('SMS_API_KEY', default='')
-SMS_API_SECRET = config('SMS_API_SECRET', default='')
-SMS_FROM_NUMBER = config('SMS_FROM_NUMBER', default='CHOSENGCM')
+SMS_API_KEY = os.environ.get('SMS_API_KEY', '')
+SMS_API_SECRET = os.environ.get('SMS_API_SECRET', '')
+SMS_FROM_NUMBER = os.environ.get('SMS_FROM_NUMBER', 'CHOSENGCM')

@@ -145,6 +145,8 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
+    # Fix DRF Spectacular schema conflict
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # Email Configuration (ZeptoMail)
@@ -177,18 +179,23 @@ SIMPLE_JWT = {
 }
 
 # CORS settings
-#CORS_ALLOW_ALL_ORIGINS = True
-# Add your production domain to allowed origins
+# TEMPORARILY ENABLE ALL ORIGINS FOR TESTING - REMOVE IN PRODUCTION
+CORS_ALLOW_ALL_ORIGINS = True
+
+# Add your production domain to allowed origins (when CORS_ALLOW_ALL_ORIGINS is False)
 CORS_ALLOWED_ORIGINS = [
     "https://www.faithconnect.biz",
     "https://faithconnect.biz",
     "http://localhost:3000",
     "http://localhost:5173", 
     "http://localhost:8080",
-    "https://fem-family-business-directory-rosy.vercel.app/",
-
+    "https://fem-family-business-directory-rosy.vercel.app",
+    "https://fem-directory-production.up.railway.app",
+    "https://fem-directory.up.railway.app",
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+# Allow all methods
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -197,6 +204,8 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
+
+# Allow all headers
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -208,6 +217,11 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+# Additional CORS settings for better compatibility
+CORS_ALLOW_ALL_HEADERS = True
+CORS_EXPOSE_HEADERS = ['*']
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
 
 # Security settings - temporarily disabled for Railway deployment
 SECURE_SSL_REDIRECT = False  # Disable SSL redirect temporarily
@@ -242,18 +256,18 @@ AWS_S3_OBJECT_PARAMETERS = {
 AWS_DEFAULT_ACL = 'public-read'
 AWS_QUERYSTRING_AUTH = False
 
-# Use S3 for static and media files in production
+# Use S3 for media files only when credentials are available
+# Keep Whitenoise for static files (better for Railway deployment)
 if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
-    # S3 for media files
+    # S3 for media files only
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
-    
-    # S3 for static files
-    STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
 else:
-    # Fallback to local storage
+    # Fallback to local storage for media
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-    STATIC_URL = '/static/'
-    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Static files always use Whitenoise for Railway deployment
+# This avoids S3 permission issues during collectstatic
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')

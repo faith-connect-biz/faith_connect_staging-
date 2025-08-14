@@ -11,15 +11,15 @@ class ZeptoMailService:
     
     def __init__(self):
         self.api_url = "https://api.zeptomail.com/v1.1/email/template"
-        self.api_key = config('ZEPTO_API_KEY', default='')
-        self.from_email = config('ZEPTO_FROM_EMAIL', default='noreply@faithconnect.biz')
-        self.from_name = config('ZEPTO_FROM_NAME', default='FEM Connect')
+        self.api_key = os.environ.get('ZEPTO_API_KEY', '')
+        self.from_email = os.environ.get('ZEPTO_FROM_EMAIL', 'noreply@faithconnect.biz')
+        self.from_name = os.environ.get('ZEPTO_FROM_NAME', 'FEM Connect')
         
         # Template keys for different email types
         self.template_keys = {
-            'email_verification': config('ZEPTO_VERIFICATION_TEMPLATE_KEY', default=''),
-            'password_reset': config('ZEPTO_PASSWORD_RESET_TEMPLATE_KEY', default=''),
-            'welcome_email': config('ZEPTO_WELCOME_TEMPLATE_KEY', default='')
+            'email_verification': os.environ.get('ZEPTO_VERIFICATION_TEMPLATE_KEY', ''),
+            'password_reset': os.environ.get('ZEPTO_PASSWORD_RESET_TEMPLATE_KEY', ''),
+            'welcome_email': os.environ.get('ZEPTO_WELCOME_TEMPLATE_KEY', '')
         }
         
         if not self.api_key:
