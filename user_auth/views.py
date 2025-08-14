@@ -273,6 +273,8 @@ class CustomTokenRefreshView(TokenRefreshView):
 
 
 class ForgotPasswordOTPView(APIView):
+    permission_classes = [AllowAny]
+    
     def post(self, request):
         safe_data = mask_sensitive_data(request.data)
         logger.info(f"[FORGOT PASSWORD ATTEMPT] - {safe_data}")
@@ -338,6 +340,8 @@ class ForgotPasswordOTPView(APIView):
 
 
 class ResetPasswordWithOTPView(APIView):
+    permission_classes = [AllowAny]
+    
     def post(self, request):
         serializer = ResetPasswordWithOTPSerializer(data=request.data)
         if serializer.is_valid():
@@ -365,6 +369,8 @@ class ResetPasswordWithOTPView(APIView):
         return error_response(message="Reset failed.", errors=serializer.errors)
 
 class SendEmailVerificationView(APIView):
+    permission_classes = [AllowAny]
+    
     def post(self, request):
         email = request.data.get("email")
         if not email:
@@ -393,6 +399,8 @@ class SendEmailVerificationView(APIView):
             return error_response("Failed to send verification email. Please try again later.")
 
 class SendPhoneOTPView(APIView):
+    permission_classes = [AllowAny]
+    
     def post(self, request):
         phone = request.data.get("phone_number")
         if not phone:
@@ -415,6 +423,8 @@ class SendPhoneOTPView(APIView):
 
 
 class ConfirmEmailVerificationView(APIView):
+    permission_classes = [AllowAny]
+    
     def post(self, request):
         email = request.data.get("email")
         token = request.data.get("token")
@@ -438,6 +448,8 @@ class ConfirmEmailVerificationView(APIView):
         return error_response(message="Invalid verification token.")
 
 class ConfirmPhoneOTPView(APIView):
+    permission_classes = [AllowAny]
+    
     def post(self, request):
         phone = request.data.get("phone_number")
         otp = request.data.get("otp")

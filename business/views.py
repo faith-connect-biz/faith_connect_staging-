@@ -650,6 +650,45 @@ class UserBusinessView(generics.RetrieveAPIView):
         return business
 
 
+class MyBusinessView(generics.RetrieveAPIView):
+    """Get current user's business"""
+    serializer_class = BusinessSerializer
+    permission_classes = [IsAuthenticated]  # Require authentication
+    
+    def get_object(self):
+        user = self.request.user
+        business = Business.objects.filter(
+            user=user,
+            is_active=True
+        ).select_related('category', 'user').order_by('-created_at').first()
+        
+        if not business:
+            raise Http404("No active business found for current user")
+        
+        return business
+    
+    def get(self, request, *args, **kwargs):
+        try:
+            business = self.get_object()
+            serializer = self.get_serializer(business)
+            return Response({
+                'success': True,
+                'data': serializer.data
+            })
+        except Http404:
+            return Response({
+                'success': False,
+                'message': 'No active business found for current user',
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': str(e),
+                'data': None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class BusinessServiceListCreateView(generics.ListCreateAPIView):
     """List and create services for a business"""
     serializer_class = ServiceSerializer

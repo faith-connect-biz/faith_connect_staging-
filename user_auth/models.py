@@ -39,6 +39,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     address = models.TextField(null=True, blank=True)
     county = models.CharField(max_length=100, null=True, blank=True)
     city = models.CharField(max_length=100, null=True, blank=True)
+    website = models.URLField(max_length=200, null=True, blank=True)  # Add website field
     otp = models.CharField(max_length=6, null=True, blank=True)
     email_token = models.CharField(max_length=100, null=True, blank=True)
     is_verified = models.BooleanField(default=False)

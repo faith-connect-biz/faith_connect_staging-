@@ -16,13 +16,18 @@ class NdovubaseSMS:
     def __init__(self):
         self.api_url = "https://bulk.ndovubase.com/sms/v3/sendsms"
         self.api_key = getattr(settings, 'SMS_API_KEY', '')
-        self.api_secret = getattr(settings, 'SMS_API_SECRET', '')
+        self.api_secret = getattr(settings, 'SMS_SECRET', '')
         self.shortcode = getattr(settings, 'SMS_FROM_NUMBER', 'CHOSENGCM')
         self.service = 0
         self.response_type = 'json'
 
+        # Debug logging to see what's being loaded
+        logger.info(f"SMS Configuration loaded - API Key: {'Set' if self.api_key else 'Not set'}, API Secret: {'Set' if self.api_secret else 'Not set'}, Shortcode: {self.shortcode}")
+
         if not self.api_key:
             logger.warning("SMS_API_KEY not configured. SMS sending will be simulated.")
+        if not self.api_secret:
+            logger.warning("SMS_SECRET not configured. SMS sending will be simulated.")
 
     def format_phone_number(self, phone_number: str) -> str:
         """

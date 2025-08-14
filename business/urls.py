@@ -7,7 +7,7 @@ from .views import (
     BusinessImageUploadView,
     get_service_image_upload_url, update_service_image,
     get_product_image_upload_url, update_product_image, UserBusinessView, BusinessServiceListCreateView, BusinessAnalyticsView,
-    ServiceListAPIView, ProductListAPIView
+    ServiceListAPIView, ProductListAPIView, MyBusinessView
 )
 
 urlpatterns = [
@@ -15,6 +15,7 @@ urlpatterns = [
     path('categories/', CategoryListAPIView.as_view(), name="category-list"),
     path('services/', ServiceListAPIView.as_view(), name="service-list"),
     path('products/', ProductListAPIView.as_view(), name="product-list"),
+    path('my-business/', MyBusinessView.as_view(), name="my-business"),
     path('user/<int:user_id>/', UserBusinessView.as_view(), name="user-businesses"),
     path('<uuid:id>/', BusinessDetailAPIView.as_view(), name="business-detail"),
     path('<uuid:id>/update/', BusinessUpdateView.as_view(), name="business-update"),

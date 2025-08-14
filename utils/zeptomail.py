@@ -10,17 +10,33 @@ class ZeptoMailService:
     """ZeptoMail email service integration using templates"""
     
     def __init__(self):
-        self.api_url = "https://api.zeptomail.com/v1.1/email/template"
-        self.api_key = os.environ.get('ZEPTO_API_KEY', '')
-        self.from_email = os.environ.get('ZEPTO_FROM_EMAIL', 'noreply@faithconnect.biz')
-        self.from_name = os.environ.get('ZEPTO_FROM_NAME', 'FEM Connect')
-        
-        # Template keys for different email types
-        self.template_keys = {
-            'email_verification': os.environ.get('ZEPTO_VERIFICATION_TEMPLATE_KEY', ''),
-            'password_reset': os.environ.get('ZEPTO_PASSWORD_RESET_TEMPLATE_KEY', ''),
-            'welcome_email': os.environ.get('ZEPTO_WELCOME_TEMPLATE_KEY', '')
-        }
+        # Import Django settings here to avoid circular imports
+        try:
+            from django.conf import settings
+            self.api_url = "https://api.zeptomail.com/v1.1/email/template"
+            self.api_key = getattr(settings, 'ZEPTO_API_KEY', '')
+            self.from_email = getattr(settings, 'ZEPTO_FROM_EMAIL', 'noreply@faithconnect.biz')
+            self.from_name = getattr(settings, 'ZEPTO_FROM_NAME', 'FEM Connect')
+            
+            # Template keys for different email types
+            self.template_keys = {
+                'email_verification': getattr(settings, 'ZEPTO_VERIFICATION_TEMPLATE_KEY', ''),
+                'password_reset': getattr(settings, 'ZEPTO_PASSWORD_RESET_TEMPLATE_KEY', ''),
+                'welcome_email': getattr(settings, 'ZEPTO_WELCOME_TEMPLATE_KEY', '')
+            }
+        except ImportError:
+            # Fallback for when Django is not available (e.g., during testing)
+            self.api_url = "https://api.zeptomail.com/v1.1/email/template"
+            self.api_key = os.environ.get('ZEPTO_API_KEY', '')
+            self.from_email = os.environ.get('ZEPTO_FROM_EMAIL', 'noreply@faithconnect.biz')
+            self.from_name = os.environ.get('ZEPTO_FROM_NAME', 'FEM Connect')
+            
+            # Template keys for different email types
+            self.template_keys = {
+                'email_verification': os.environ.get('ZEPTO_VERIFICATION_TEMPLATE_KEY', ''),
+                'password_reset': os.environ.get('ZEPTO_PASSWORD_RESET_TEMPLATE_KEY', ''),
+                'welcome_email': os.environ.get('ZEPTO_WELCOME_TEMPLATE_KEY', '')
+            }
         
         if not self.api_key:
             logger.warning("ZEPTO_API_KEY not configured")
@@ -118,8 +134,38 @@ class ZeptoMailService:
         """Send email verification code using ZeptoMail template"""
         template_key = self.template_keys.get('email_verification')
         if not template_key:
-            logger.error("Email verification template key not configured")
-            return False, {"error": "Template key not configured"}
+            logger.warning("Email verification template key not configured, falling back to console email backend")
+            # Fall back to Django's console email backend for development
+            try:
+                from django.core.mail import send_mail
+                from django.conf import settings
+                
+                subject = "Email Verification - Faith Connect"
+                message = f"""
+                Hello {user_name},
+                
+                Your verification code is: {token}
+                
+                Please enter this code to complete your registration.
+                
+                Best regards,
+                Faith Connect Team
+                """
+                
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.ZEPTO_FROM_EMAIL or 'noreply@faithconnect.biz',
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                
+                logger.info(f"Sent verification email to {email} using console backend")
+                return True, {"message": "Email sent via console backend", "method": "console"}
+                
+            except Exception as e:
+                logger.error(f"Failed to send email via console backend: {str(e)}")
+                return False, {"error": f"Failed to send email via console backend: {str(e)}"}
         
         merge_info = {
             "name": user_name,
@@ -139,8 +185,44 @@ class ZeptoMailService:
         """Send password reset email using ZeptoMail template"""
         template_key = self.template_keys.get('password_reset')
         if not template_key:
-            logger.error("Password reset template key not configured")
-            return False, {"error": "Template key not configured"}
+            logger.warning("Password reset template key not configured, falling back to console email backend")
+            # Fall back to Django's console email backend for development
+            try:
+                from django.core.mail import send_mail
+                from django.conf import settings
+                
+                subject = "Password Reset - Faith Connect"
+                message = f"""
+                Hello {user_name},
+                
+                Your password reset code is: {token}
+                
+                Please enter this code to reset your password.
+                """
+                
+                if reset_link:
+                    message += f"\nOr click this link: {reset_link}"
+                
+                message += """
+                
+                Best regards,
+                Faith Connect Team
+                """
+                
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.ZEPTO_FROM_EMAIL or 'noreply@faithconnect.biz',
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                
+                logger.info(f"Sent password reset email to {email} using console backend")
+                return True, {"message": "Email sent via console backend", "method": "console"}
+                
+            except Exception as e:
+                logger.error(f"Failed to send email via console backend: {str(e)}")
+                return False, {"error": f"Failed to send email via console backend: {str(e)}"}
         
         merge_info = {
             "name": user_name,
@@ -164,8 +246,38 @@ class ZeptoMailService:
         """Send welcome email using ZeptoMail template"""
         template_key = self.template_keys.get('welcome_email')
         if not template_key:
-            logger.error("Welcome email template key not configured")
-            return False, {"error": "Template key not configured"}
+            logger.warning("Welcome email template key not configured, falling back to console email backend")
+            # Fall back to Django's console email backend for development
+            try:
+                from django.core.mail import send_mail
+                from django.conf import settings
+                
+                subject = "Welcome to Faith Connect!"
+                message = f"""
+                Hello {user_name},
+                
+                Welcome to Faith Connect! We're excited to have you as part of our community.
+                
+                Your account has been successfully created and verified.
+                
+                Best regards,
+                Faith Connect Team
+                """
+                
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.ZEPTO_FROM_EMAIL or 'noreply@faithconnect.biz',
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                
+                logger.info(f"Sent welcome email to {email} using console backend")
+                return True, {"message": "Email sent via console backend", "method": "console"}
+                
+            except Exception as e:
+                logger.error(f"Failed to send email via console backend: {str(e)}")
+                return False, {"error": f"Failed to send email via console backend: {str(e)}"}
         
         merge_info = {
             "name": user_name,

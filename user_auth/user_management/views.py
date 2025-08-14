@@ -16,6 +16,9 @@ import os
 from django.conf import settings
 import uuid
 from datetime import datetime, timedelta
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class UserProfileView(APIView):
@@ -28,11 +31,41 @@ class UserProfileView(APIView):
 
 class UserProfileUpdateView(APIView):
     permission_classes = [IsAuthenticated]
-    def put(self, request):
+    
+    def patch(self, request):
+        """PATCH method for partial profile updates - preferred method"""
+        logger.info(f"Profile update request received: {request.data}")
+        
         serializer = UpdateUserProfileSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
+            # Get the fields that were actually updated
+            updated_fields = list(serializer.validated_data.keys())
+            logger.info(f"Profile update validated. Fields to update: {updated_fields}")
+            
+            # Save the updates
             serializer.save()
-            return success_response("User profile updated successfully", serializer.data)
+            logger.info(f"Profile updated successfully. Updated fields: {updated_fields}")
+            
+            # Return the updated data with information about what was changed
+            return Response({
+                "success": True,
+                "message": f"Profile updated successfully. Updated fields: {', '.join(updated_fields)}",
+                "user": serializer.data
+            }, status=status.HTTP_200_OK)
+        else:
+            logger.error(f"Profile update validation failed: {serializer.errors}")
+            return error_response("Failed to update profile", serializer.errors)
+    
+    def put(self, request):
+        """PUT method for full profile updates (kept for backward compatibility)"""
+        serializer = UpdateUserProfileSerializer(request.user, data=request.data, partial=False)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "success": True,
+                "message": "User profile updated successfully",
+                "user": serializer.data
+            }, status=status.HTTP_200_OK)
         return error_response("Failed to update profile", serializer.errors)
 
 

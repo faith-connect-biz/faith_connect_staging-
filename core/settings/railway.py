@@ -32,9 +32,14 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt',
     'corsheaders',
-    'business',
+    'django_filters',
+    'drf_spectacular',
+    'storages',
+    'core',
     'user_auth',
+    'business',
 ]
 
 # Custom User Model
@@ -152,6 +157,14 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
+# DRF Spectacular settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'FEM Family Business Directory API',
+    'DESCRIPTION': 'API for managing family business directory',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}
+
 # Email Configuration (ZeptoMail)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.zeptomail.com')
@@ -247,6 +260,18 @@ LOGGING = {
         'handlers': ['console'],
         'level': 'INFO',
     },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+    },
+}
+
+# Health check settings
+HEALTH_CHECK = {
+    'DISK_USAGE_MAX': 90,  # 90%
+    'MEMORY_MIN': 100,     # 100MB
 }
 
 # AWS S3 Configuration for production

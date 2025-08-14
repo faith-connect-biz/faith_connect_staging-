@@ -33,32 +33,41 @@ DEBUG = config('DEBUG', cast=bool, default=True)
 ALLOWED_HOSTS =['*']
 
 # ZeptoMail API Configuration
-ZEPTO_API_KEY = os.environ.get('ZEPTO_API_KEY', '')
-ZEPTO_FROM_EMAIL = os.environ.get('ZEPTO_FROM_EMAIL', 'noreply@faithconnect.biz')
-ZEPTO_FROM_NAME = os.environ.get('ZEPTO_FROM_NAME', 'FaithConnect')
-ZEPTO_VERIFICATION_TEMPLATE_KEY = os.environ.get('ZEPTO_VERIFICATION_TEMPLATE_KEY', '')
-ZEPTO_PASSWORD_RESET_TEMPLATE_KEY = os.environ.get('ZEPTO_PASSWORD_RESET_TEMPLATE_KEY', '')
-ZEPTO_WELCOME_TEMPLATE_KEY = os.environ.get('ZEPTO_WELCOME_TEMPLATE_KEY', '')
+ZEPTO_API_KEY = config('ZEPTO_API_KEY', default='')
+ZEPTO_FROM_EMAIL = config('ZEPTO_FROM_EMAIL', default='noreply@faithconnect.biz')
+ZEPTO_FROM_NAME = config('ZEPTO_FROM_NAME', default='FaithConnect')
+ZEPTO_VERIFICATION_TEMPLATE_KEY = config('ZEPTO_VERIFICATION_TEMPLATE_KEY', default='')
+ZEPTO_PASSWORD_RESET_TEMPLATE_KEY = config('ZEPTO_PASSWORD_RESET_TEMPLATE_KEY', default='')
+ZEPTO_WELCOME_TEMPLATE_KEY = config('ZEPTO_WELCOME_TEMPLATE_KEY', default='')
 
 # SMS Configuration (Ndovubase)
-SMS_API_KEY = os.environ.get('SMS_API_KEY', '')
-SMS_API_SECRET = os.environ.get('SMS_SECRET', '')
-SMS_FROM_NUMBER = os.environ.get('SMS_FROM_NUMBER', 'CHOSENGCM')
+SMS_API_KEY = config('SMS_API_KEY', default='')
+SMS_API_SECRET = config('SMS_SECRET', default='')
+SMS_FROM_NUMBER = config('SMS_FROM_NUMBER', default='CHOSENGCM')
 
-# AWS S3 Configuration
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', '')
-AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
-AWS_S3_CUSTOM_DOMAIN = os.environ.get('AWS_S3_CUSTOM_DOMAIN', '')
+# AWS S3 Configurationc
+AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
+AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
+AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', default='')
+AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-1')
+AWS_S3_CUSTOM_DOMAIN = config('AWS_S3_CUSTOM_DOMAIN', default='')
 AWS_S3_OBJECT_PARAMETERS = {
     'CacheControl': 'max-age=86400',
 }
 AWS_DEFAULT_ACL = 'public-read'
 AWS_QUERYSTRING_AUTH = False
 
+# Email Configuration
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='localhost')
+EMAIL_PORT = config('EMAIL_PORT', default=1025, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=False, cast=bool)
+EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+
 # File Storage Configuration
-USE_S3 = os.environ.get('USE_S3', 'False').lower() == 'true'
+USE_S3 = config('USE_S3', default=False, cast=bool)
 if USE_S3:
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
     STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
