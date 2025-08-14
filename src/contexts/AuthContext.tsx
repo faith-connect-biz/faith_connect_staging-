@@ -7,7 +7,7 @@ interface AuthContextType {
   isLoading: boolean;
   isLoggingOut: boolean;
   login: (data: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<{ user: User; tokens: AuthTokens }>;
+  register: (data: RegisterRequest) => Promise<{ user: User; message: string }>;
   logout: () => Promise<void>;
   updateUser: (data: Partial<User>) => Promise<void>;
   setUser: (user: User | null) => void;
@@ -95,8 +95,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       const response = await apiService.register(data);
-      apiService.setAuthTokens(response.tokens);
-      setUser(response.user);
+      
+      // New registration flow: user is created but not yet active
+      // No tokens are returned until OTP verification
+      if (response.user) {
+        setUser(response.user);
+        // Don't set auth tokens - user must verify OTP first
+        console.log('Registration successful! User created but not yet active. Please verify OTP.');
+      }
+      
       return response; // Return the response so we can access user data
     } catch (error) {
       console.error('Registration failed:', error);

@@ -300,9 +300,9 @@ class ApiService {
     return response.data.data || response.data;
   }
 
-  async register(data: RegisterRequest): Promise<{ user: User; tokens: AuthTokens }> {
+  async register(data: RegisterRequest): Promise<{ user: User; message: string }> {
     const response = await this.api.post('/register', data);
-    // The backend wraps the response in a data field via success_response
+    // The backend now returns user data without tokens - user must verify OTP first
     return response.data.data || response.data;
   }
 
