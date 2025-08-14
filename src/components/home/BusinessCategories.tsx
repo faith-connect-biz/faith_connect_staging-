@@ -181,9 +181,14 @@ export const BusinessCategories = () => {
                         {React.createElement(category.icon, { className: "w-6 h-6" })}
                       </div>
                       <h3 className="font-semibold text-fem-navy mb-2">{category.name}</h3>
-                      <p className="text-sm text-fem-darkgray">
+                      <p className="text-sm text-fem-darkgray mb-2">
                         {category.count} {category.count === 1 ? 'business' : 'businesses'}
                       </p>
+                      {category.description && (
+                        <p className="text-xs text-gray-500 line-clamp-2">
+                          {category.description}
+                        </p>
+                      )}
                     </CardContent>
                   </Card>
                 </Link>
@@ -203,19 +208,24 @@ export const BusinessCategories = () => {
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {[
-                { name: "Food & Dining", icon: "🍽️", count: 0 },
-                { name: "Technology", icon: "💻", count: 0 },
-                { name: "Automotive", icon: "🚗", count: 0 },
-                { name: "Health & Beauty", icon: "💄", count: 0 },
-                { name: "Real Estate", icon: "🏠", count: 0 },
-                { name: "Education", icon: "📚", count: 0 },
-                { name: "Professional Services", icon: "💼", count: 0 },
-                { name: "Home & Garden", icon: "🌱", count: 0 }
+                { name: "Food & Dining", icon: "🍽️", count: 0, description: "Restaurants, cafes, and food services" },
+                { name: "Technology", icon: "💻", count: 0, description: "IT services, web development, and tech support" },
+                { name: "Automotive", icon: "🚗", count: 0, description: "Auto repair, maintenance, and car services" },
+                { name: "Health & Beauty", icon: "💄", count: 0, description: "Salons, spas, and wellness services" },
+                { name: "Real Estate", icon: "🏠", count: 0, description: "Property management and real estate services" },
+                { name: "Education", icon: "📚", count: 0, description: "Schools, training, and educational services" },
+                { name: "Professional Services", icon: "💼", count: 0, description: "Legal, accounting, and consulting" },
+                { name: "Home & Garden", icon: "🌱", count: 0, description: "Home improvement and gardening services" }
               ].map((category, index) => (
                 <div key={category.name} className="stagger-item tilt-3d magnetic neon-glow bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer">
                   <div className="text-4xl mb-4">{category.icon}</div>
                   <h3 className="text-xl font-semibold text-fem-navy mb-2">{category.name}</h3>
-                  <p className="text-sm text-gray-500">No businesses yet</p>
+                  <p className="text-sm text-gray-500 mb-2">No businesses yet</p>
+                  {category.description && (
+                    <p className="text-xs text-gray-400 line-clamp-2">
+                      {category.description}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
