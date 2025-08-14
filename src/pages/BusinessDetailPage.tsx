@@ -67,7 +67,7 @@ const BusinessDetailPage = () => {
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
-  const [activeTab, setActiveTab] = useState("reviews");
+  const [activeTab, setActiveTab] = useState("overview");
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [productFormData, setProductFormData] = useState({
@@ -1019,7 +1019,6 @@ const BusinessDetailPage = () => {
                         </div>
 
                         {/* Reviews List */}
-                        {console.log('Rendering reviews section, reviews:', reviews, 'length:', reviews.length)}
                         {reviews.length > 0 ? (
                           <div className="space-y-4">
                             {reviews.map((review) => (

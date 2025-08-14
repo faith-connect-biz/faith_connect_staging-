@@ -268,13 +268,14 @@ class ApiService {
           '/verify-phone',
           '/verify-phone-confirm',
           '/forgot-password',
-          '/reset-password'
+          '/reset-password',
+          '/categories'
         ];
         
-        // Check if the current endpoint is public
+        // Check if the current endpoint is public or a public business endpoint
         const isPublicEndpoint = publicEndpoints.some(endpoint => 
           config.url?.includes(endpoint)
-        );
+        ) || (config.url?.includes('/business/') && config.url?.includes('/reviews/'));
         
         // Only add auth token for protected endpoints
         if (!isPublicEndpoint) {
