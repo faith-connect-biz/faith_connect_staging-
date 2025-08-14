@@ -10,10 +10,8 @@ DEBUG = False
 CORS_ALLOWED_ORIGINS = [
     "https://www.faithconnect.biz",
     "https://faithconnect.biz",
-    "https://fem-family-business-directory-rosy.vercel.app",
-    "https://fem-directory-production.up.railway.app",
-    "https://fem-directory.up.railway.app",
     "https://femdjango-production.up.railway.app",
+    "https://fem-family-business-directory-kappa.vercel.app",
 ]
 
 # For development/testing, you can temporarily allow all origins

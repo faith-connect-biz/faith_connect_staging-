@@ -61,6 +61,8 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
@@ -190,10 +192,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173", 
     "http://localhost:8080",
-    "https://fem-family-business-directory-rosy.vercel.app",
-    "https://fem-directory-production.up.railway.app",
-    "https://fem-directory.up.railway.app",
     "https://femdjango-production.up.railway.app",
+    "https://fem-family-business-directory-kappa.vercel.app",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -227,7 +227,6 @@ CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
 
 # Debug CORS issues
 CORS_URLS_REGEX = r'^.*$'  # Allow CORS on all URLs
-CORS_REPLACE_HTTPS_REFERER = True
 
 # Security settings - temporarily disabled for Railway deployment
 SECURE_SSL_REDIRECT = False  # Disable SSL redirect temporarily

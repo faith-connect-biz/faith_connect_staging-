@@ -138,6 +138,14 @@ class LoginSerializer(serializers.Serializer):
         if not user:
             raise serializers.ValidationError("Invalid credentials")
 
+        # Check if user account is active
+        if not user.is_active:
+            raise serializers.ValidationError("Your account is not yet active. Please verify your contact information first.")
+
+        # Check if user has verified their contact information
+        if not user.is_verified:
+            raise serializers.ValidationError("Please verify your contact information before logging in.")
+
         token = RefreshToken.for_user(user)
 
         return {
@@ -165,3 +173,90 @@ class ResetPasswordWithOTPSerializer(serializers.Serializer):
     phone_number = serializers.CharField()
     otp = serializers.CharField()
     new_password = serializers.CharField(min_length=6)
+
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the new two-step registration process
+    """
+    class Meta:
+        model = User
+        fields = [
+            'first_name', 'last_name', 'partnership_number', 'user_type',
+            'email', 'phone', 'password'
+        ]
+        extra_kwargs = {
+            'password': {'write_only': True, 'min_length': 6},
+            'first_name': {'required': True},
+            'last_name': {'required': True},
+            'partnership_number': {'required': True},
+            'user_type': {'required': True},
+        }
+
+    def validate_partnership_number(self, value):
+        if not value:
+            raise serializers.ValidationError("Partnership number is required.")
+        return value
+
+    def validate_email(self, value):
+        if value and User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("This email is already registered.")
+        return value
+
+    def validate_phone(self, value):
+        if value and User.objects.filter(phone=value).exists():
+            raise serializers.ValidationError("This phone number is already registered.")
+        return value
+
+    def validate(self, data):
+        email = data.get('email')
+        phone = data.get('phone')
+
+        # Ensure at least one contact method is provided
+        if not email and not phone:
+            raise serializers.ValidationError("Either email or phone number must be provided.")
+        
+        # Check for existing users with same email OR phone
+        existing_user = None
+        
+        if email:
+            try:
+                existing_user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                pass
+        
+        if phone:
+            try:
+                existing_user = User.objects.get(phone=phone)
+            except User.DoesNotExist:
+                pass
+        
+        if existing_user:
+            # Check if this is the same person trying to add missing contact info
+            if existing_user.partnership_number == data.get('partnership_number'):
+                # Same person - allow updating contact info
+                return data
+            else:
+                # Different person - prevent duplicate account
+                if email and phone:
+                    raise serializers.ValidationError(
+                        "An account with this email or phone number already exists. "
+                        "Please use a different email and phone number."
+                    )
+                elif email:
+                    raise serializers.ValidationError(
+                        "An account with this email already exists. "
+                        "Please use a different email or contact support if this is your account."
+                    )
+                else:
+                    raise serializers.ValidationError(
+                        "An account with this phone number already exists. "
+                        "Please use a different phone number or contact support if this is your account."
+                    )
+
+        # Ensure password meets minimum requirements
+        password = data.get('password')
+        if password and len(password) < 6:
+            raise serializers.ValidationError("Password must be at least 6 characters long.")
+
+        return data
