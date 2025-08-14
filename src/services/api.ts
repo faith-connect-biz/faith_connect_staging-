@@ -456,8 +456,11 @@ class ApiService {
     console.log('API getBusinesses - Raw response:', response);
     console.log('API getBusinesses - response.data:', response.data);
     
-    // The backend returns a direct array, not wrapped in results
-    const businesses = response.data;
+    // The backend returns a paginated response with { count, next, previous, results }
+    const responseData = response.data;
+    
+    // Extract the businesses array from the results field
+    const businesses = responseData.results || [];
     
     // Check if businesses have services and products
     if (Array.isArray(businesses)) {
@@ -474,11 +477,12 @@ class ApiService {
       });
     }
     
+    // Return the properly parsed paginated response
     return {
       results: businesses,
-      count: businesses.length,
-      next: undefined,
-      previous: undefined
+      count: responseData.count || 0,
+      next: responseData.next || undefined,
+      previous: responseData.previous || undefined
     };
   }
 
@@ -997,11 +1001,13 @@ class ApiService {
   async getCategories(): Promise<{ results: Category[]; count: number }> {
     try {
       const response = await this.api.get('/business/categories/');
-      // The backend returns a direct array, not wrapped in results
-      const categories = response.data;
+      // The backend returns a paginated response with { count, results }
+      const responseData = response.data;
+      const categories = responseData.results || responseData; // Handle both paginated and direct array responses
+      
       return {
         results: categories,
-        count: categories.length
+        count: responseData.count || categories.length
       };
     } catch (error) {
       console.error('Error fetching categories from API, falling back to hardcoded:', error);
