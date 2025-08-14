@@ -203,19 +203,19 @@ export const BusinessCategories = () => {
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {[
-                { name: "Food & Dining", icon: "🍽️", description: "Restaurants, catering, and food services" },
-                { name: "Technology", icon: "💻", description: "IT services, web development, and tech support" },
-                { name: "Automotive", icon: "🚗", description: "Auto repair, maintenance, and car services" },
-                { name: "Health & Beauty", icon: "💄", description: "Salons, spas, and wellness services" },
-                { name: "Real Estate", icon: "🏠", description: "Property management and real estate services" },
-                { name: "Education", icon: "📚", description: "Schools, training, and educational services" },
-                { name: "Professional Services", icon: "💼", description: "Legal, accounting, and consulting" },
-                { name: "Home & Garden", icon: "🌱", description: "Home improvement and gardening services" }
+                { name: "Food & Dining", icon: "🍽️", count: 0 },
+                { name: "Technology", icon: "💻", count: 0 },
+                { name: "Automotive", icon: "🚗", count: 0 },
+                { name: "Health & Beauty", icon: "💄", count: 0 },
+                { name: "Real Estate", icon: "🏠", count: 0 },
+                { name: "Education", icon: "📚", count: 0 },
+                { name: "Professional Services", icon: "💼", count: 0 },
+                { name: "Home & Garden", icon: "🌱", count: 0 }
               ].map((category, index) => (
                 <div key={category.name} className="stagger-item tilt-3d magnetic neon-glow bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer">
                   <div className="text-4xl mb-4">{category.icon}</div>
                   <h3 className="text-xl font-semibold text-fem-navy mb-2">{category.name}</h3>
-                  <p className="text-gray-600 text-sm">{category.description}</p>
+                  <p className="text-sm text-gray-500">No businesses yet</p>
                 </div>
               ))}
             </div>
