@@ -31,7 +31,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     userType: 'community',
     partnershipNumber: ''
   });
-  const [signupUserId, setSignupUserId] = useState('');
   const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
   const [usePhone, setUsePhone] = useState(false); // Toggle between phone and email
 
@@ -94,7 +93,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         userType: 'community',
         partnershipNumber: ''
       });
-      setSignupUserId('');
       setAuthMethod('email');
       setUsePhone(false); // Reset toggle to email
     }
@@ -200,32 +198,33 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       });
       
       console.log('Registration successful:', registerResponse);
+      console.log('Registration response structure:', {
+        success: registerResponse.success,
+        message: registerResponse.message,
+        registration_token: registerResponse.registration_token,
+        requires_otp: registerResponse.requires_otp,
+        otp_sent_to: registerResponse.otp_sent_to
+      });
+      
+      // Check if we have the required data
+      if (!registerResponse.registration_token) {
+        console.error('Missing registration_token in response:', registerResponse);
+        throw new Error('Registration failed: Missing registration token');
+      }
       
       // Store signup data for OTP verification
       localStorage.setItem('signup_email', usePhone ? '' : signupData.email);
       localStorage.setItem('signup_phone', usePhone ? signupData.phone : '');
-      localStorage.setItem('signup_user_id', registerResponse.user.id);
+      localStorage.setItem('signup_registration_token', registerResponse.registration_token);
       localStorage.setItem('signup_user_type', signupData.userType);
       localStorage.setItem('signup_partnership_number', signupData.partnershipNumber);
       localStorage.setItem('signup_auth_method', usePhone ? 'phone' : 'email');
 
       // Set auth method based on toggle and move to OTP step
       setAuthMethod(usePhone ? 'phone' : 'email');
-      setSignupUserId(registerResponse.user.id);
       setSignupStep('otp');
 
       console.log(`Using ${usePhone ? 'phone' : 'email'} verification`);
-
-      // If using phone, send OTP automatically
-      if (usePhone && signupData.phone) {
-        try {
-          await sendPhoneOTP(signupData.phone);
-        } catch (error) {
-          // If OTP sending fails, stay on form step
-          setSignupStep('form');
-          return;
-        }
-      }
 
       toast({
         title: "Registration successful!",
@@ -247,14 +246,26 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     try {
       console.log('Verifying OTP:', { otp, authMethod, signupData });
       
-      // Call the correct backend API to verify the OTP
-      const endpoint = authMethod === 'email' ? '/verify-email-confirm' : '/verify-phone-confirm';
-      const data = authMethod === 'email' 
-        ? { email: signupData.email, token: otp }
-        : { phone_number: signupData.phone, otp: otp };
+      // Get the registration token from localStorage
+      const registrationToken = localStorage.getItem('signup_registration_token');
+      
+      if (!registrationToken) {
+        toast({
+          title: "Error",
+          description: "Registration session expired. Please register again.",
+          variant: "destructive"
+        });
+        return false;
+      }
+      
+      // Call the registration OTP verification endpoint
+      const data = {
+        registration_token: registrationToken,
+        otp: otp
+      };
 
-      console.log('Calling endpoint:', endpoint, 'with data:', data);
-      const response = await apiService.post(endpoint, data);
+      console.log('Calling registration OTP verification endpoint with data:', data);
+      const response = await apiService.post('/verify-registration-otp', data);
       console.log('OTP verification response:', response);
       
       if (response.success) {
@@ -265,13 +276,21 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         // Clear stored signup data
         localStorage.removeItem('signup_email');
         localStorage.removeItem('signup_phone');
+        localStorage.removeItem('signup_registration_token');
         localStorage.removeItem('signup_user_id');
         localStorage.removeItem('signup_user_type');
         localStorage.removeItem('signup_partnership_number');
         
+        // Store user data and tokens for immediate login
+        if (response.user && response.tokens) {
+          localStorage.setItem('user', JSON.stringify(response.user));
+          localStorage.setItem('access_token', response.tokens.access);
+          localStorage.setItem('refresh_token', response.tokens.refresh);
+        }
+        
         toast({
           title: "Success!",
-          description: `${authMethod === 'email' ? 'Email' : 'Phone'} verified successfully!`,
+          description: "Account created and verified successfully! Welcome to Faith Connect!",
         });
 
         // Close modal and redirect based on user type
@@ -304,22 +323,34 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const handleResendOTP = async (): Promise<void> => {
     try {
-      console.log('Resending OTP for:', { authMethod, signupData });
+      console.log('Resending OTP for registration');
       
-      // Call the correct backend API to resend OTP
-      const endpoint = authMethod === 'email' ? '/verify-email' : '/verify-phone';
-      const data = authMethod === 'email' 
-        ? { email: signupData.email }
-        : { phone_number: signupData.phone };
+      // Get the registration token from localStorage
+      const registrationToken = localStorage.getItem('signup_registration_token');
+      console.log('Retrieved registration token from localStorage:', registrationToken);
+      
+      if (!registrationToken) {
+        toast({
+          title: "Error",
+          description: "Registration session expired. Please register again.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Call the registration resend OTP endpoint
+      const data = {
+        registration_token: registrationToken
+      };
 
-      console.log('Calling resend endpoint:', endpoint, 'with data:', data);
-      const response = await apiService.post(endpoint, data);
+      console.log('Calling resend registration OTP endpoint with data:', data);
+      const response = await apiService.post('/resend-registration-otp', data);
       console.log('Resend OTP response:', response);
       
       if (response.success) {
         toast({
           title: "OTP Resent!",
-          description: `A new verification code has been sent to your ${authMethod === 'email' ? 'email' : 'phone'}.`,
+          description: `A new verification code has been sent to your ${response.otp_sent_to === 'email' ? 'email' : 'phone'}.`,
         });
       } else {
         toast({
@@ -340,7 +371,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const handleBackToSignup = () => {
     setSignupStep('form');
-    setSignupUserId('');
   };
 
   if (!isOpen) return null;

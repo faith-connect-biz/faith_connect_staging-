@@ -4,36 +4,60 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import AuthModal from '@/components/auth/AuthModal';
-import { Menu, X, User, Building2, Loader2 } from 'lucide-react';
+import { 
+  Menu, 
+  X, 
+  User, 
+  Loader2,
+  Building2,
+  AlertCircle
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { apiService } from '@/services/api';
+import { toast } from '@/hooks/use-toast';
 
 const Navbar: React.FC = () => {
+  const { user, isAuthenticated, isBusiness, logout, isLoggingOut } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { 
-    user: currentUser, 
-    isAuthenticated, 
-    logout, 
-    isLoggingOut 
-  } = useAuth();
+  const [hasExistingBusiness, setHasExistingBusiness] = useState(false);
+  const [isCheckingBusiness, setIsCheckingBusiness] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
   const { toast } = useToast();
 
+  // Check if user already has a business
+  useEffect(() => {
+    const checkExistingBusiness = async () => {
+      if (isAuthenticated && isBusiness) {
+        setIsCheckingBusiness(true);
+        try {
+          const existingBusiness = await apiService.getUserBusiness();
+          setHasExistingBusiness(!!existingBusiness);
+        } catch (error) {
+          console.error('Error checking existing business:', error);
+          setHasExistingBusiness(false);
+        } finally {
+          setIsCheckingBusiness(false);
+        }
+      }
+    };
+
+    checkExistingBusiness();
+  }, [isAuthenticated, isBusiness]);
+
   // Ensure we have the latest user data
-  const isBusiness = currentUser?.user_type === 'business';
-  const isCommunity = currentUser?.user_type === 'community';
+  const isCommunity = user?.user_type === 'community';
 
   // Force re-render when user changes
   useEffect(() => {
     console.log('Navbar: User state changed:', {
-      user: currentUser,
+      user: user,
       isAuthenticated,
       isBusiness,
       isCommunity,
-      userType: currentUser?.user_type
+      userType: user?.user_type
     });
-  }, [currentUser, isAuthenticated, isBusiness, isCommunity]);
+  }, [user, isAuthenticated, isBusiness, isCommunity]);
 
   const handleLogout = async () => {
     try {
@@ -92,12 +116,20 @@ const Navbar: React.FC = () => {
           {/* Business Management Links - Only for Business Users */}
           {isAuthenticated && isBusiness && (
             <>
-              <Link to="/register-business" className="text-fem-navy hover:text-fem-terracotta transition-colors">
-                List Business
-              </Link>
-              <Link to="/manage-business" className="text-fem-navy hover:text-fem-terracotta transition-colors">
-                Manage Business
-              </Link>
+              {isCheckingBusiness ? (
+                <div className="text-fem-navy opacity-50">
+                  <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                  Loading...
+                </div>
+              ) : !hasExistingBusiness ? (
+                <Link to="/register-business" className="text-fem-navy hover:text-fem-terracotta transition-colors">
+                  List Business
+                </Link>
+              ) : (
+                <Link to="/manage-business" className="text-fem-navy hover:text-fem-terracotta transition-colors">
+                  Manage Business
+                </Link>
+              )}
             </>
           )}
           <Link to="/about" className="text-fem-navy hover:text-fem-terracotta transition-colors">
@@ -182,20 +214,28 @@ const Navbar: React.FC = () => {
               {/* Business Management Links - Only for Business Users */}
               {isAuthenticated && isBusiness && (
                 <>
-                  <Link 
-                    to="/register-business" 
-                    className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
-                    onClick={closeMenu}
-                  >
-                    List Business
-                  </Link>
-                  <Link 
-                    to="/manage-business" 
-                    className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
-                    onClick={closeMenu}
-                  >
-                    Manage Business
-                  </Link>
+                  {isCheckingBusiness ? (
+                    <div className="block py-2 text-fem-navy opacity-50">
+                      <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                      Loading...
+                    </div>
+                  ) : !hasExistingBusiness ? (
+                    <Link 
+                      to="/register-business" 
+                      className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
+                      onClick={closeMenu}
+                    >
+                      List Business
+                    </Link>
+                  ) : (
+                    <Link 
+                      to="/manage-business" 
+                      className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
+                      onClick={closeMenu}
+                    >
+                      Manage Business
+                    </Link>
+                  )}
                 </>
               )}
               <Link 

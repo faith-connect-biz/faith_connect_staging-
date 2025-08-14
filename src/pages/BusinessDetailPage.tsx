@@ -84,6 +84,13 @@ const BusinessDetailPage = () => {
   // Image viewer state
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedProductForImages, setSelectedProductForImages] = useState<any>(null);
+  
+  // Services state
+  const [services, setServices] = useState<any[]>([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(false);
+
+  // Business ownership state
+  const [isBusinessOwner, setIsBusinessOwner] = useState(false);
 
   const headerRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
@@ -101,6 +108,11 @@ const BusinessDetailPage = () => {
         // Fetch reviews for this business
         const reviewsData = await apiService.getBusinessReviews(id);
         setReviews(reviewsData);
+        
+        // Fetch services for this business
+        setIsLoadingServices(true);
+        const servicesData = await apiService.getBusinessServices(id);
+        setServices(servicesData);
         
         // Check if current user has already reviewed this business
         if (user) {
@@ -120,6 +132,7 @@ const BusinessDetailPage = () => {
         });
       } finally {
         setIsLoading(false);
+        setIsLoadingServices(false);
       }
     };
 
@@ -158,6 +171,23 @@ const BusinessDetailPage = () => {
       ScrollTrigger.getAll().forEach(trigger => trigger.kill());
     };
   }, [business]);
+
+  // Check if current user owns this business
+  useEffect(() => {
+    const checkBusinessOwnership = async () => {
+      if (user && business) {
+        try {
+          const ownsBusiness = await apiService.isBusinessOwner(business.id);
+          setIsBusinessOwner(ownsBusiness);
+        } catch (error) {
+          console.error('Error checking business ownership:', error);
+          setIsBusinessOwner(false);
+        }
+      }
+    };
+
+    checkBusinessOwnership();
+  }, [user, business]);
 
   const handleToggleFavorite = () => {
     setIsFavorite(!isFavorite);
@@ -208,27 +238,29 @@ const BusinessDetailPage = () => {
     );
   };
 
-  const handleSubmitRating = async () => {
+  const handleSubmitReview = async () => {
+    if (!user || !id) return;
+    
     if (userRating === 0) {
       toast({
         title: "Rating Required",
-        description: "Please select a rating before submitting.",
+        description: "Please select a rating before submitting your review.",
         variant: "destructive"
       });
       return;
     }
-    
-    if (!user) {
+
+    // Check if user owns this business
+    if (isBusinessOwner) {
       toast({
-        title: "Authentication Required",
-        description: "Please log in to submit a review.",
+        title: "Cannot Review Own Business",
+        description: "Business owners cannot review their own businesses.",
         variant: "destructive"
       });
       return;
     }
-    
+
     setIsSubmittingReview(true);
-    
     try {
       if (userReviewData) {
         // Update existing review
@@ -739,10 +771,88 @@ const BusinessDetailPage = () => {
                     </TabsContent>
                     
                     <TabsContent value="services" className="mt-6">
-                      <div className="text-center py-12">
-                        <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-fem-navy mb-2">Services Coming Soon</h3>
-                        <p className="text-gray-600">Service listings will be available here once businesses add their services.</p>
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xl font-semibold text-fem-navy">Services</h3>
+                          {user && user.user_type === 'business' && (
+                            <Button
+                              onClick={() => {/* TODO: Add service form */}}
+                              className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                            >
+                              <Settings className="w-4 h-4 mr-2" />
+                              Add Service
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* Services List */}
+                        {isLoadingServices ? (
+                          <div className="text-center py-12">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-fem-terracotta mx-auto"></div>
+                            <p className="text-gray-600 mt-2">Loading services...</p>
+                          </div>
+                        ) : services && services.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {services.map((service: any) => (
+                              <Card key={service.id} className="h-full hover:shadow-lg transition-shadow duration-200">
+                                <div className="relative">
+                                  {/* Service Image */}
+                                  <img 
+                                    src={service.service_image_url || service.images?.[0] || "/placeholder.svg"} 
+                                    alt={service.name}
+                                    className="w-full h-48 object-cover rounded-t-lg"
+                                  />
+                                  
+                                  <div className="absolute top-2 right-2">
+                                    <Badge className={`${service.is_active ? 'bg-green-500' : 'bg-red-500'} text-white`}>
+                                      {service.is_active ? 'Available' : 'Unavailable'}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <CardContent className="p-4">
+                                  <h4 className="font-semibold text-fem-navy mb-2">{service.name}</h4>
+                                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                                    {service.description || 'No description available'}
+                                  </p>
+                                  <div className="space-y-2">
+                                    {service.price_range && (
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <span className="text-gray-500">Price:</span>
+                                        <span className="font-semibold text-fem-terracotta">{service.price_range}</span>
+                                      </div>
+                                    )}
+                                    {service.duration && (
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <span className="text-gray-500">Duration:</span>
+                                        <span className="font-semibold text-gray-700">{service.duration}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-12">
+                            <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold text-fem-navy mb-2">No Services Yet</h3>
+                            <p className="text-gray-600 mb-4">
+                              {user && user.user_type === 'business' 
+                                ? "Start adding services to showcase your offerings to customers."
+                                : "This business hasn't added any services yet."
+                              }
+                            </p>
+                            {user && user.user_type === 'business' && (
+                              <Button
+                                onClick={() => {/* TODO: Add service form */}}
+                                className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                              >
+                                <Settings className="w-4 h-4 mr-2" />
+                                Add Your First Service
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </TabsContent>
                     
@@ -875,18 +985,18 @@ const BusinessDetailPage = () => {
                       <div className="space-y-6">
                         <div className="flex items-center justify-between">
                           <h3 className="text-xl font-semibold text-fem-navy">Customer Reviews</h3>
-                          {user && !userReviewData && (
+                          {user && !userReviewData && !isBusinessOwner && (
                             <Button
-                              onClick={() => setShowReviewForm(true)}
+                              onClick={() => !isBusinessOwner && setShowReviewForm(true)}
                               className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
                             >
                               Write Review
                             </Button>
                           )}
-                          {user && userReviewData && (
+                          {user && userReviewData && !isBusinessOwner && (
                             <div className="flex gap-2">
                               <Button
-                                onClick={() => setShowReviewForm(true)}
+                                onClick={() => !isBusinessOwner && setShowReviewForm(true)}
                                 variant="outline"
                                 className="border-fem-gold text-fem-gold hover:bg-fem-gold hover:text-white"
                               >
@@ -899,6 +1009,11 @@ const BusinessDetailPage = () => {
                               >
                                 Delete Review
                               </Button>
+                            </div>
+                          )}
+                          {isBusinessOwner && (
+                            <div className="text-sm text-gray-500 italic">
+                              Business owners cannot review their own business
                             </div>
                           )}
                         </div>
@@ -963,31 +1078,40 @@ const BusinessDetailPage = () => {
                 <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl">
                   <CardHeader className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white rounded-t-lg">
                     <CardTitle className="flex items-center gap-2">
-                      <MessageSquare className="w-5 h-5" />
+                      <Phone className="w-5 h-5" />
                       Contact Business
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      <Button 
-                        className="w-full bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
-                        onClick={() => navigate(`/chat?business=${business.id}`)}
-                      >
-                        <MessageSquare className="w-4 h-4 mr-2" />
-                        Send Message
-                      </Button>
-                      
                       {business.phone && (
-                        <Button variant="outline" className="w-full">
+                        <Button 
+                          variant="outline" 
+                          className="w-full"
+                          onClick={() => window.open(`tel:${business.phone}`, '_self')}
+                        >
                           <Phone className="w-4 h-4 mr-2" />
                           Call Now
                         </Button>
                       )}
                       
-                      {business.website && (
-                        <Button variant="outline" className="w-full">
+                      {business.website ? (
+                        <Button 
+                          variant="outline" 
+                          className="w-full"
+                          onClick={() => window.open(business.website, '_blank')}
+                        >
                           <ExternalLink className="w-4 h-4 mr-2" />
                           Visit Website
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          className="w-full opacity-50 cursor-not-allowed"
+                          disabled
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          No Website
                         </Button>
                       )}
                     </div>
@@ -1269,7 +1393,7 @@ const BusinessDetailPage = () => {
 
       {/* Review Form Modal */}
       <AnimatePresence>
-        {showReviewForm && (
+        {showReviewForm && !isBusinessOwner && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1348,7 +1472,7 @@ const BusinessDetailPage = () => {
                 {/* Submit Button */}
                 <div className="flex gap-3">
                   <Button
-                    onClick={handleSubmitRating}
+                    onClick={handleSubmitReview}
                     disabled={isSubmittingReview || userRating === 0}
                     className="flex-1 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
                   >

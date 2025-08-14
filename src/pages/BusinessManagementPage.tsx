@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { apiService } from '@/services/api';
+import { apiService, Service, Product } from '@/services/api';
 import { ServiceForm } from '@/components/ServiceForm';
 import { ProductForm } from '@/components/ProductForm';
 
@@ -66,25 +66,7 @@ interface BusinessData {
   youtube_url?: string;
 }
 
-interface Service {
-  id: number;
-  name: string;
-  description?: string;
-  price_range?: string;
-  duration?: string;
-  is_active: boolean;
-}
 
-interface Product {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  price_currency: string;
-  product_image_url?: string;
-  in_stock: boolean;
-  is_active: boolean;
-}
 
 export const BusinessManagementPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -200,9 +182,6 @@ export const BusinessManagementPage: React.FC = () => {
               setBusinessHours(hoursData);
               setAnalytics(analyticsData);
               
-              console.log('Business hours data:', hoursData);
-              console.log('Analytics data:', analyticsData);
-              
               // Clear the location state to avoid issues on subsequent renders
               if (location.state?.businessId) {
                 navigate(location.pathname, { replace: true });
@@ -280,9 +259,6 @@ export const BusinessManagementPage: React.FC = () => {
           setProducts(productsData);
           setBusinessHours(hoursData);
           setAnalytics(analyticsData);
-          
-          console.log('Business hours data:', hoursData);
-          console.log('Analytics data:', analyticsData);
         } catch (error) {
           console.error('Error fetching business details:', error);
           // Set empty arrays as fallback
@@ -329,6 +305,18 @@ export const BusinessManagementPage: React.FC = () => {
     } catch (error) {
       console.error('Error fetching business products:', error);
       setProducts([]);
+    }
+  };
+
+  const loadBusinessHours = async () => {
+    if (!businessData) return;
+    try {
+      const hoursData = await apiService.getBusinessHours(businessData.id);
+      console.log('Refreshed business hours:', hoursData);
+      setBusinessHours(hoursData);
+    } catch (error) {
+      console.error('Error fetching business hours:', error);
+      setBusinessHours([]);
     }
   };
 
@@ -381,13 +369,8 @@ export const BusinessManagementPage: React.FC = () => {
         try {
           setIsUploadingImage(true);
           
-          // Step 1: Get pre-signed URL from backend
-          const uploadData = await apiService.getImageUploadUrl(
-            businessData.id,
-            'image',
-            file.name,
-            file.type
-          );
+          // Step 1: Get pre-signed URL for profile photo upload
+          const uploadData = await apiService.getProfilePhotoUploadUrl(file.name, file.type);
           
           // Step 2: Upload file directly to S3
           const uploadSuccess = await apiService.uploadFileToS3(
@@ -399,23 +382,35 @@ export const BusinessManagementPage: React.FC = () => {
             throw new Error('Failed to upload file to S3');
           }
           
-          // Step 3: Update business with the uploaded image
-          const result = await apiService.updateBusinessImage(
-            businessData.id,
-            'image',
-            uploadData.file_key
-          );
-          
-          // Update the local state
-          setBusinessData(prev => prev ? {
-            ...prev,
-            business_image_url: result.business_image_url
-          } : null);
-          
-          toast({
-            title: "Success",
-            description: "Profile picture updated successfully!",
-          });
+                                // Step 3: Generate S3 URL and update local state
+            const s3Url = `https://${import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp'}.s3.${import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1'}.amazonaws.com/${uploadData.file_key}`;
+           
+           // Step 4: Update the business profile photo in the backend
+           try {
+             const updateResult = await apiService.updateBusinessImage(businessData.id, 'image', uploadData.file_key);
+             console.log('Business image update result:', updateResult);
+             
+             // Use the URL returned from the backend if available
+             const finalImageUrl = updateResult.business_image_url || s3Url;
+             
+             // Update the local state with the new profile photo URL
+             setBusinessData(prev => prev ? {
+               ...prev,
+               business_image_url: finalImageUrl
+             } : null);
+           } catch (error) {
+             console.error('Error updating business profile photo in backend:', error);
+             // Still update local state with S3 URL as fallback
+             setBusinessData(prev => prev ? {
+               ...prev,
+               business_image_url: s3Url
+             } : null);
+           }
+           
+           toast({
+             title: "Success",
+             description: "Profile picture updated successfully!",
+           });
           
         } catch (error) {
           console.error('Error uploading image:', error);
@@ -432,67 +427,7 @@ export const BusinessManagementPage: React.FC = () => {
     input.click();
   };
 
-  const handleLogoUpload = async () => {
-    // Create a file input element
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file && businessData) {
-        try {
-          setIsUploadingImage(true);
-          
-          // Step 1: Get pre-signed URL from backend
-          const uploadData = await apiService.getImageUploadUrl(
-            businessData.id,
-            'logo',
-            file.name,
-            file.type
-          );
-          
-          // Step 2: Upload file directly to S3
-          const uploadSuccess = await apiService.uploadFileToS3(
-            uploadData.presigned_url,
-            file
-          );
-          
-          if (!uploadSuccess) {
-            throw new Error('Failed to upload file to S3');
-          }
-          
-          // Step 3: Update business with the uploaded logo
-          const result = await apiService.updateBusinessImage(
-            businessData.id,
-            'logo',
-            uploadData.file_key
-          );
-          
-          // Update the local state
-          setBusinessData(prev => prev ? {
-            ...prev,
-            business_logo_url: result.business_logo_url
-          } : null);
-          
-          toast({
-            title: "Success",
-            description: "Logo updated successfully!",
-          });
-          
-        } catch (error) {
-          console.error('Error uploading logo:', error);
-          toast({
-            title: "Error",
-            description: "Failed to upload logo. Please try again.",
-            variant: "destructive"
-          });
-        } finally {
-          setIsUploadingImage(false);
-        }
-      }
-    };
-    input.click();
-  };
+
 
   if (isLoading) {
     return (
@@ -544,10 +479,10 @@ export const BusinessManagementPage: React.FC = () => {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-4">
-                {/* Business Profile Picture Icon - Now the Upload Button */}
+                {/* Business Profile Picture - Larger and properly sized */}
                 <div className="relative group">
                   <div 
-                    className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-gray-300 hover:border-fem-terracotta transition-colors cursor-pointer overflow-hidden"
+                    className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-gray-300 hover:border-fem-terracotta transition-colors cursor-pointer overflow-hidden"
                     onClick={() => handleProfilePictureClick()}
                   >
                     {businessData.business_image_url ? (
@@ -557,37 +492,16 @@ export const BusinessManagementPage: React.FC = () => {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <Camera className="h-8 w-8 text-gray-500" />
+                      <Camera className="h-10 w-10 text-gray-500" />
                     )}
                     {isUploadingImage && (
                       <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
                       </div>
                     )}
                   </div>
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
                     {businessData.business_image_url ? 'Change Profile Picture' : 'Add Profile Picture'}
-                  </div>
-                </div>
-
-                {/* Business Logo Upload */}
-                <div className="relative group">
-                  <div 
-                    className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-gray-300 hover:border-fem-terracotta transition-colors cursor-pointer overflow-hidden"
-                    onClick={() => handleLogoUpload()}
-                  >
-                    {businessData.business_logo_url ? (
-                      <img 
-                        src={businessData.business_logo_url} 
-                        alt="Business Logo" 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <Building2 className="h-6 w-6 text-gray-500" />
-                    )}
-                  </div>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                    {businessData.business_logo_url ? 'Change Logo' : 'Add Logo'}
                   </div>
                 </div>
 
@@ -793,27 +707,63 @@ export const BusinessManagementPage: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Business Hours */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Clock className="h-5 w-5" />
-                    <span>Business Hours</span>
-                  </CardTitle>
-                </CardHeader>
+                             {/* Business Hours */}
+               <Card>
+                 <CardHeader>
+                   <div className="flex items-center justify-between">
+                     <CardTitle className="flex items-center space-x-2">
+                       <Clock className="h-5 w-5" />
+                       <span>Business Hours</span>
+                     </CardTitle>
+                     <Button 
+                       variant="outline" 
+                       size="sm" 
+                       onClick={loadBusinessHours}
+                       className="text-xs"
+                     >
+                       <Clock className="h-4 w-4 mr-1" />
+                       Refresh
+                     </Button>
+                   </div>
+                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
-                    {businessHours.map((hour) => (
-                      <div key={hour.day_of_week} className="text-center p-3 bg-gray-50 rounded-lg">
-                        <div className="font-medium text-gray-900 mb-1">
-                          {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][hour.day_of_week]}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {hour.is_closed ? 'Closed' : `${hour.open_time || 'N/A'} - ${hour.close_time || 'N/A'}`}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  {businessHours.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
+                      {businessHours.map((hour) => {
+                        // Helper function to format time without seconds
+                        const formatTime = (timeString: string | null | undefined) => {
+                          if (!timeString) return 'N/A';
+                          // Remove seconds and format as HH:MM
+                          return timeString.split(':').slice(0, 2).join(':');
+                        };
+
+                        // Check if times are valid (open time should be before close time)
+                        const openTime = formatTime(hour.open_time);
+                        const closeTime = formatTime(hour.close_time);
+                        const isValidTimeRange = hour.open_time && hour.close_time && 
+                          hour.open_time < hour.close_time;
+
+                        return (
+                          <div key={hour.day_of_week} className="text-center p-3 bg-gray-50 rounded-lg">
+                            <div className="font-medium text-gray-900 mb-1">
+                              {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][hour.day_of_week]}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {hour.is_closed ? 'Closed' : 
+                                (isValidTimeRange ? `${openTime} - ${closeTime}` : 'Invalid Hours')
+                              }
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <Clock className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                      <p>No business hours set</p>
+                      <p className="text-sm">Business hours will appear here once configured</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -853,23 +803,41 @@ export const BusinessManagementPage: React.FC = () => {
                   {services.map((service, index) => (
                     <Card key={service.id || `service-${service.name}-${index}`} className="hover:shadow-md transition-shadow">
                       <CardContent className="p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <h3 className="font-semibold text-lg">{service.name}</h3>
-                          <Badge variant={service.is_active ? "default" : "secondary"}>
-                            {service.is_active ? "Active" : "Inactive"}
-                          </Badge>
-                        </div>
-                        <p className="text-gray-600 mb-4">{service.description}</p>
-                        <div className="space-y-2 text-sm text-gray-500">
-                          <div className="flex items-center space-x-2">
-                            <Tag className="h-4 w-4" />
-                            <span>{service.price_range}</span>
+                        <div className="flex items-start space-x-4 mb-4">
+                          {/* Service Preview Image */}
+                          <div className="flex-shrink-0">
+                            <img 
+                              src={service.service_image_url || service.images?.[0] || "/placeholder.svg"} 
+                              alt={service.name}
+                              className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = "/placeholder.svg";
+                              }}
+                            />
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Clock className="h-4 w-4" />
-                            <span>{service.duration}</span>
+                          
+                          {/* Service Details */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start">
+                              <h3 className="font-semibold text-lg">{service.name}</h3>
+                              <Badge variant={service.is_active ? "default" : "secondary"}>
+                                {service.is_active ? "Active" : "Inactive"}
+                              </Badge>
+                            </div>
+                            <p className="text-gray-600 mt-2">{service.description}</p>
+                            <div className="space-y-1 text-sm text-gray-500 mt-2">
+                              <div className="flex items-center space-x-2">
+                                <Tag className="h-4 w-4" />
+                                <span>{service.price_range}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Clock className="h-4 w-4" />
+                                <span>{service.duration}</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
+                        
                         <div className="flex space-x-2 mt-4">
                           <Button 
                             variant="outline" 
@@ -921,25 +889,43 @@ export const BusinessManagementPage: React.FC = () => {
                   {products.map((product, index) => (
                     <Card key={product.id || `product-${product.name}-${index}`} className="hover:shadow-md transition-shadow">
                       <CardContent className="p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <h3 className="font-semibold text-lg">{product.name}</h3>
-                          <Badge variant={product.is_active ? "default" : "secondary"}>
-                            {product.is_active ? "Active" : "Inactive"}
-                          </Badge>
-                        </div>
-                        <p className="text-gray-600 mb-4">{product.description}</p>
-                        <div className="space-y-2 text-sm text-gray-500 mb-4">
-                          <div className="flex items-center justify-between">
-                            <span>Price:</span>
-                            <span className="font-semibold text-gray-900">
-                              ${product.price} {product.price_currency}
-                            </span>
+                        <div className="flex items-start space-x-4 mb-4">
+                          {/* Product Preview Image */}
+                          <div className="flex-shrink-0">
+                            <img 
+                              src={product.product_image_url || product.images?.[0] || "/placeholder.svg"} 
+                              alt={product.name}
+                              className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = "/placeholder.svg";
+                              }}
+                            />
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Package className="h-4 w-4" />
-                            <span>{product.in_stock ? "In Stock" : "Out of Stock"}</span>
+                          
+                          {/* Product Details */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start">
+                              <h3 className="font-semibold text-lg">{product.name}</h3>
+                              <Badge variant={product.is_active ? "default" : "secondary"}>
+                                {product.is_active ? "Active" : "Inactive"}
+                              </Badge>
+                            </div>
+                            <p className="text-gray-600 mt-2">{product.description}</p>
+                            <div className="space-y-1 text-sm text-gray-500 mt-2">
+                              <div className="flex items-center justify-between">
+                                <span>Price:</span>
+                                <span className="font-semibold text-gray-900">
+                                  {product.price} {product.price_currency}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Package className="h-4 w-4" />
+                                <span>{product.in_stock ? "In Stock" : "Out of Stock"}</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
+                        
                         <div className="flex space-x-2">
                           <Button 
                             variant="outline" 

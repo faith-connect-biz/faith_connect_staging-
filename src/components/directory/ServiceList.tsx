@@ -125,7 +125,7 @@ export const ServiceList = ({ filters }: ServiceListProps) => {
           >
             <div className="relative">
               <img 
-                src={service.images?.[0] || business.business_image_url || business.business_logo_url || "/placeholder.svg"} 
+                src={service.service_image_url || service.images?.[0] || business.business_image_url || business.business_logo_url || "/placeholder.svg"} 
                 alt={service.name}
                 className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
                 onError={(e) => {

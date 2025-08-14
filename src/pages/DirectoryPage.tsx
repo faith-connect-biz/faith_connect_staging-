@@ -53,6 +53,17 @@ const DirectoryPage = () => {
   console.log('DirectoryPage - services:', services);
   console.log('DirectoryPage - products:', products);
   console.log('DirectoryPage - isLoading:', isLoading);
+  
+  // Debug rating calculation
+  if (businesses && businesses.length > 0) {
+    console.log('DirectoryPage - Rating debug:', businesses.map(b => ({
+      id: b.id,
+      name: b.business_name,
+      rating: b.rating,
+      ratingType: typeof b.rating,
+      reviewCount: b.review_count
+    })));
+  }
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState("services");
@@ -209,16 +220,21 @@ const DirectoryPage = () => {
     averageRating: (() => {
       if (!Array.isArray(businesses) || businesses.length === 0) return "0.0";
       
-      // Calculate average rating from all reviews (matching admin dashboard logic)
-      const allReviews = businesses.flatMap(b => 
-        Array(b.review_count).fill(b.rating).filter(rating => rating > 0)
+      // Calculate average rating from businesses with ratings > 0
+      const businessesWithRatings = businesses.filter(b => 
+        b.rating && b.rating > 0 && !isNaN(Number(b.rating))
       );
       
-      return allReviews.length > 0 
-        ? (allReviews.reduce((sum, rating) => sum + rating, 0) / allReviews.length).toFixed(1)
-        : "0.0";
+      if (businessesWithRatings.length === 0) return "0.0";
+      
+      const totalRating = businessesWithRatings.reduce((sum, b) => {
+        const rating = Number(b.rating);
+        return sum + (isNaN(rating) ? 0 : rating);
+      }, 0);
+      
+      return (totalRating / businessesWithRatings.length).toFixed(1);
     })(),
-    totalReviews: Array.isArray(businesses) ? businesses.reduce((sum, b) => sum + b.review_count, 0) : 0
+    totalReviews: Array.isArray(businesses) ? businesses.reduce((sum, b) => sum + (b.review_count || 0), 0) : 0
   };
 
   const containerVariants = {

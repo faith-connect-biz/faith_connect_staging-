@@ -111,7 +111,7 @@ export const OTPInput: React.FC<OTPInputProps> = ({
         toast({
           title: "Success!",
           description: type === 'signup' 
-            ? "Email verified successfully! You can now sign in." 
+            ? (phone ? "Phone number verified successfully! You can now sign in." : "Email verified successfully! You can now sign in.")
             : "Password reset code verified!",
         });
       } else {
@@ -163,13 +163,18 @@ export const OTPInput: React.FC<OTPInputProps> = ({
 
   const getTitle = () => {
     if (title) return title;
-    return type === 'signup' ? 'Verify Your Email' : 'Reset Your Password';
+    return type === 'signup' 
+      ? (phone ? 'Verify Your Phone' : 'Verify Your Email')
+      : 'Reset Your Password';
   };
 
   const getDescription = () => {
     if (description) return description;
     return type === 'signup' 
-      ? 'We sent a 6-digit verification code to your email'
+      ? (phone 
+          ? 'We sent a 6-digit verification code to your phone'
+          : 'We sent a 6-digit verification code to your email'
+        )
       : 'Enter the 6-digit code sent to your email';
   };
 

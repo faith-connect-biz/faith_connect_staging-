@@ -21,13 +21,16 @@ export const CommunityStats = () => {
     const totalBusinesses = businesses.length;
     const verifiedBusinesses = businesses.filter(b => b.is_verified).length;
     
-    // Calculate average rating from all reviews (matching admin dashboard logic)
-    const allReviews = businesses.flatMap(b => 
-      Array(b.review_count).fill(b.rating).filter(rating => rating > 0)
+    // Calculate average rating from businesses with ratings > 0
+    const businessesWithRatings = businesses.filter(b => 
+      b.rating && b.rating > 0 && !isNaN(Number(b.rating))
     );
     
-    const averageRating = allReviews.length > 0 
-      ? (allReviews.reduce((sum, rating) => sum + rating, 0) / allReviews.length).toFixed(1)
+    const averageRating = businessesWithRatings.length > 0 
+      ? (businessesWithRatings.reduce((sum, b) => {
+          const rating = Number(b.rating);
+          return sum + (isNaN(rating) ? 0 : rating);
+        }, 0) / businessesWithRatings.length).toFixed(1)
       : "0.0";
     
     // For now, we'll estimate users based on businesses (assuming 1 user per business + community users)

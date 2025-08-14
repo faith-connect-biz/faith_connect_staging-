@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
+import { Upload, X, Image as ImageIcon } from 'lucide-react';
 
 interface Product {
   id?: string;
@@ -39,12 +40,14 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     name: '',
     description: '',
     price: 0,
-    price_currency: 'USD',
+    price_currency: 'KES',
     product_image_url: '',
     in_stock: true,
     is_active: true
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (product) {
@@ -53,23 +56,94 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         name: product.name || '',
         description: product.description || '',
         price: product.price || 0,
-        price_currency: product.price_currency || 'USD',
+        price_currency: product.price_currency || 'KES',
         product_image_url: product.product_image_url || '',
         in_stock: product.in_stock,
         is_active: product.is_active
       });
+      setImagePreview(product.product_image_url || null);
     } else {
       setFormData({
         name: '',
         description: '',
         price: 0,
-        price_currency: 'USD',
+        price_currency: 'KES',
         product_image_url: '',
         in_stock: true,
         is_active: true
       });
+      setImagePreview(null);
     }
   }, [product]);
+
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      // Get pre-signed URL for upload
+      const uploadData = await apiService.getProfilePhotoUploadUrl(file.name, file.type);
+      
+      // Upload file to S3
+      const uploadSuccess = await apiService.uploadFileToS3(uploadData.presigned_url, file);
+      
+      if (uploadSuccess) {
+        // Generate S3 URL
+                 const s3Url = `https://${import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp'}.s3.${import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1'}.amazonaws.com/${uploadData.file_key}`;
+        
+        setFormData(prev => ({ ...prev, product_image_url: s3Url }));
+        setImagePreview(s3Url);
+        
+        toast({
+          title: "Success",
+          description: "Image uploaded successfully!",
+        });
+      } else {
+        throw new Error('Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid File",
+          description: "Please select an image file",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Validate file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File Too Large",
+          description: "Image must be less than 5MB",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      handleImageUpload(file);
+    }
+  };
+
+  const removeImage = () => {
+    setFormData(prev => ({ ...prev, product_image_url: '' }));
+    setImagePreview(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,10 +268,10 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="KES">KES (KSh)</SelectItem>
                   <SelectItem value="USD">USD ($)</SelectItem>
                   <SelectItem value="EUR">EUR (€)</SelectItem>
                   <SelectItem value="GBP">GBP (£)</SelectItem>
-                  <SelectItem value="KES">KES (KSh)</SelectItem>
                   <SelectItem value="NGN">NGN (₦)</SelectItem>
                   <SelectItem value="GHS">GHS (₵)</SelectItem>
                   <SelectItem value="ZAR">ZAR (R)</SelectItem>
@@ -206,15 +280,45 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             </div>
           </div>
 
+          {/* Image Upload Section */}
           <div className="space-y-2">
-            <Label htmlFor="product_image_url">Product Image URL</Label>
-            <Input
-              id="product_image_url"
-              type="url"
-              value={formData.product_image_url}
-              onChange={(e) => handleInputChange('product_image_url', e.target.value)}
-              placeholder="https://example.com/image.jpg"
-            />
+            <Label>Product Image (Optional)</Label>
+            <div className="space-y-3">
+              {imagePreview ? (
+                <div className="relative">
+                  <img 
+                    src={imagePreview} 
+                    alt="Product preview" 
+                    className="w-full h-32 object-cover rounded-lg border"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="absolute top-2 right-2"
+                    onClick={removeImage}
+                    disabled={uploadingImage}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <Label htmlFor="product-image" className="cursor-pointer text-sm text-gray-600">
+                    {uploadingImage ? 'Uploading...' : 'Click to upload image or drag and drop'}
+                  </Label>
+                  <Input
+                    id="product-image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                    disabled={uploadingImage}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center space-x-4">
@@ -242,13 +346,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={isLoading}
+              disabled={isLoading || uploadingImage}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || uploadingImage}
               className="bg-fem-terracotta hover:bg-fem-terracotta/90"
             >
               {isLoading ? 'Saving...' : (product ? 'Update Product' : 'Add Product')}

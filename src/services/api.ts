@@ -19,6 +19,7 @@ export interface User {
   address?: string;
   county?: string;
   city?: string;
+  website?: string;  // Add website field
   is_verified: boolean;
   email_verified: boolean;
   phone_verified: boolean;
@@ -65,6 +66,8 @@ export interface Business {
   youtube_url?: string;
   created_at: string;
   updated_at: string;
+  // Owner information
+  owner_partnership_number?: string;
   // Embedded services and products from API response
   services?: Service[];
   products?: Product[];
@@ -231,6 +234,13 @@ export interface OTPVerificationRequest {
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://femdjango-production.up.railway.app/api';
 
+// Debug: Log the API base URL
+console.log('🔧 API Configuration:', {
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+  API_BASE_URL: API_BASE_URL,
+  NODE_ENV: import.meta.env.MODE
+});
+
 class ApiService {
   private api: AxiosInstance;
 
@@ -245,10 +255,35 @@ class ApiService {
     // Request interceptor to add auth token
     this.api.interceptors.request.use(
       (config) => {
+        // List of public endpoints that don't require authentication
+        const publicEndpoints = [
+          '/register',
+          '/verify-registration-otp',
+          '/resend-registration-otp',
+          '/login',
+          '/logout',
+          '/refresh-token',
+          '/verify-email',
+          '/verify-email-confirm',
+          '/verify-phone',
+          '/verify-phone-confirm',
+          '/forgot-password',
+          '/reset-password'
+        ];
+        
+        // Check if the current endpoint is public
+        const isPublicEndpoint = publicEndpoints.some(endpoint => 
+          config.url?.includes(endpoint)
+        );
+        
+        // Only add auth token for protected endpoints
+        if (!isPublicEndpoint) {
         const token = localStorage.getItem('access_token');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+        }
+        
         return config;
       },
       (error) => Promise.reject(error)
@@ -300,10 +335,44 @@ class ApiService {
     return response.data.data || response.data;
   }
 
-  async register(data: RegisterRequest): Promise<{ user: User; message: string }> {
+  async register(data: RegisterRequest): Promise<{ 
+    success: boolean; 
+    message: string; 
+    registration_token?: string; 
+    requires_otp?: boolean; 
+    otp_sent_to?: string; 
+    user?: User; 
+    tokens?: AuthTokens; 
+  }> {
     const response = await this.api.post('/register', data);
-    // The backend now returns user data without tokens - user must verify OTP first
-    return response.data.data || response.data;
+    // The backend now returns registration data without creating user - user must verify OTP first
+    return response.data;
+  }
+
+  // New method to verify registration OTP
+  async verifyRegistrationOTP(registrationToken: string, otp: string): Promise<{ 
+    success: boolean; 
+    message: string; 
+    user?: User; 
+    tokens?: AuthTokens; 
+  }> {
+    const response = await this.api.post('/verify-registration-otp', {
+      registration_token: registrationToken,
+      otp: otp
+    });
+    return response.data;
+  }
+
+  // New method to resend registration OTP
+  async resendRegistrationOTP(registrationToken: string): Promise<{ 
+    success: boolean; 
+    message: string; 
+    otp_sent_to?: string; 
+  }> {
+    const response = await this.api.post('/resend-registration-otp', {
+      registration_token: registrationToken
+    });
+    return response.data;
   }
 
   async logout(): Promise<void> {
@@ -456,11 +525,29 @@ class ApiService {
     console.log('API getBusinesses - Raw response:', response);
     console.log('API getBusinesses - response.data:', response.data);
     
-    // The backend returns a paginated response with { count, next, previous, results }
-    const responseData = response.data;
+    // Handle both response formats:
+    // 1. Direct array response: [business1, business2, ...]
+    // 2. Paginated response: { count, next, previous, results }
+    let businesses: Business[] = [];
+    let count = 0;
+    let next = undefined;
+    let previous = undefined;
     
-    // Extract the businesses array from the results field
-    const businesses = responseData.results || [];
+    if (Array.isArray(response.data)) {
+      // Direct array response
+      businesses = response.data;
+      count = businesses.length;
+    } else if (response.data && typeof response.data === 'object' && 'results' in response.data) {
+      // Paginated response
+      businesses = response.data.results || [];
+      count = response.data.count || 0;
+      next = response.data.next || undefined;
+      previous = response.data.previous || undefined;
+    } else {
+      // Fallback
+      businesses = [];
+      count = 0;
+    }
     
     // Check if businesses have services and products
     if (Array.isArray(businesses)) {
@@ -477,12 +564,12 @@ class ApiService {
       });
     }
     
-    // Return the properly parsed paginated response
+    // Return the properly parsed response
     return {
       results: businesses,
-      count: responseData.count || 0,
-      next: responseData.next || undefined,
-      previous: responseData.previous || undefined
+      count: count,
+      next: next,
+      previous: previous
     };
   }
 
@@ -493,6 +580,12 @@ class ApiService {
 
   async createBusiness(data: BusinessCreateRequest): Promise<Business> {
     try {
+      // Check if user already has a business
+      const existingBusiness = await this.getUserBusiness();
+      if (existingBusiness) {
+        throw new Error('Business owners can only have one business. You already have a registered business.');
+      }
+
       // Prepare the business data for the API
       const businessData = {
         business_name: data.business_name,
@@ -732,27 +825,55 @@ class ApiService {
         
         if (response.data && response.data.results && response.data.results.length > 0) {
           const business = response.data.results[0];
-          console.log('getCurrentUserBusinessSimple: Found business:', business);
+          console.log('getCurrentUserBusinessSimple: Found business via query parameter:', business);
           return business;
         }
       } catch (error) {
         console.log('getCurrentUserBusinessSimple: Query parameter method failed:', error);
       }
       
-      // Try current user business endpoint
+      // Try to find business by checking all businesses and matching user ID
       try {
-        // Get current user ID from localStorage or context
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        if (user.id) {
-          const response = await this.api.get(`/business/user/${user.id}/`);
-          console.log('getCurrentUserBusinessSimple: Current business endpoint response:', response.data);
+        const allBusinessesResponse = await this.getBusinesses();
+        console.log('getCurrentUserBusinessSimple: All businesses response:', allBusinessesResponse);
+        
+        if (allBusinessesResponse.results && allBusinessesResponse.results.length > 0) {
+          // Look for business where user ID matches
+          const userBusiness = allBusinessesResponse.results.find(business => {
+            console.log('getCurrentUserBusinessSimple: Checking business:', {
+              id: business.id,
+              business_name: business.business_name,
+              user: business.user,
+              user_id: (business as any).user_id,
+              owner: (business as any).owner,
+              owner_id: (business as any).owner_id
+            });
+            
+            // Check multiple possible field names for user ownership
+            const possibleUserFields = ['user', 'user_id', 'owner', 'owner_id'];
+            const hasUserMatch = possibleUserFields.some(field => {
+              const fieldValue = (business as any)[field];
+              if (fieldValue && typeof fieldValue === 'object' && fieldValue.id) {
+                // If field is an object with id, compare IDs
+                return fieldValue.id === user.id;
+              } else if (fieldValue) {
+                // If field is a direct value, compare directly
+                return fieldValue === user.id;
+              }
+              return false;
+            });
+            
+            console.log('getCurrentUserBusinessSimple: User match result:', hasUserMatch);
+            return hasUserMatch;
+          });
           
-          if (response.data) {
-            return response.data;
+          if (userBusiness) {
+            console.log('getCurrentUserBusinessSimple: Found user business via all businesses search:', userBusiness);
+            return userBusiness;
           }
         }
       } catch (error) {
-        console.log('getCurrentUserBusinessSimple: Current business endpoint failed:', error);
+        console.log('getCurrentUserBusinessSimple: All businesses search failed:', error);
       }
       
       console.log('getCurrentUserBusinessSimple: No business found');
@@ -891,10 +1012,18 @@ class ApiService {
     is_closed: boolean;
   }>> {
     try {
+      console.log('API: Updating business hours for business:', businessId);
+      console.log('API: Hours data being sent:', JSON.stringify(hours, null, 2));
+      
       const response = await this.api.post(`/business/${businessId}/hours/`, { hours });
+      console.log('API: Business hours update response:', response.data);
       return response.data.data || [];
     } catch (error) {
-      console.error('Error updating business hours:', error);
+      console.error('API: Error updating business hours:', error);
+      if (error.response) {
+        console.error('API: Error response status:', error.response.status);
+        console.error('API: Error response data:', error.response.data);
+      }
       throw error;
     }
   }
@@ -1001,13 +1130,31 @@ class ApiService {
   async getCategories(): Promise<{ results: Category[]; count: number }> {
     try {
       const response = await this.api.get('/business/categories/');
-      // The backend returns a paginated response with { count, results }
-      const responseData = response.data;
-      const categories = responseData.results || responseData; // Handle both paginated and direct array responses
+      console.log('Categories API response:', response.data);
+      
+      // Handle both response formats:
+      // 1. Direct array response: [category1, category2, ...]
+      // 2. Paginated response: { count, results }
+      let categories: Category[] = [];
+      let count = 0;
+      
+      if (Array.isArray(response.data)) {
+        // Direct array response
+        categories = response.data;
+        count = categories.length;
+      } else if (response.data && typeof response.data === 'object' && 'results' in response.data) {
+        // Paginated response
+        categories = response.data.results || [];
+        count = response.data.count || 0;
+      } else {
+        // Fallback
+        categories = [];
+        count = 0;
+      }
       
       return {
         results: categories,
-        count: responseData.count || categories.length
+        count: count
       };
     } catch (error) {
       console.error('Error fetching categories from API, falling back to hardcoded:', error);
@@ -1057,10 +1204,60 @@ class ApiService {
     return response.data;
   }
 
+  // Check if current user owns a business
+  async getUserBusiness(): Promise<Business | null> {
+    try {
+      const response = await this.api.get('/business/my-business/');
+      // Handle structured response: { success: true, data: {...} }
+      if (response.data && response.data.success && response.data.data) {
+        return response.data.data;
+      }
+      // Fallback to direct response.data if no nesting
+      return response.data;
+    } catch (error) {
+      // If user doesn't have a business, return null
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  // Check if user can review a business (business owners cannot review their own business)
+  async canUserReviewBusiness(businessId: string): Promise<boolean> {
+    try {
+      const userBusiness = await this.getUserBusiness();
+      if (userBusiness && userBusiness.id === businessId) {
+        return false; // User owns this business, cannot review
+      }
+      return true;
+    } catch (error) {
+      console.error('Error checking if user can review business:', error);
+      return true; // Default to allowing review if check fails
+    }
+  }
+
+  // Check if current user owns a specific business
+  async isBusinessOwner(businessId: string): Promise<boolean> {
+    try {
+      const userBusiness = await this.getUserBusiness();
+      return userBusiness?.id === businessId;
+    } catch (error) {
+      console.error('Error checking if user owns business:', error);
+      return false;
+    }
+  }
+
   async createReview(businessId: string, data: {
     rating: number;
     review_text?: string;
   }): Promise<Review> {
+    // Check if user can review this business
+    const canReview = await this.canUserReviewBusiness(businessId);
+    if (!canReview) {
+      throw new Error('Business owners cannot review their own businesses');
+    }
+
     const reviewData = {
       ...data,
       business: businessId
@@ -1103,14 +1300,14 @@ class ApiService {
     return response.data;
   }
 
-  async updateProfile(data: Partial<User>): Promise<User> {
-    const response = await this.api.put('/profile-update', data);
-    // Handle nested response structure: { success: true, message: "...", data: { user_data } }
-    if (response.data && response.data.success && response.data.data) {
-      return response.data.data;
+  async updateProfile(data: Partial<User>): Promise<{ success: boolean; message: string; user?: User }> {
+    try {
+      const response = await this.api.patch('/profile-update', data);
+      return response.data;  // Return the response data directly
+    } catch (error) {
+      console.error('Profile update failed:', error);
+      throw error;
     }
-    // Fallback to direct response.data if no nesting
-    return response.data;
   }
 
   // Utility Methods
@@ -1164,61 +1361,6 @@ class ApiService {
   clearAuthState(): void {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
-  }
-
-  // Debug method to get all businesses and their structure
-  async debugAllBusinesses(): Promise<void> {
-    try {
-      console.log('=== DEBUG: Getting all businesses ===');
-      const response = await this.api.get('/business/');
-      console.log('All businesses response:', response.data);
-      
-      if (response.data && response.data.results) {
-        response.data.results.forEach((business: any, index: number) => {
-          console.log(`Business ${index}:`, {
-            id: business.id,
-            business_name: business.business_name,
-            user: business.user,
-            user_id: (business as any).user_id,
-            owner: (business as any).owner,
-            owner_id: (business as any).owner_id,
-            allFields: Object.keys(business)
-          });
-        });
-      }
-    } catch (error) {
-      console.error('Debug: Error getting all businesses:', error);
-    }
-  }
-
-  // Debug method to log current authentication status
-  logAuthStatus(): void {
-    const accessToken = localStorage.getItem('access_token');
-    const refreshToken = localStorage.getItem('refresh_token');
-    
-    console.log('=== AUTH STATUS DEBUG ===');
-    console.log('Access Token:', accessToken ? 'Present' : 'Missing');
-    console.log('Refresh Token:', refreshToken ? 'Present' : 'Missing');
-    
-    if (accessToken) {
-      try {
-        const payload = JSON.parse(atob(accessToken.split('.')[1]));
-        const currentTime = Date.now() / 1000;
-        const isExpired = payload.exp && payload.exp < currentTime;
-        
-        console.log('Token Payload:', {
-          issuedAt: new Date(payload.iat * 1000),
-          expiresAt: new Date(payload.exp * 1000),
-          isExpired,
-          timeUntilExpiry: payload.exp ? `${Math.floor((payload.exp - currentTime) / 60)} minutes` : 'Unknown'
-        });
-      } catch (error) {
-        console.log('Error parsing token:', error);
-      }
-    }
-    
-    console.log('Is Authenticated (local):', this.isAuthenticated());
-    console.log('========================');
   }
 
   // Service Methods
@@ -1359,4 +1501,4 @@ class ApiService {
 }
 
 // Create singleton instance
-export const apiService = new ApiService(); 
+export const apiService = new ApiService();

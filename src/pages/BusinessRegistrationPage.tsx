@@ -1,160 +1,116 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { OnboardingCheck } from "@/components/OnboardingCheck";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { apiService } from '@/services/api';
+import { Business, Category } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { Navbar } from '@/components/layout/Navbar';
+import { Footer } from '@/components/layout/Footer';
 import { 
   Building2, 
-  Upload, 
-  ArrowLeft, 
-  ArrowRight, 
+  MapPin, 
+  Clock, 
+  Phone, 
+  Mail, 
+  Globe, 
+  Facebook, 
+  Instagram, 
+  Twitter, 
+  Youtube, 
+  Camera, 
+  X, 
+  Plus, 
+  Trash2, 
   CheckCircle,
-  Clock,
-  MapPin,
-  Phone,
-  Mail,
-  Globe,
-  Camera,
-  Settings,
-  Package,
+  ChevronLeft,
+  ChevronRight,
+  Star,
   Tag,
-  Users,
-  Sparkles,
-  Award,
-  TrendingUp,
-  Heart,
-  Star
-} from "lucide-react";
-import { toast } from "@/hooks/use-toast";
-import { motion, AnimatePresence } from "framer-motion";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { apiService } from "@/services/api";
-import { useAuth } from "@/contexts/AuthContext";
-
-// Register GSAP plugins
-gsap.registerPlugin(ScrollTrigger);
+  Image as ImageIcon,
+  Settings,
+  Upload,
+  Package,
+  ArrowLeft,
+  ArrowRight
+} from 'lucide-react';
 
 const BusinessRegistrationPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isEditMode, setIsEditMode] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Array<{id: number, name: string, slug: string}>>([]);
+  const [business, setBusiness] = useState<Business | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [formErrors, setFormErrors] = useState<string[]>([]);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
+  
   const [formData, setFormData] = useState({
-    // Basic Information
-    business_name: "",
+    business_name: '',
     category: null as number | null,
-    description: "",
-    long_description: "",
-    businessType: "both" as "products" | "services" | "both", // NEW FIELD
-    
-    // Contact Information
-    phone: "",
-    email: "",
-    website: "",
-    // Social media links
-    facebook_url: "",
-    instagram_url: "",
-    twitter_url: "",
-    youtube_url: "",
-    address: "",
-    city: "",
-    county: "",
-    zipCode: "",
-    
-    // Business Details
+    description: '',
+    long_description: '',
+    phone: '',
+    email: '',
+    website: '',
+    facebook_url: '',
+    instagram_url: '',
+    twitter_url: '',
+    youtube_url: '',
+    address: '',
+    city: '',
+    county: '',
+    zipCode: '',
+    businessType: 'both' as 'products' | 'services' | 'both',
     hours: {
-      monday: { open: "", close: "", closed: false },
-      tuesday: { open: "", close: "", closed: false },
-      wednesday: { open: "", close: "", closed: false },
-      thursday: { open: "", close: "", closed: false },
-      friday: { open: "", close: "", closed: false },
-      saturday: { open: "", close: "", closed: false },
-      sunday: { open: "", close: "", closed: false }
+      monday: { open: '', close: '', closed: false },
+      tuesday: { open: '', close: '', closed: false },
+      wednesday: { open: '', close: '', closed: false },
+      thursday: { open: '', close: '', closed: false },
+      friday: { open: '', close: '', closed: false },
+      saturday: { open: '', close: '', closed: false },
+      sunday: { open: '', close: '', closed: false }
     },
-    
-    // Services & Products
     services: [] as Array<{name: string, photo?: string}>,
     products: [] as Array<{name: string, price: string, description: string, photo?: string}>,
-    features: [] as string[],
-    tags: [] as string[],
-    
-    // Photo Request
+    features: [''],
     photoRequest: false,
-    photoRequestNotes: ""
+    photoRequestNotes: ''
   });
 
   // State for new service/product inputs
   const [newService, setNewService] = useState("");
   const [newProduct, setNewProduct] = useState({ name: "", price: "", description: "" });
 
-  // GSAP Animations
+
+
+  // Debug logging for step progression
   useEffect(() => {
-    if (headerRef.current) {
-      gsap.fromTo(headerRef.current, 
-        { y: -50, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8, ease: "power2.out" }
-      );
-    }
+    console.log('Step changed - currentStep:', currentStep, 'businessType:', formData.businessType);
+  }, [currentStep, formData.businessType]);
 
-    if (progressRef.current) {
-      gsap.fromTo(progressRef.current,
-        { scale: 0.8, opacity: 0 },
-        { 
-          scale: 1, 
-          opacity: 1, 
-          duration: 0.8, 
-          delay: 0.2,
-          ease: "power2.out",
-          scrollTrigger: {
-            trigger: progressRef.current,
-            start: "top 80%",
-            end: "bottom 20%",
-            toggleActions: "play none none reverse"
-          }
-        }
-      );
-    }
-
-    if (formRef.current) {
-      gsap.fromTo(formRef.current,
-        { y: 50, opacity: 0 },
-        { 
-          y: 0, 
-          opacity: 1, 
-          duration: 0.8, 
-          delay: 0.4,
-          ease: "power2.out",
-          scrollTrigger: {
-            trigger: formRef.current,
-            start: "top 80%",
-            end: "bottom 20%",
-            toggleActions: "play none none reverse"
-          }
-        }
-      );
-    }
-
-    return () => {
-      ScrollTrigger.getAll().forEach(trigger => trigger.kill());
-    };
-  }, []);
+  // Debug logging for form submission attempts
+  useEffect(() => {
+    console.log('Form component rendered/updated - currentStep:', currentStep);
+  });
 
   // Check if user is authenticated and is a business user
   useEffect(() => {
@@ -178,6 +134,26 @@ const BusinessRegistrationPage = () => {
         navigate('/');
         return;
     }
+
+    // Check if user already has a business
+    const checkExistingBusiness = async () => {
+      try {
+        const existingBusiness = await apiService.getUserBusiness();
+        if (existingBusiness) {
+          toast({
+            title: "Business already registered",
+            description: "You already have a registered business. Business owners can only have one business.",
+            variant: "destructive"
+          });
+          navigate('/manage-business');
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking existing business:', error);
+      }
+    };
+
+    checkExistingBusiness();
 
     // Check if we're in edit mode
     if (location.state?.editMode && location.state?.businessId) {
@@ -213,15 +189,36 @@ const BusinessRegistrationPage = () => {
           city: business.city || '',
           county: business.county || '',
           zipCode: business.zip_code || '',
-          hours: {
-            monday: { open: '', close: '', closed: false },
-            tuesday: { open: '', close: '', closed: false },
-            wednesday: { open: '', close: '', closed: false },
-            thursday: { open: '', close: '', closed: false },
-            friday: { open: '', close: '', closed: false },
-            saturday: { open: '', close: '', closed: false },
-            sunday: { open: '', close: '', closed: false }
-          },
+          hours: business.hours && business.hours.length > 0 ? 
+            // Transform API hours back to form format
+            business.hours.reduce((acc, hour) => {
+              const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+              const dayName = dayNames[hour.day_of_week];
+              if (dayName) {
+                acc[dayName] = {
+                  open: hour.open_time || '',
+                  close: hour.close_time || '',
+                  closed: hour.is_closed
+                };
+              }
+              return acc;
+            }, {
+              monday: { open: '', close: '', closed: false },
+              tuesday: { open: '', close: '', closed: false },
+              wednesday: { open: '', close: '', closed: false },
+              thursday: { open: '', close: '', closed: false },
+              friday: { open: '', close: '', closed: false },
+              saturday: { open: '', close: '', closed: false },
+              sunday: { open: '', close: '', closed: false }
+            }) : {
+              monday: { open: '', close: '', closed: false },
+              tuesday: { open: '', close: '', closed: false },
+              wednesday: { open: '', close: '', closed: false },
+              thursday: { open: '', close: '', closed: false },
+              friday: { open: '', close: '', closed: false },
+              saturday: { open: '', close: '', closed: false },
+              sunday: { open: '', close: '', closed: false }
+            },
           services: [], // TODO: Fetch services when API endpoint is available
           products: [], // TODO: Fetch products when API endpoint is available
           features: [], // TODO: Fetch features when API endpoint is available
@@ -307,8 +304,7 @@ const BusinessRegistrationPage = () => {
 
   const steps = [
     { id: 1, title: "Basic Info", icon: Building2 },
-    { id: 2, title: "Contact Details", icon: Phone },
-    { id: 3, title: "Services & Products", icon: Settings }
+    { id: 2, title: "Contact Details", icon: Phone }
   ];
 
   // Get field-specific errors
@@ -323,7 +319,6 @@ const BusinessRegistrationPage = () => {
         return formErrors.filter(error => 
           error.toLowerCase().includes('business name') ||
           error.toLowerCase().includes('category') ||
-          error.toLowerCase().includes('business type') ||
           error.toLowerCase().includes('description')
         );
       case 2:
@@ -331,11 +326,6 @@ const BusinessRegistrationPage = () => {
           error.toLowerCase().includes('phone') ||
           error.toLowerCase().includes('email') ||
           error.toLowerCase().includes('address')
-        );
-      case 3:
-        return formErrors.filter(error => 
-          error.toLowerCase().includes('service') ||
-          error.toLowerCase().includes('product')
         );
       default:
         return [];
@@ -361,7 +351,6 @@ const BusinessRegistrationPage = () => {
         error.toLowerCase().includes(field.toLowerCase()) ||
         error.toLowerCase().includes('business name') && field === 'business_name' ||
         error.toLowerCase().includes('category') && field === 'category' ||
-        error.toLowerCase().includes('business type') && field === 'businessType' ||
         error.toLowerCase().includes('description') && field === 'description' ||
         error.toLowerCase().includes('phone') && field === 'phone' ||
         error.toLowerCase().includes('email') && field === 'email' ||
@@ -408,16 +397,23 @@ const BusinessRegistrationPage = () => {
   }, []);
 
   const handleHoursChange = useCallback((day: string, field: string, value: string | boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      hours: {
+    setFormData(prev => {
+      const newHours = {
         ...prev.hours,
         [day]: {
           ...prev.hours[day as keyof typeof prev.hours],
           [field]: value
         }
-      }
-    }));
+      };
+      
+      console.log(`Hours updated for ${day}.${field}:`, value);
+      console.log('New hours state:', newHours);
+      
+      return {
+        ...prev,
+        hours: newHours
+      };
+    });
   }, []);
 
   // Validate specific step data
@@ -432,9 +428,6 @@ const BusinessRegistrationPage = () => {
         }
         if (formData.category === null || formData.category === undefined) {
           errors.push("Business category is required");
-        }
-        if (!formData.businessType) {
-          errors.push("Business type is required");
         }
         if (!formData.description.trim()) {
           errors.push("Business description is required");
@@ -454,72 +447,77 @@ const BusinessRegistrationPage = () => {
         }
         break;
         
-      case 3:
-        // Services & Products validation - only required if business type requires them
-        if (formData.businessType === 'services' && formData.services.length === 0) {
-          errors.push("At least one service is required for service-based businesses");
-        }
-        if (formData.businessType === 'products' && formData.products.length === 0) {
-          errors.push("At least one product is required for product-based businesses");
-        }
-        if (formData.businessType === 'both' && formData.services.length === 0 && formData.products.length === 0) {
-          errors.push("At least one service or product is required");
-        }
-        break;
+      
     }
     
     return errors.length === 0;
-  }, [formData.business_name, formData.category, formData.description, formData.address, formData.businessType, formData.services.length, formData.products.length]);
+  }, [formData.business_name, formData.category, formData.description, formData.address]);
 
-  // Handle next step with validation
-  const handleNextStep = useCallback(() => {
-    if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(3, prev + 1));
-      setFormErrors([]); // Clear errors when moving to next step
-    } else {
-      // Get validation errors for current step
-      const errors: string[] = [];
-      switch (currentStep) {
-        case 1:
-          if (!formData.business_name.trim()) errors.push("Business name is required");
-          if (formData.category === null || formData.category === undefined) errors.push("Business category is required");
-          if (!formData.businessType) errors.push("Business type is required");
-          if (!formData.description.trim()) errors.push("Business description is required");
-          break;
-        case 2:
-          if (!formData.phone.trim()) errors.push("Phone number is required");
-          if (!formData.email.trim()) errors.push("Email address is required");
-          if (!formData.address.trim()) errors.push("Business address is required");
-          break;
-        case 3:
-          if (formData.businessType === 'services' && formData.services.length === 0) {
-            errors.push("At least one service is required for service-based businesses");
-          }
-          if (formData.businessType === 'products' && formData.products.length === 0) {
-            errors.push("At least one product is required for product-based businesses");
-          }
-          if (formData.businessType === 'both' && formData.services.length === 0 && formData.products.length === 0) {
-            errors.push("At least one service or product is required");
-          }
-          break;
+  // Simplified 2-step process
+  const totalSteps = 2;
+  
+  const handleNextStep = () => {
+    if (currentStep < totalSteps) {
+      setIsTransitioning(true);
+      // Validate current step before moving to next
+      const currentStepValid = validateStep(currentStep);
+      if (currentStepValid) {
+        setCurrentStep(currentStep + 1);
+        // Clear errors when moving to next step
+        setFormErrors([]);
+      } else {
+        // Show validation errors for current step
+        const stepErrors = [];
+        
+        switch (currentStep) {
+          case 1:
+            if (!formData.business_name.trim()) {
+              stepErrors.push("Business name is required");
+            }
+            if (formData.category === null || formData.category === undefined) {
+              stepErrors.push("Business category is required");
+            }
+            if (!formData.description.trim()) {
+              stepErrors.push("Business description is required");
+            }
+            break;
+          case 2:
+            if (!formData.phone.trim()) {
+              stepErrors.push("Phone number is required");
+            }
+            if (!formData.email.trim()) {
+              stepErrors.push("Email address is required");
+            }
+            if (!formData.address.trim()) {
+              stepErrors.push("Business address is required");
+            }
+            break;
+        }
+        
+        if (stepErrors.length > 0) {
+          setFormErrors(stepErrors);
+          toast({
+            title: "Step Incomplete",
+            description: "Please complete all required fields before proceeding",
+            variant: "destructive"
+          });
+        }
       }
-      
-      if (errors.length > 0) {
-        setFormErrors(errors);
-        toast({
-          title: "Validation Error",
-          description: errors.join(", "),
-          variant: "destructive"
-        });
-      }
+      // Reset transitioning state after a short delay
+      setTimeout(() => setIsTransitioning(false), 100);
     }
-  }, [currentStep, validateStep, formData, setFormErrors]);
+  };
 
-  // Handle previous step
-  const handlePreviousStep = useCallback(() => {
-    setCurrentStep(prev => Math.max(1, prev - 1));
-    setFormErrors([]); // Clear errors when moving to previous step
-  }, [setFormErrors]);
+  const handlePrevStep = () => {
+    if (currentStep > 1) {
+      setIsTransitioning(true);
+      setCurrentStep(currentStep - 1);
+      // Clear errors when going back to previous step
+      setFormErrors([]);
+      // Reset transitioning state after a short delay
+      setTimeout(() => setIsTransitioning(false), 100);
+    }
+  };
 
   // Validate form data before submission
   const validateFormData = () => {
@@ -535,9 +533,7 @@ const BusinessRegistrationPage = () => {
       errors.push("Business category is required");
     }
 
-    if (!formData.businessType) {
-      errors.push("Business type is required");
-    }
+
 
     if (!formData.description.trim()) {
       errors.push("Business description is required");
@@ -617,44 +613,120 @@ const BusinessRegistrationPage = () => {
     return errors;
   };
 
-  // Convert form data to API format
-  const prepareBusinessData = () => {
-    // Convert hours to the format expected by the API
-    const hours = Object.entries(formData.hours)
-      .filter(([day, hours]) => {
-        // Only include days that have been configured (either closed or with times)
-        return hours.closed || (hours.open && hours.close);
-      })
-      .map(([day, hours]) => {
-        // Map day names to day numbers (0 = Sunday, 1 = Monday, etc.)
-        const dayMap: { [key: string]: number } = {
-          'sunday': 0,
-          'monday': 1,
-          'tuesday': 2,
-          'wednesday': 3,
-          'thursday': 4,
-          'friday': 5,
-          'saturday': 6
-        };
-        
-        // Format time strings to HH:MM format
-        const formatTime = (timeStr: string) => {
-          if (!timeStr) return '';
-          // Ensure time is in HH:MM format
-          const time = new Date(`2000-01-01T${timeStr}`);
-          return time.toTimeString().slice(0, 5);
-        };
+  // Upload images to S3 and get URLs
+  const uploadImagesToS3 = async (items: Array<{name: string, photo?: string, price?: string, description?: string}>, type: 'service' | 'product') => {
+    const uploadedItems = [];
+    const totalItems = items.filter(item => item.photo && item.photo.startsWith('data:image')).length;
+    let uploadedCount = 0;
+    
+    if (totalItems > 0) {
+      setUploadingImages(true);
+      setUploadProgress(0);
+    }
+    
+    for (const item of items) {
+      if (item.photo && item.photo.startsWith('data:image')) {
+        try {
+          // Convert base64 to blob
+          const response = await fetch(item.photo);
+          const blob = await response.blob();
+          
+          // Create file object
+          const file = new File([blob], `${type}_${item.name}_${Date.now()}.jpg`, { type: 'image/jpeg' });
+          
+          // Get pre-signed URL for upload
+          const uploadData = await apiService.getProfilePhotoUploadUrl(file.name, file.type);
+          
+          // Upload file to S3
+          const uploadSuccess = await apiService.uploadFileToS3(uploadData.presigned_url, file);
+          
+          if (uploadSuccess) {
+            // Generate S3 URL
+            const s3Url = `https://${import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp'}.s3.${import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1'}.amazonaws.com/${uploadData.file_key}`;
+            
+            uploadedItems.push({
+              ...item,
+              photo: s3Url
+            });
+            
+            uploadedCount++;
+            setUploadProgress((uploadedCount / totalItems) * 100);
+          } else {
+            // If upload fails, add item without photo
+            uploadedItems.push({
+              ...item,
+              photo: null
+            });
+            
+            uploadedCount++;
+            setUploadProgress((uploadedCount / totalItems) * 100);
+          }
+        } catch (error) {
+          console.error(`Failed to upload ${type} image for ${item.name}:`, error);
+          // Add item without photo if upload fails
+          uploadedItems.push({
+            ...item,
+            photo: null
+          });
+          
+          uploadedCount++;
+          setUploadProgress((uploadedCount / totalItems) * 100);
+        }
+      } else {
+        // No photo or already a URL, add as is
+        uploadedItems.push(item);
+      }
+    }
+    
+    if (totalItems > 0) {
+      setUploadingImages(false);
+      setUploadProgress(0);
+    }
+    
+    return uploadedItems;
+  };
 
-        return {
-          day_of_week: dayMap[day.toLowerCase()],
-          open_time: hours.closed ? null : formatTime(hours.open),
-          close_time: hours.closed ? null : formatTime(hours.close),
-          is_closed: hours.closed || false
-        };
-      });
+  // Prepare business data for API submission
+  const prepareBusinessData = async () => {
+         // Convert hours to the format expected by the API
+     const hours = Object.entries(formData.hours)
+       .map(([day, hours]) => {
+         // Map day names to day numbers (0 = Sunday, 1 = Monday, etc.)
+         const dayMap: { [key: string]: number } = {
+           'sunday': 0,
+           'monday': 1,
+           'tuesday': 2,
+           'wednesday': 3,
+           'thursday': 4,
+           'friday': 5,
+           'saturday': 6
+         };
+         
+         // Handle empty strings - convert them to null for the API
+         const openTime = hours.closed ? null : (hours.open && hours.open.trim() ? hours.open : null);
+         const closeTime = hours.closed ? null : (hours.close && hours.close.trim() ? hours.close : null);
+         
+         return {
+           day_of_week: dayMap[day.toLowerCase()],
+           open_time: openTime,
+           close_time: closeTime,
+           is_closed: hours.closed
+         };
+       });
+      // Don't filter out any hours - send all of them to the API
+      // The backend should handle empty/open/close times appropriately
+
+    console.log('Form hours data:', formData.hours);
+    console.log('Converted hours for API:', hours);
+
+    // Upload service images to S3 first
+    const servicesWithS3Urls = await uploadImagesToS3(formData.services, 'service');
+    
+    // Upload product images to S3 first
+    const productsWithS3Urls = await uploadImagesToS3(formData.products, 'product');
 
     // Convert services to the format expected by the API
-    const services = formData.services
+    const services = servicesWithS3Urls
       .filter(service => service.name.trim() !== '')
       .map(service => ({
         name: service.name,
@@ -662,18 +734,18 @@ const BusinessRegistrationPage = () => {
         price_range: 'Varies',
         duration: 'Varies',
         is_available: true,
-        photo: service.photo || null
+        images: service.photo ? [service.photo] : []  // Use images array with S3 URL
       }));
 
     // Convert products to the format expected by the API
-    const products = formData.products
+    const products = productsWithS3Urls
       .filter(product => product.name.trim() !== '')
       .map(product => ({
         name: product.name,
         description: product.description || `${product.name} product`,
         price: product.price || '0.00',
         is_available: true,
-        photo: product.photo || null
+        images: product.photo ? [product.photo] : []  // Use images array with S3 URL
       }));
 
     // Clean and prepare the data
@@ -692,6 +764,7 @@ const BusinessRegistrationPage = () => {
       address: formData.address.trim(),
       city: formData.city.trim(),
       county: formData.county.trim(),
+      zip_code: formData.zipCode.trim() || null,
       hours: hours,
       services: services,
       products: products,
@@ -700,12 +773,59 @@ const BusinessRegistrationPage = () => {
       photo_request_notes: formData.photoRequestNotes.trim() || null
     };
 
+    // Debug logging to see what's being sent
+    console.log('Prepared business data:', businessData);
+    console.log('Hours data being sent:', hours);
+    
+    // Validate hours data structure
+    if (hours && hours.length > 0) {
+      console.log('Hours validation:');
+      hours.forEach((hour, index) => {
+        console.log(`Hour ${index}:`, {
+          day: hour.day_of_week,
+          open: hour.open_time,
+          close: hour.close_time,
+          closed: hour.is_closed
+        });
+      });
+    } else {
+      console.log('No hours data to send');
+    }
+
     return businessData;
   };
 
   // Enhanced form submission with step validation
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('handleSubmit called - currentStep:', currentStep, 'businessType:', formData.businessType, 'isTransitioning:', isTransitioning);
+    
+    // Prevent submission if we're transitioning between steps
+    if (isTransitioning) {
+      console.log('Currently transitioning between steps, preventing submission');
+      return;
+    }
+    
+    // Only allow submission on the final step
+    if (currentStep !== 2) {
+      console.log('Not on final step, preventing submission and moving to next step');
+      // If not on final step, just move to next step instead of submitting
+      toast({
+        title: "Complete All Steps",
+        description: `Please complete step ${currentStep} of 2 before registering your business.`,
+        variant: "default"
+      });
+      handleNextStep();
+      return;
+    }
+    
+    // Double-check: ensure we're on the final step
+    if (currentStep < 2) {
+      console.log('Still not on final step, preventing submission');
+      return;
+    }
+    
+    console.log('On final step, proceeding with business registration');
     
     // Validate all required fields before submission
     const allErrors = validateFormData();
@@ -723,55 +843,95 @@ const BusinessRegistrationPage = () => {
     setFormErrors([]);
 
     try {
-      const businessData = prepareBusinessData();
+      // Check if there are images to upload
+      const hasImages = formData.services.some(s => s.photo) || formData.products.some(p => p.photo);
       
-      if (isEditMode && businessId) {
-        // Update existing business
-        const updatedBusiness = await apiService.updateBusiness(businessId, businessData);
-      } else {
-        // Create new business
-        const business = await apiService.createBusiness(businessData);
-        
+      if (hasImages) {
         toast({
-          title: isEditMode ? "Business updated successfully!" : "Business registered successfully!",
-          description: isEditMode 
-            ? "Your business information has been updated successfully."
-            : "Your business has been added to the directory. Welcome to the Faith Connect community!",
+          title: "Preparing Images",
+          description: "Uploading your product and service images to S3...",
+          variant: "default"
         });
-
-        // Navigate to the business management page with the business ID
-        navigate("/manage-business", { 
-          state: { 
-            businessId: business.id,
-            newlyCreated: true 
-          } 
-        });
-        return; // Exit early since we're redirecting
       }
       
-      toast({
-        title: isEditMode ? "Business updated successfully!" : "Business registered successfully!",
-        description: isEditMode 
-          ? "Your business information has been updated successfully."
-          : "Your business has been updated successfully.",
-      });
-
-      // Navigate to the business management page
-      navigate("/manage-business");
-    } catch (error: any) {
-      console.error('Business registration failed:', error);
+      const businessData = await prepareBusinessData();
       
-      let errorMessage = "Failed to register business. Please try again.";
+      // Debug: Log the final data being sent to the API
+      console.log('Final business data being sent to API:', businessData);
+      console.log('Hours data in final payload:', businessData.hours);
       
-      if (error.response?.data?.errors) {
-        const errors = error.response.data.errors;
-        errorMessage = Object.values(errors).join(', ');
-        setFormErrors(Object.values(errors));
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
+             let businessIdToUse = businessId;
+       
+       if (isEditMode && businessId) {
+         // Update existing business
+         const updatedBusiness = await apiService.updateBusiness(businessId, businessData);
+         businessIdToUse = businessId;
+       } else {
+         // Create new business
+         const business = await apiService.createBusiness(businessData);
+         businessIdToUse = business.id;
+         
+         toast({
+           title: isEditMode ? "Business updated successfully!" : "Business registered successfully!",
+           description: isEditMode 
+             ? "Your business information has been updated successfully."
+             : "Your business has been added to the directory. Welcome to the Faith Connect community!",
+         });
+       }
+       
+               // Update business hours separately (this is the key fix!)
+        if (businessData.hours && businessData.hours.length > 0) {
+          try {
+            console.log('Updating business hours separately:', businessData.hours);
+            console.log('Hours data structure:', JSON.stringify(businessData.hours, null, 2));
+            
+            const result = await apiService.updateBusinessHours(businessIdToUse, businessData.hours);
+            console.log('Business hours updated successfully:', result);
+          } catch (error: any) {
+            console.error('Error updating business hours:', error);
+            console.error('Error response data:', error.response?.data);
+            console.error('Error response status:', error.response?.status);
+            console.error('Error response headers:', error.response?.headers);
+            
+            // Show more specific error message
+            let errorMessage = "Business hours could not be saved";
+            if (error.response?.data?.message) {
+              errorMessage = error.response.data.message;
+            } else if (error.response?.data?.detail) {
+              errorMessage = error.response.data.detail;
+            }
+            
+            toast({
+              title: "Warning",
+              description: `Business created/updated but hours could not be saved: ${errorMessage}. You can update hours later.`,
+              variant: "destructive"
+            });
+          }
+        }
+       
+              // Navigate to the business management page
+       navigate("/manage-business", { 
+         state: { 
+           businessId: businessIdToUse,
+           newlyCreated: !isEditMode 
+         } 
+       });
+         } catch (error: any) {
+       console.error('Business registration failed:', error);
+       console.error('Error response data:', error.response?.data);
+       console.error('Error response status:', error.response?.status);
+       
+       let errorMessage = "Failed to register business. Please try again.";
+       
+       if (error.response?.data?.errors) {
+         const errors = error.response.data.errors;
+         errorMessage = Object.values(errors).join(', ');
+         setFormErrors(Object.values(errors));
+       } else if (error.response?.data?.message) {
+         errorMessage = error.response.data.message;
+       } else if (error.message) {
+         errorMessage = error.message;
+       }
 
       toast({
         title: "Registration failed",
@@ -834,14 +994,13 @@ const BusinessRegistrationPage = () => {
         <Label htmlFor="business_name">
           Business Name <span className="text-red-500">*</span>
         </Label>
-        <Input
-          id="business_name"
-          value={formData.business_name}
-          onChange={(e) => handleInputChange("business_name", e.target.value)}
-          placeholder="Enter your business name"
-          className={`mt-1 ${getFieldError("business_name") ? 'border-red-500 focus:border-red-500' : ''}`}
-          required
-        />
+                 <Input
+           id="business_name"
+           value={formData.business_name}
+           onChange={(e) => handleInputChange("business_name", e.target.value)}
+           placeholder="Enter your business name"
+           className={`mt-1 ${getFieldError("business_name") ? 'border-red-500 focus:border-red-500' : ''}`}
+         />
         {getFieldError("business_name") && (
           <p className="text-sm text-red-500 mt-1 flex items-center gap-2">
             <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
@@ -876,100 +1035,20 @@ const BusinessRegistrationPage = () => {
         )}
       </motion.div>
 
-      <motion.div variants={itemVariants}>
-        <Label className="text-base font-medium">Business Type *</Label>
-        <p className="text-sm text-gray-600 mb-3">What does your business offer?</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div 
-            className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-              formData.businessType === 'products' 
-                ? 'border-fem-terracotta bg-fem-terracotta/10' 
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-            onClick={() => handleInputChange("businessType", "products")}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-4 h-4 rounded-full border-2 ${
-                formData.businessType === 'products' 
-                  ? 'border-fem-terracotta bg-fem-terracotta' 
-                  : 'border-gray-400'
-              }`}>
-                {formData.businessType === 'products' && (
-                  <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>
-                )}
-              </div>
-              <div>
-                <div className="font-medium text-fem-navy">Products Only</div>
-                <div className="text-sm text-gray-600">Sell physical goods</div>
-              </div>
-            </div>
-          </div>
 
-          <div 
-            className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-              formData.businessType === 'services' 
-                ? 'border-fem-terracotta bg-fem-terracotta/10' 
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-            onClick={() => handleInputChange("businessType", "services")}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-4 h-4 rounded-full border-2 ${
-                formData.businessType === 'services' 
-                  ? 'border-fem-terracotta bg-fem-terracotta' 
-                  : 'border-gray-400'
-              }`}>
-                {formData.businessType === 'services' && (
-                  <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>
-                )}
-              </div>
-              <div>
-                <div className="font-medium text-fem-navy">Services Only</div>
-                <div className="text-sm text-gray-600">Provide services</div>
-              </div>
-            </div>
-          </div>
-
-          <div 
-            className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-              formData.businessType === 'both' 
-                ? 'border-fem-terracotta bg-fem-terracotta/10' 
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-            onClick={() => handleInputChange("businessType", "both")}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-4 h-4 rounded-full border-2 ${
-                formData.businessType === 'both' 
-                  ? 'border-fem-terracotta bg-fem-terracotta' 
-                  : 'border-gray-400'
-              }`}>
-                {formData.businessType === 'both' && (
-                  <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>
-                )}
-              </div>
-              <div>
-                <div className="font-medium text-fem-navy">Both</div>
-                <div className="text-sm text-gray-600">Sell products & services</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.div>
 
       <motion.div variants={itemVariants}>
         <Label htmlFor="description">
           Business Description <span className="text-red-500">*</span>
         </Label>
-        <Textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => handleInputChange("description", e.target.value)}
-          placeholder="Briefly describe your business and what makes it unique"
-          className={`mt-1 ${getFieldError("description") ? 'border-red-500 focus:border-red-500' : ''}`}
-          rows={3}
-          required
-        />
+                 <Textarea
+           id="description"
+           value={formData.description}
+           onChange={(e) => handleInputChange("description", e.target.value)}
+           placeholder="Briefly describe your business and what makes it unique"
+           className={`mt-1 ${getFieldError("description") ? 'border-red-500 focus:border-red-500' : ''}`}
+           rows={3}
+         />
         {getFieldError("description") && (
           <p className="text-sm text-red-500 mt-1 flex items-center gap-2">
             <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
@@ -1025,14 +1104,13 @@ const BusinessRegistrationPage = () => {
             <Label htmlFor="phone">
               Phone Number <span className="text-red-500">*</span>
             </Label>
-            <Input
-              id="phone"
-              value={formData.phone}
-              onChange={(e) => handleInputChange("phone", e.target.value)}
-              placeholder="+254 XXX XXX XXX"
-              className={`mt-1 ${getFieldError("phone") ? 'border-red-500 focus:border-red-500' : ''}`}
-              required
-            />
+                         <Input
+               id="phone"
+               value={formData.phone}
+               onChange={(e) => handleInputChange("phone", e.target.value)}
+               placeholder="+254 XXX XXX XXX"
+               className={`mt-1 ${getFieldError("phone") ? 'border-red-500 focus:border-red-500' : ''}`}
+             />
             {getFieldError("phone") && (
               <p className="text-sm text-red-500 mt-1 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
@@ -1044,14 +1122,13 @@ const BusinessRegistrationPage = () => {
             <Label htmlFor="email">
               Email Address <span className="text-red-500">*</span>
             </Label>
-            <Input
-              id="email"
-              value={formData.email}
-              onChange={(e) => handleInputChange("email", e.target.value)}
-              placeholder="business@example.com"
-              className={`mt-1 ${getFieldError("email") ? 'border-red-500 focus:border-red-500' : ''}`}
-              required
-            />
+                         <Input
+               id="email"
+               value={formData.email}
+               onChange={(e) => handleInputChange("email", e.target.value)}
+               placeholder="business@example.com"
+               className={`mt-1 ${getFieldError("email") ? 'border-red-500 focus:border-red-500' : ''}`}
+             />
             {getFieldError("email") && (
               <p className="text-sm text-red-500 mt-1 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
@@ -1126,15 +1203,14 @@ const BusinessRegistrationPage = () => {
           <Label htmlFor="address">
             Street Address <span className="text-red-500">*</span>
           </Label>
-          <Textarea
-            id="address"
-            value={formData.address}
-            onChange={(e) => handleInputChange("address", e.target.value)}
-            placeholder="Enter your business address"
-            className={`mt-1 ${getFieldError("address") ? 'border-red-500 focus:border-red-500' : ''}`}
-            rows={2}
-            required
-          />
+                     <Textarea
+             id="address"
+             value={formData.address}
+             onChange={(e) => handleInputChange("address", e.target.value)}
+             placeholder="Enter your business address"
+             className={`mt-1 ${getFieldError("address") ? 'border-red-500 focus:border-red-500' : ''}`}
+             rows={2}
+           />
           {getFieldError("address") && (
             <p className="text-sm text-red-500 mt-1 flex items-center gap-2">
               <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
@@ -1176,10 +1252,11 @@ const BusinessRegistrationPage = () => {
         </div>
       </motion.div>
 
-      {/* Business Hours */}
-      <motion.div variants={itemVariants} className="space-y-4">
-        <Label className="text-lg font-semibold">Business Hours (Optional)</Label>
-        <p className="text-sm text-gray-600 mb-4">Set your business operating hours. Leave blank if not applicable.</p>
+             {/* Business Hours */}
+       <motion.div variants={itemVariants} className="space-y-4">
+         <Label className="text-lg font-semibold">Business Hours (Optional)</Label>
+         <p className="text-sm text-gray-600 mb-4">Set your business operating hours. Leave blank if not applicable.</p>
+         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.entries(formData.hours).map(([day, hours]) => (
             <div key={day} className={`border rounded-lg p-4 backdrop-blur-sm transition-all duration-200 ${
@@ -1233,346 +1310,11 @@ const BusinessRegistrationPage = () => {
     </motion.div>
   );
 
-  const renderStep3 = () => (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
-      {/* Step 3 Errors */}
-      {getStepErrors(3).length > 0 && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-4 bg-red-50 border border-red-200 rounded-lg"
-        >
-          <div className="flex items-center gap-2 text-red-800 mb-2">
-            <span className="text-sm font-medium">Please fix the following issues:</span>
-          </div>
-          <ul className="text-sm text-red-700 space-y-1">
-            {getStepErrors(3).map((error, index) => (
-              <li key={index} className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                {error}
-              </li>
-            ))}
-          </ul>
-        </motion.div>
-      )}
 
-      {/* Services Offered */}
-      <motion.div variants={itemVariants} className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200 shadow-sm">
-        <h3 className="text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2">
-          <Settings className="w-5 w-5" />
-          Services Offered
-        </h3>
-        <p className="text-sm text-blue-700 mb-4">
-          Select the services you provide to your customers and add images
-        </p>
-        
-        {/* Service List with Images */}
-        <div className="space-y-4 mb-4">
-          {formData.services.map((service, index) => (
-            <div key={index} className="bg-white p-4 rounded-lg border border-blue-200 shadow-sm">
-              <div className="flex items-start justify-between mb-3">
-                <h4 className="font-medium text-blue-900">{service.name}</h4>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const newServices = formData.services.filter((_, i) => i !== index);
-                    setFormData(prev => ({ ...prev, services: newServices }));
-                  }}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  Remove
-                </Button>
-              </div>
-              
-              {/* Service Image Upload */}
-              <div className="mt-4">
-                <Label className="text-sm font-medium text-blue-900 mb-2 block">
-                  Service Image
-                </Label>
-                <div className="border-2 border-dashed border-blue-300 rounded-lg p-4 text-center hover:border-blue-400 transition-colors">
-                  <Camera className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                  <p className="text-sm text-blue-600 mb-2">
-                    Click to upload service image
-                  </p>
-                  <p className="text-xs text-blue-500">
-                    JPG, PNG up to 5MB
-                  </p>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    id={`service-photo-${index}`}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          const newServices = [...formData.services];
-                          newServices[index] = {
-                            name: service.name,
-                            photo: event.target?.result as string
-                          };
-                          setFormData(prev => ({ ...prev, services: newServices }));
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => document.getElementById(`service-photo-${index}`)?.click()}
-                    className="mt-2 border-blue-300 text-blue-700 hover:bg-blue-50"
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Choose Photo
-                  </Button>
-                </div>
-                
-                {/* Display uploaded photo */}
-                {service.photo && (
-                  <div className="mt-3">
-                    <div className="relative inline-block">
-                      <img
-                        src={service.photo}
-                        alt={`${service.name} photo`}
-                        className="w-24 h-24 object-cover rounded-lg border border-blue-200"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const newServices = [...formData.services];
-                          newServices[index] = { name: service.name, photo: '' };
-                          setFormData(prev => ({ ...prev, services: newServices }));
-                        }}
-                        className="absolute -top-2 -right-2 w-6 h-6 p-0 bg-red-500 text-white hover:bg-red-600"
-                      >
-                        ×
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        {/* Add New Service */}
-        <div className="space-y-4">
-          <Label className="text-sm font-medium text-blue-900">Add New Service</Label>
-          <div className="flex gap-2">
-            <Input
-              placeholder="e.g., Consultation, Installation, Repair"
-              value={newService}
-              onChange={(e) => setNewService(e.target.value)}
-              className="flex-1"
-            />
-            <Button
-              type="button"
-              onClick={() => {
-                if (newService.trim()) {
-                  setFormData(prev => ({
-                    ...prev,
-                    services: [...prev.services, { name: newService.trim(), photo: '' }]
-                  }));
-                  setNewService('');
-                }
-              }}
-              disabled={!newService.trim()}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Add Service
-            </Button>
-          </div>
-        </div>
-      </motion.div>
+    // Don't render step 3 if business type is not selected
 
-      {/* Products Offered */}
-      <motion.div variants={itemVariants} className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200 shadow-sm">
-        <h3 className="text-lg font-semibold text-green-900 mb-4 flex items-center gap-2">
-          <Package className="w-5 w-5" />
-          Products Offered
-        </h3>
-        <p className="text-sm text-green-700 mb-4">
-          Add the products you sell with descriptions, pricing, and photos
-        </p>
-        
-        {/* Product List */}
-        <div className="space-y-4 mb-4">
-          {formData.products.map((product, index) => (
-            <div key={index} className="bg-white p-4 rounded-lg border border-green-200 shadow-sm">
-              <div className="flex items-start justify-between mb-3">
-                <h4 className="font-medium text-green-900">Product {index + 1}</h4>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const newProducts = formData.products.filter((_, i) => i !== index);
-                    setFormData(prev => ({ ...prev, products: newProducts }));
-                  }}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  Remove
-                </Button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor={`product-name-${index}`}>Product Name *</Label>
-                  <Input
-                    id={`product-name-${index}`}
-                    placeholder="e.g., Handmade Jewelry, Organic Soap"
-                    value={product.name}
-                    onChange={(e) => {
-                      const newProducts = [...formData.products];
-                      newProducts[index].name = e.target.value;
-                      setFormData(prev => ({ ...prev, products: newProducts }));
-                    }}
-                    className="mt-1"
-                  />
-                  {getFieldError(`product-name-${index}`) && (
-                    <p className="text-sm text-red-500 mt-1">{getFieldError(`product-name-${index}`)}</p>
-                  )}
-                </div>
-                
-                <div>
-                  <Label htmlFor={`product-price-${index}`}>Price (KSH) *</Label>
-                  <Input
-                    id={`product-price-${index}`}
-                    placeholder="e.g., 500, 1,200"
-                    value={product.price}
-                    onChange={(e) => {
-                      const newProducts = [...formData.products];
-                      newProducts[index].price = e.target.value;
-                      setFormData(prev => ({ ...prev, products: newProducts }));
-                    }}
-                    className="mt-1"
-                  />
-                  {getFieldError(`product-price-${index}`) && (
-                    <p className="text-sm text-red-500 mt-1">{getFieldError(`product-price-${index}`)}</p>
-                  )}
-                </div>
-              </div>
-              
-              {/* Product Photo Upload */}
-              <div className="mt-4">
-                <Label className="text-sm font-medium text-green-900 mb-2 block">
-                  Product Photo
-                </Label>
-                <div className="border-2 border-dashed border-green-300 rounded-lg p-4 text-center hover:border-green-400 transition-colors">
-                  <Camera className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                  <p className="text-sm text-green-600 mb-2">
-                    Click to upload product photo
-                  </p>
-                  <p className="text-xs text-green-500">
-                    JPG, PNG up to 5MB
-                  </p>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    id={`product-photo-${index}`}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          const newProducts = [...formData.products];
-                          newProducts[index] = {
-                            ...newProducts[index],
-                            photo: event.target?.result as string
-                          };
-                          setFormData(prev => ({ ...prev, products: newProducts }));
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => document.getElementById(`product-photo-${index}`)?.click()}
-                    className="mt-2 border-green-300 text-green-700 hover:bg-green-50"
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Choose Photo
-                  </Button>
-                </div>
-                
-                {/* Display uploaded photo */}
-                {product.photo && (
-                  <div className="mt-3">
-                    <div className="relative inline-block">
-                      <img
-                        src={product.photo}
-                        alt={`${product.name} photo`}
-                        className="w-24 h-24 object-cover rounded-lg border border-green-200"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const newProducts = [...formData.products];
-                          newProducts[index] = { ...newProducts[index], photo: '' };
-                          setFormData(prev => ({ ...prev, products: newProducts }));
-                        }}
-                        className="absolute -top-2 -right-2 w-6 h-6 p-0 bg-red-500 text-white hover:bg-red-600"
-                      >
-                        ×
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        {/* Add New Product */}
-        <div className="space-y-4">
-          <Label className="text-sm font-medium text-green-900">Add New Product</Label>
-          <div className="flex gap-2">
-            <Input
-              placeholder="e.g., Handmade Jewelry"
-              value={newProduct.name}
-              onChange={(e) => setNewProduct(prev => ({ ...prev, name: e.target.value }))}
-              className="flex-1"
-            />
-            <Input
-              placeholder="Price in KSH"
-              value={newProduct.price}
-              onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
-              className="w-32"
-            />
-            <Button
-              type="button"
-              onClick={() => {
-                if (newProduct.name.trim() && newProduct.price.trim()) {
-                  setFormData(prev => ({
-                    ...prev,
-                    products: [...prev.products, { name: newProduct.name.trim(), price: newProduct.price.trim(), description: '', photo: '' }]
-                  }));
-                  setNewProduct({ name: "", price: "", description: "" });
-                }
-              }}
-              disabled={!newProduct.name.trim() || !newProduct.price.trim()}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              Add Product
-            </Button>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
+
+
 
   // Main component return
   return (
@@ -1620,13 +1362,13 @@ const BusinessRegistrationPage = () => {
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Progress</h2>
-              <span className="text-sm text-gray-500">Step {currentStep} of 3</span>
+                              <span className="text-sm text-gray-500">Step {currentStep} of 2</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <motion.div
                 className="bg-gradient-to-r from-fem-terracotta to-fem-navy h-2 rounded-full"
                 initial={{ width: 0 }}
-                animate={{ width: `${(currentStep / 3) * 100}%` }}
+                                  animate={{ width: `${(currentStep / 2) * 100}%` }}
                 transition={{ duration: 0.5 }}
               />
             </div>
@@ -1637,35 +1379,38 @@ const BusinessRegistrationPage = () => {
               <span className={`${currentStep >= 2 ? 'text-fem-terracotta font-medium' : ''}`}>
                 Contact Details {currentStep > 2 && '✓'}
               </span>
-              <span className={`${currentStep >= 3 ? 'text-fem-terracotta font-medium' : ''}`}>
-                Services & Products {currentStep === 3 && '✓'}
-              </span>
             </div>
             
             {/* Required Fields Note */}
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center gap-2 text-blue-800">
-                <span className="text-sm font-medium">Required Fields:</span>
+                <span className="text-sm font-medium">Required Fields for Step {currentStep}:</span>
               </div>
               <div className="mt-2 text-xs text-blue-700 grid grid-cols-2 gap-2">
-                <div>• Business Name</div>
-                <div>• Business Category</div>
-                <div>• Business Type</div>
-                <div>• Business Description</div>
-                <div>• Phone Number</div>
-                <div>• Email Address</div>
-                <div>• Street Address</div>
+                {currentStep === 1 ? (
+                  <>
+                    <div>• Business Name</div>
+                    <div>• Business Category</div>
+                    <div>• Business Description</div>
+                  </>
+                ) : (
+                  <>
+                    <div>• Phone Number</div>
+                    <div>• Email Address</div>
+                    <div>• Street Address</div>
+                  </>
+                )}
               </div>
             </div>
             
             {/* Step Validation Status */}
-            {formErrors.length > 0 && (
+            {getStepErrors(currentStep).length > 0 && (
               <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <div className="flex items-center gap-2 text-red-800">
                   <span className="text-sm font-medium">Validation Errors on Step {currentStep}:</span>
                 </div>
                 <ul className="mt-2 text-sm text-red-700 space-y-1">
-                  {formErrors.map((error, index) => (
+                  {getStepErrors(currentStep).map((error, index) => (
                     <li key={index} className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
                       {error}
@@ -1682,7 +1427,13 @@ const BusinessRegistrationPage = () => {
           ref={formRef}
           className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mb-16"
         >
-          <form onSubmit={handleSubmit} className="space-y-8">
+                     <form onSubmit={handleSubmit} className="space-y-8" onKeyDown={(e) => {
+             // Prevent form submission with Enter key when not on final step
+             if (e.key === 'Enter' && currentStep !== 2) {
+               e.preventDefault();
+               handleNextStep();
+             }
+           }} noValidate>
             {/* Step Content */}
             <AnimatePresence mode="wait">
               {currentStep === 1 && (
@@ -1708,18 +1459,6 @@ const BusinessRegistrationPage = () => {
                   {renderStep2()}
                 </motion.div>
               )}
-              
-              {currentStep === 3 && (
-                <motion.div
-                  key="step3"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {renderStep3()}
-                </motion.div>
-              )}
             </AnimatePresence>
 
             {/* Navigation Buttons */}
@@ -1727,7 +1466,7 @@ const BusinessRegistrationPage = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={handlePreviousStep}
+                onClick={handlePrevStep}
                 disabled={currentStep === 1}
                 className="flex items-center gap-2"
               >
@@ -1735,7 +1474,7 @@ const BusinessRegistrationPage = () => {
                 Previous
               </Button>
               
-              {currentStep < 3 ? (
+              {currentStep < 2 ? (
                 <Button
                   type="button"
                   onClick={handleNextStep}
@@ -1747,13 +1486,13 @@ const BusinessRegistrationPage = () => {
               ) : (
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="flex items-center gap-2 bg-fem-terracotta hover:bg-fem-terracotta/90"
+                  disabled={isSubmitting || uploadingImages}
+                  className="flex items-center gap-2 bg-fem-terracotta hover:bg-fem-terracotta/90 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? (
+                  {isSubmitting || uploadingImages ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      {isEditMode ? "Updating..." : "Registering..."}
+                      {uploadingImages ? "Uploading Images..." : (isEditMode ? "Updating..." : "Registering...")}
                     </>
                   ) : (
                     <>
@@ -1762,6 +1501,22 @@ const BusinessRegistrationPage = () => {
                     </>
                   )}
                 </Button>
+              )}
+              
+
+              
+              {/* Image upload progress */}
+              {uploadingImages && (
+                <div className="text-center mt-4">
+                  <p className="text-sm text-gray-600 mb-2">Uploading images to S3...</p>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-fem-terracotta h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">{Math.round(uploadProgress)}% complete</p>
+                </div>
               )}
             </div>
           </form>

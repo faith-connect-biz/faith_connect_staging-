@@ -110,15 +110,21 @@ export const FeaturedBusinesses = () => {
                 
                 <div className="flex items-center gap-1 mb-3">
                   <div className="flex items-center">
-                    {[...Array(5)].map((_, i) => (
-                      <Star 
-                        key={i} 
-                        className={`w-3 h-3 sm:w-4 sm:h-4 ${i < Math.floor(business.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} 
-                      />
-                    ))}
+                    {[...Array(5)].map((_, i) => {
+                      const rating = Number(business.rating);
+                      const isValidRating = !isNaN(rating) && rating > 0;
+                      return (
+                        <Star 
+                          key={i} 
+                          className={`w-3 h-3 sm:w-4 sm:h-4 ${isValidRating && i < Math.floor(rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} 
+                        />
+                      );
+                    })}
                   </div>
-                  <span className="text-xs sm:text-sm font-medium text-fem-navy ml-1">{business.rating}</span>
-                  <span className="text-xs text-gray-500">({business.review_count} reviews)</span>
+                  <span className="text-xs sm:text-sm font-medium text-fem-navy ml-1">
+                    {business.rating && !isNaN(Number(business.rating)) ? Number(business.rating).toFixed(1) : '0.0'}
+                  </span>
+                  <span className="text-xs text-gray-500">({business.review_count || 0} reviews)</span>
                 </div>
                 
                 <div className="space-y-1 sm:space-y-2 text-xs text-gray-600 mb-4">

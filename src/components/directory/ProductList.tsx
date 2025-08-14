@@ -129,7 +129,7 @@ export const ProductList = ({ filters }: ProductListProps) => {
           >
             <div className="relative">
               <img 
-                src={product.images?.[0] || product.product_image_url || business.business_image_url || business.business_logo_url || "/placeholder.svg"} 
+                src={product.product_image_url || product.images?.[0] || business.business_image_url || business.business_logo_url || "/placeholder.svg"} 
                 alt={product.name}
                 className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
                 onError={(e) => {

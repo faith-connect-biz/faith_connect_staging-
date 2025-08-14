@@ -34,6 +34,7 @@ interface BusinessContextType {
   
   // Utility
   getBusinessById: (id: string) => Business | undefined;
+  getUserBusiness: () => Promise<Business | null>;
   clearError: () => void;
 }
 
@@ -271,6 +272,19 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     return businesses?.find(business => business.id === id);
   };
 
+  const getUserBusiness = async (): Promise<Business | null> => {
+    try {
+      setError(null);
+      const userBusiness = await apiService.getUserBusiness();
+      return userBusiness || null;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get user business';
+      setError(errorMessage);
+      console.error('Failed to get user business:', err);
+      return null;
+    }
+  };
+
   const clearError = () => {
     setError(null);
   };
@@ -300,6 +314,7 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     deleteBusiness,
     toggleFavorite,
     getBusinessById,
+    getUserBusiness,
     clearError,
   };
 

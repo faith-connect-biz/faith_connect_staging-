@@ -18,7 +18,8 @@ import {
   X,
   Building2,
   Users,
-  CheckCircle
+  CheckCircle,
+  MessageCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
@@ -69,7 +70,8 @@ export const BusinessList = ({ filters }: BusinessListProps) => {
     if (filters.county && filters.county !== "all" && business.county !== filters.county) return false;
     
     // Filter by rating
-    if (business.rating < filters.rating[0] || business.rating > filters.rating[1]) return false;
+    const rating = Number(business.rating);
+    if (isNaN(rating) || rating < filters.rating[0] || rating > filters.rating[1]) return false;
     
     // Filter by verified only
     if (filters.verifiedOnly && !business.is_verified) return false;
@@ -196,10 +198,10 @@ export const BusinessList = ({ filters }: BusinessListProps) => {
               <div className="flex items-center">
                 <Star className="w-4 h-4 text-yellow-500 mr-1" />
                 <span className="text-sm font-medium text-gray-700">
-                  {typeof business.rating === 'number' ? business.rating.toFixed(1) : business.rating}
+                  {business.rating && !isNaN(Number(business.rating)) ? Number(business.rating).toFixed(1) : '0.0'}
                 </span>
                 <span className="text-sm text-gray-500 ml-1">
-                  ({business.review_count} reviews)
+                  ({business.review_count || 0} reviews)
                 </span>
               </div>
               

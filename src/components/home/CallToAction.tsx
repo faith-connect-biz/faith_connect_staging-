@@ -1,9 +1,36 @@
 
-import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, UserPlus, Briefcase } from "lucide-react";
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiService } from '@/services/api';
+import { 
+  UserPlus, 
+  Briefcase, 
+  ArrowRight,
+  AlertCircle
+} from 'lucide-react';
 
 export const CallToAction = () => {
+  const { user } = useAuth();
+  const [hasBusiness, setHasBusiness] = useState(false);
+
+  useEffect(() => {
+    const checkBusiness = async () => {
+      if (user && user.user_type === 'business') {
+        try {
+          const existingBusiness = await apiService.getUserBusiness();
+          setHasBusiness(!!existingBusiness);
+        } catch (error) {
+          console.error('Error checking business:', error);
+          setHasBusiness(false);
+        }
+      }
+    };
+
+    checkBusiness();
+  }, [user]);
+
   return (
     <section className="section-full bg-gradient-to-br from-gray-50 to-white relative overflow-hidden">
       
@@ -84,17 +111,24 @@ export const CallToAction = () => {
                      </p>
                    </div>
                    
-                   <Link to="/register-business" className="block">
-                     <Button 
-                       variant="outline" 
-                       className="w-full text-lg py-6 rounded-2xl border-2 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white group-hover:scale-105 transition-all duration-300"
-                     >
-                       <div className="flex items-center justify-center gap-3">
-                         <span>List Your Business</span>
-                         <ArrowRight className="w-5 h-5" />
-                       </div>
-                     </Button>
-                   </Link>
+                   {hasBusiness ? (
+                     <div className="flex items-center justify-center gap-2 text-gray-600 text-sm">
+                       <AlertCircle className="w-4 h-4" />
+                       You already have a business listed on Faith Connect.
+                     </div>
+                   ) : (
+                     <Link to="/register-business" className="block">
+                       <Button 
+                         variant="outline" 
+                         className="w-full text-lg py-6 rounded-2xl border-2 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white group-hover:scale-105 transition-all duration-300"
+                       >
+                         <div className="flex items-center justify-center gap-3">
+                           <span>List Your Business</span>
+                           <ArrowRight className="w-5 h-5" />
+                         </div>
+                       </Button>
+                     </Link>
+                   )}
                  </div>
                </div>
              </div>
