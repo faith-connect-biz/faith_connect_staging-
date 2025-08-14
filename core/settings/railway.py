@@ -1,6 +1,8 @@
 """
 Railway production settings for FEM Family Business Directory
 """
+from .base import *
+
 import os
 from pathlib import Path
 
@@ -18,6 +20,7 @@ ALLOWED_HOSTS = [
     '.vercel.app',
     'localhost',
     '127.0.0.1',
+    'femdjango-production.up.railway.app',
 ]
 
 # Application definition
@@ -58,8 +61,6 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
@@ -90,7 +91,7 @@ if not DATABASES['default']:
     }
 
 # Password validation
-AUTH_PASSWORD_VALIDATORS = [
+AUTH_PASSWORD_VALIDORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
@@ -178,7 +179,7 @@ SIMPLE_JWT = {
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
 }
 
-# CORS settings
+# CORS settings - Override base settings for production
 # TEMPORARILY ENABLE ALL ORIGINS FOR TESTING - REMOVE IN PRODUCTION
 CORS_ALLOW_ALL_ORIGINS = True
 
@@ -192,6 +193,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://fem-family-business-directory-rosy.vercel.app",
     "https://fem-directory-production.up.railway.app",
     "https://fem-directory.up.railway.app",
+    "https://femdjango-production.up.railway.app",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -222,6 +224,10 @@ CORS_ALLOW_HEADERS = [
 CORS_ALLOW_ALL_HEADERS = True
 CORS_EXPOSE_HEADERS = ['*']
 CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
+
+# Debug CORS issues
+CORS_URLS_REGEX = r'^.*$'  # Allow CORS on all URLs
+CORS_REPLACE_HTTPS_REFERER = True
 
 # Security settings - temporarily disabled for Railway deployment
 SECURE_SSL_REDIRECT = False  # Disable SSL redirect temporarily
