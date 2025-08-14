@@ -16,6 +16,7 @@ from django.utils.text import slugify
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(unique=True, blank=True)
+    description = models.TextField(blank=True, null=True, help_text="Brief description of what this category includes")
 
     def save(self, *args, **kwargs):
         if not self.slug:

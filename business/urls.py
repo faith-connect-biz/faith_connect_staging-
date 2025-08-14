@@ -7,7 +7,7 @@ from .views import (
     BusinessImageUploadView,
     get_service_image_upload_url, update_service_image,
     get_product_image_upload_url, update_product_image, UserBusinessView, BusinessServiceListCreateView, BusinessAnalyticsView,
-    ServiceListAPIView, ProductListAPIView, MyBusinessView
+    ServiceListAPIView, ProductListAPIView, MyBusinessView, ServiceRetrieveUpdateView
 )
 
 urlpatterns = [
@@ -22,7 +22,8 @@ urlpatterns = [
     path('<uuid:id>/favorite/', FavoriteToggleView.as_view(), name="favorite-toggle"),
     path('<uuid:business_id>/services/', BusinessServiceListCreateView.as_view(), name="business-service-list-create"),
     path('<uuid:business_id>/products/', BusinessProductListCreateView.as_view(), name="business-product-list-create"),
-    path('products/<uuid:id>/', ProductRetrieveUpdateView.as_view(), name="product-detail"),
+    path('services/<int:id>/', ServiceRetrieveUpdateView.as_view(), name="service-detail"),
+    path('products/<int:id>/', ProductRetrieveUpdateView.as_view(), name="product-detail"),
     path('<uuid:business_id>/reviews/', ReviewListCreateView.as_view(), name="business-reviews"),
     path('<uuid:business_id>/reviews/<int:pk>/', ReviewUpdateDeleteView.as_view(), name="business-review-detail"),
     path('<uuid:business_id>/hours/', BusinessHoursView.as_view(), name="business-hours"),

@@ -10,9 +10,9 @@ python manage.py collectstatic --noinput
 echo "🔄 Running migrations..."
 python manage.py migrate --noinput
 
-# Step 3: Seed the database
-echo "🌱 Seeding database with test data..."
-python manage.py seed_railway_data --users 5 --businesses 10 --services-per-business 3
+# Step 3: Create superuser only (categories already exist)
+echo "👤 Creating superuser..."
+python manage.py create_superuser_local --username admin --password admin4123 --email admin@femconnect.com || echo "⚠️  Superuser creation failed or already exists"
 
 # Step 4: Start the server
 echo "🚀 Starting Django server..."

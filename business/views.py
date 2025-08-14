@@ -30,6 +30,7 @@ import uuid
 from datetime import datetime, timedelta
 from django.http import Http404
 from django.db import models
+from rest_framework.decorators import permission_classes as drf_permission_classes
 
 
 # Create your views here.
@@ -89,6 +90,17 @@ class BusinessUpdateView(generics.UpdateAPIView):
     serializer_class = BusinessSerializer
     permission_classes = [IsAuthenticated]
     lookup_field = 'id'
+
+    def get_queryset(self):
+        """Only allow users to update their own business"""
+        return Business.objects.filter(user=self.request.user)
+
+    def perform_update(self, serializer):
+        """Ensure the business belongs to the current user"""
+        business = serializer.instance
+        if business.user != self.request.user:
+            raise PermissionDenied("You can only update your own business")
+        serializer.save()
 
 class CategoryListAPIView(generics.ListAPIView):
     queryset = Category.objects.all().order_by('name')
@@ -208,10 +220,54 @@ class ProductRetrieveUpdateView(generics.RetrieveUpdateAPIView):
 class ReviewListCreateView(generics.ListCreateAPIView):
     serializer_class = ReviewSerializer
     permission_classes = [AllowAny]  # Allow public access to list reviews, but require auth for creation
+    authentication_classes = []  # Disable authentication for this view
 
     def get_queryset(self):
         business_id = self.kwargs.get('business_id')
-        return Review.objects.filter(business_id=business_id)
+        print(f"ReviewListCreateView.get_queryset called with business_id: {business_id}")
+        print(f"Business ID type: {type(business_id)}")
+        
+        # Check if business exists
+        from .models import Business
+        try:
+            business = Business.objects.get(id=business_id)
+            print(f"Business found: {business.business_name}")
+        except Business.DoesNotExist:
+            print(f"Business with ID {business_id} does not exist")
+            return Review.objects.none()
+        except Exception as e:
+            print(f"Error checking business: {e}")
+            return Review.objects.none()
+        
+        reviews = Review.objects.filter(business_id=business_id)
+        print(f"Found {reviews.count()} reviews for business {business_id}")
+        return reviews
+
+    @drf_permission_classes([AllowAny])
+    def list(self, request, *args, **kwargs):
+        """Override list method to ensure public access works"""
+        try:
+            # Debug logging
+            print(f"ReviewListCreateView.list called - User: {request.user}, Authenticated: {request.user.is_authenticated}")
+            print(f"Permission classes: {self.permission_classes}")
+            
+            queryset = self.filter_queryset(self.get_queryset())
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({
+                'count': len(serializer.data),
+                'next': None,
+                'previous': None,
+                'results': serializer.data
+            })
+        except Exception as e:
+            print(f"Error in ReviewListCreateView.list: {e}")
+            return Response({
+                'count': 0,
+                'next': None,
+                'previous': None,
+                'results': [],
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def perform_create(self, serializer):
         # Check if user is authenticated for creation
@@ -768,6 +824,32 @@ class ServiceListAPIView(generics.ListAPIView):
     filterset_fields = ['business__category', 'price_range']
     search_fields = ['name', 'description', 'business__business_name']
     ordering_fields = ['created_at', 'name']
+
+
+class ServiceRetrieveUpdateView(generics.RetrieveUpdateAPIView):
+    """Retrieve and update an individual service"""
+    serializer_class = ServiceSerializer
+    queryset = Service.objects.all()
+    lookup_field = 'id'
+
+    def get_permissions(self):
+        """Allow public access for GET, require auth for PUT"""
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get_queryset(self):
+        """For updates, only allow users to modify services for their own business"""
+        if self.request.method == 'PUT':
+            return Service.objects.filter(business__user=self.request.user)
+        return Service.objects.all()
+
+    def perform_update(self, serializer):
+        """Ensure the service belongs to the current user's business"""
+        service = serializer.instance
+        if service.business.user != self.request.user:
+            raise PermissionDenied("You can only update services for your own business")
+        serializer.save()
 
 
 class ProductListAPIView(generics.ListAPIView):

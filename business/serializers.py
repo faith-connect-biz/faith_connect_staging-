@@ -27,6 +27,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'price',
             'price_currency',
             'product_image_url',
+            'images',
             'is_active',
             'in_stock',
             'created_at'
