@@ -5,18 +5,29 @@ import logging
 from datetime import datetime, timedelta
 import uuid
 import os
+from decouple import config
 
 logger = logging.getLogger(__name__)
 
 class S3Service:
     def __init__(self):
+        # Get AWS credentials from environment variables using decouple
+        aws_access_key_id = config('AWS_ACCESS_KEY_ID', default='')
+        aws_secret_access_key = config('AWS_SECRET_ACCESS_KEY', default='')
+        aws_region = config('AWS_S3_REGION_NAME', default='us-east-1')
+        bucket_name = config('AWS_STORAGE_BUCKET_NAME', default='')
+        
+        if not all([aws_access_key_id, aws_secret_access_key, bucket_name]):
+            raise ValueError("Missing required AWS environment variables")
+        
         self.s3_client = boto3.client(
             's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_S3_REGION_NAME
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            region_name=aws_region,
+            endpoint_url=f"https://s3.{aws_region}.amazonaws.com"
         )
-        self.bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+        self.bucket_name = bucket_name
 
     def generate_presigned_upload_url(self, file_key, content_type, expiration_minutes=5):
         """
@@ -139,10 +150,13 @@ class S3Service:
         Returns:
             str: The public URL of the file
         """
-        if settings.AWS_S3_CUSTOM_DOMAIN:
-            return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_key}"
+        custom_domain = config('AWS_S3_CUSTOM_DOMAIN', default='')
+        region_name = config('AWS_S3_REGION_NAME', default='us-east-1')
+        
+        if custom_domain:
+            return f"https://{custom_domain}/{file_key}"
         else:
-            return f"https://{self.bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{file_key}"
+            return f"https://{self.bucket_name}.s3.{region_name}.amazonaws.com/{file_key}"
 
     def upload_file_from_url(self, image_url, folder="business_images"):
         """
