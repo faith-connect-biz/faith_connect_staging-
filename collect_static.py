@@ -21,4 +21,4 @@ if __name__ == '__main__':
     # Collect static files
     execute_from_command_line(['manage.py', 'collectstatic', '--noinput'])
     print("Static files collected successfully!")
-    print("Admin favicon should now be available at /static/admin/favicon.svg")
+    print("Admin favicon should now be available at /static/admin/favicon.ico")

@@ -359,9 +359,9 @@ class FavoriteAdmin(admin.ModelAdmin):
 
 # Custom Admin Site
 class FEMAdminSite(admin.AdminSite):
-    site_header = "FEM Family Business Directory Administration"
-    site_title = "FEM Admin"
-    index_title = "Welcome to FEM Business Directory Management"
+    site_header = "Faith Connect Business Directory Administration"
+    site_title = "Faith Connect Admin"
+    index_title = "Welcome to Faith Connect Business Directory Management"
     site_url = "/"
 
 # Register the custom admin site

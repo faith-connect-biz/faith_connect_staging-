@@ -46,6 +46,37 @@ class ReviewSerializer(serializers.ModelSerializer):
         model = Review
         fields = ['id', 'user', 'rating', 'review_text', 'is_verified', 'created_at', 'updated_at']
         read_only_fields = ['is_verified', 'created_at', 'updated_at']
+    
+    def validate(self, data):
+        """
+        Custom validation to prevent business owners from reviewing their own business
+        and to check for duplicate reviews
+        """
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            raise serializers.ValidationError("Authentication required to create a review.")
+        
+        # Get business_id from the context (passed from the view)
+        business_id = self.context.get('business_id')
+        if not business_id:
+            raise serializers.ValidationError("Business ID is required.")
+        
+        # Check if business exists
+        try:
+            from .models import Business
+            business = Business.objects.get(id=business_id)
+        except Business.DoesNotExist:
+            raise serializers.ValidationError("Business not found.")
+        
+        # Prevent business owners from reviewing their own business
+        if business.user == request.user:
+            raise serializers.ValidationError("Business owners cannot review their own business.")
+        
+        # Check for existing review
+        if Review.objects.filter(business_id=business_id, user=request.user).exists():
+            raise serializers.ValidationError("You have already reviewed this business.")
+        
+        return data
 
 
 class CategorySerializer(serializers.ModelSerializer):
