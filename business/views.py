@@ -229,7 +229,6 @@ class ProductRetrieveUpdateView(generics.RetrieveUpdateAPIView):
 class ReviewListCreateView(generics.ListCreateAPIView):
     serializer_class = ReviewSerializer
     permission_classes = [AllowAny]  # Allow public access to list reviews, but require auth for creation
-    authentication_classes = []  # Disable authentication for this view
 
     def get_queryset(self):
         business_id = self.kwargs.get('business_id')
@@ -252,37 +251,13 @@ class ReviewListCreateView(generics.ListCreateAPIView):
         print(f"Found {reviews.count()} reviews for business {business_id}")
         return reviews
 
-    @drf_permission_classes([AllowAny])
-    def list(self, request, *args, **kwargs):
-        """Override list method to ensure public access works"""
-        try:
-            # Debug logging
-            print(f"ReviewListCreateView.list called - User: {request.user}, Authenticated: {request.user.is_authenticated}")
-            print(f"Permission classes: {self.permission_classes}")
-            
-            queryset = self.filter_queryset(self.get_queryset())
-            serializer = self.get_serializer(queryset, many=True)
-            return Response({
-                'count': len(serializer.data),
-                'next': None,
-                'previous': None,
-                'results': serializer.data
-            })
-        except Exception as e:
-            print(f"Error in ReviewListCreateView.list: {e}")
-            return Response({
-                'count': 0,
-                'next': None,
-                'previous': None,
-                'results': [],
-                'error': str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def get_permissions(self):
+        """Allow anyone to view reviews, but require authentication to create"""
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
 
     def perform_create(self, serializer):
-        # Check if user is authenticated for creation
-        if not self.request.user.is_authenticated:
-            raise PermissionDenied("Authentication required to create a review.")
-        
         business_id = self.kwargs.get('business_id')
         
         # Get the business to check ownership
