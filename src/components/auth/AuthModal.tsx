@@ -239,21 +239,21 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       console.log('Registration response structure:', {
         success: registerResponse.success,
         message: registerResponse.message,
-        registration_token: registerResponse.registration_token,
+        user_id: registerResponse.user_id,
         requires_otp: registerResponse.requires_otp,
         otp_sent_to: registerResponse.otp_sent_to
       });
       
       // Check if we have the required data
-      if (!registerResponse.registration_token) {
-        console.error('Missing registration_token in response:', registerResponse);
-        throw new Error('Registration failed: Missing registration token');
+      if (!registerResponse.user_id) {
+        console.error('Missing user_id in response:', registerResponse);
+        throw new Error('Registration failed: Missing user ID');
       }
       
       // Store signup data for OTP verification
       localStorage.setItem('signup_email', usePhone ? '' : signupData.email);
       localStorage.setItem('signup_phone', usePhone ? signupData.phone : '');
-      localStorage.setItem('signup_registration_token', registerResponse.registration_token);
+      localStorage.setItem('signup_user_id', registerResponse.user_id.toString());
       localStorage.setItem('signup_user_type', signupData.userType);
       localStorage.setItem('signup_partnership_number', signupData.partnershipNumber);
       localStorage.setItem('signup_auth_method', usePhone ? 'phone' : 'email');
@@ -284,10 +284,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     try {
       console.log('Verifying OTP:', { otp, authMethod, signupData });
       
-      // Get the registration token from localStorage
-      const registrationToken = localStorage.getItem('signup_registration_token');
+      // Get the user ID from localStorage
+      const userId = localStorage.getItem('signup_user_id');
       
-      if (!registrationToken) {
+      if (!userId) {
         toast({
           title: "Error",
           description: "Registration session expired. Please register again.",
@@ -298,12 +298,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       
       // Call the registration OTP verification endpoint
       const data = {
-        registration_token: registrationToken,
+        user_id: parseInt(userId),
         otp: otp
       };
 
       console.log('Calling registration OTP verification endpoint with data:', data);
-      const response = await apiService.post('/verify-registration-otp', data);
+      const response = await apiService.verifyRegistrationOTP(parseInt(userId), otp);
       console.log('OTP verification response:', response);
       
       if (response.success) {
@@ -314,7 +314,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         // Clear stored signup data
         localStorage.removeItem('signup_email');
         localStorage.removeItem('signup_phone');
-        localStorage.removeItem('signup_registration_token');
         localStorage.removeItem('signup_user_id');
         localStorage.removeItem('signup_user_type');
         localStorage.removeItem('signup_partnership_number');
@@ -363,11 +362,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     try {
       console.log('Resending OTP for registration');
       
-      // Get the registration token from localStorage
-      const registrationToken = localStorage.getItem('signup_registration_token');
-      console.log('Retrieved registration token from localStorage:', registrationToken);
+      // Get the user ID from localStorage
+      const userId = localStorage.getItem('signup_user_id');
+      console.log('Retrieved user ID from localStorage:', userId);
       
-      if (!registrationToken) {
+      if (!userId) {
         toast({
           title: "Error",
           description: "Registration session expired. Please register again.",
@@ -377,12 +376,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       }
       
       // Call the registration resend OTP endpoint
-      const data = {
-        registration_token: registrationToken
-      };
-
-      console.log('Calling resend registration OTP endpoint with data:', data);
-      const response = await apiService.post('/resend-registration-otp', data);
+      const response = await apiService.resendRegistrationOTP(parseInt(userId));
       console.log('Resend OTP response:', response);
       
       if (response.success) {

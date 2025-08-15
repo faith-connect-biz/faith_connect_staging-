@@ -403,39 +403,39 @@ class ApiService {
   async register(data: RegisterRequest): Promise<{ 
     success: boolean; 
     message: string; 
-    registration_token?: string; 
+    user_id?: number; 
     requires_otp?: boolean; 
     otp_sent_to?: string; 
     user?: User; 
     tokens?: AuthTokens; 
   }> {
     const response = await this.api.post('/register', data);
-    // The backend now returns registration data without creating user - user must verify OTP first
+    // The backend now creates user in DB and sends OTP - user must verify OTP to activate
     return response.data;
   }
 
   // New method to verify registration OTP
-  async verifyRegistrationOTP(registrationToken: string, otp: string): Promise<{ 
+  async verifyRegistrationOTP(userId: number, otp: string): Promise<{ 
     success: boolean; 
     message: string; 
     user?: User; 
     tokens?: AuthTokens; 
   }> {
     const response = await this.api.post('/verify-registration-otp', {
-      registration_token: registrationToken,
+      user_id: userId,
       otp: otp
     });
     return response.data;
   }
 
   // New method to resend registration OTP
-  async resendRegistrationOTP(registrationToken: string): Promise<{ 
+  async resendRegistrationOTP(userId: number): Promise<{ 
     success: boolean; 
     message: string; 
     otp_sent_to?: string; 
   }> {
     const response = await this.api.post('/resend-registration-otp', {
-      registration_token: registrationToken
+      user_id: userId
     });
     return response.data;
   }
