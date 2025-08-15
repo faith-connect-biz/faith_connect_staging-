@@ -93,19 +93,12 @@ const Navbar: React.FC = () => {
   return (
          <nav className="bg-[#faf9f8] shadow-sm py-4 relative">
       <div className="container mx-auto px-4 flex justify-between items-center">
-        <Link to="/" className="flex items-center gap-2" onClick={closeMenu}>
-                     <img 
-             src="/Faithconnectnew.svg" 
-             alt="Faith Connect Logo" 
-             className="h-12 w-auto sm:h-16" 
-           />
-          <div className="hidden sm:flex flex-col">
-            <span className="font-heading font-semibold text-fem-navy text-sm sm:text-base">Faith Connect</span>
-            <span className="text-xs text-fem-darkgray">Business Directory</span>
-          </div>
-          <div className="sm:hidden">
-            <span className="font-heading font-semibold text-fem-navy text-sm">Faith Connect</span>
-          </div>
+        <Link to="/" className="flex items-center" onClick={closeMenu}>
+          <img 
+            src="/lovable-uploads/NewFaithConnect.png" 
+            alt="Faith Connect Logo" 
+            className="h-10 w-auto sm:h-12" 
+          />
         </Link>
         
         {/* Desktop Navigation */}

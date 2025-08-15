@@ -11,6 +11,8 @@ import Index from "./pages/Index";
 import DirectoryPage from "./pages/DirectoryPage";
 import AboutPage from "./pages/AboutPage";
 import NotFound from "./pages/NotFound";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import FAQPage from "./pages/FAQPage";
 
 import ProfilePage from "./pages/ProfilePage";
 
@@ -49,6 +51,8 @@ const App = () => (
                 <Route path="/directory" element={<DirectoryPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/about" element={<AboutPage />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                <Route path="/faq" element={<FAQPage />} />
                 <Route path="/welcome" element={<WelcomePage />} />
                 <Route path="/business-onboarding" element={<BusinessOnboardingPage />} />
         

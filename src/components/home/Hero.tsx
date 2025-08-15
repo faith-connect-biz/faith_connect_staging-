@@ -27,20 +27,20 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
   };
 
   const carouselImages = [
+    // {
+    //   src: "/lovable-uploads/Landing3.png",
+    //   alt: "Church leader speaking at podium"
+    // },
     {
-      src: "/lovable-uploads/541df702-f215-4b5f-bc60-d08161749258.png",
-      alt: "Church leader speaking at podium"
-    },
-    {
-      src: "/lovable-uploads/b392f8fd-6fc5-4bfe-96aa-dc60f6854ba2.png",
+      src: "/lovable-uploads/Landing3.png",
       alt: "Church leader speaking"
     },
     {
-      src: "/lovable-uploads/2461e975-f920-4db9-8bb8-0fa2afe7fe8f.png",
+      src: "/lovable-uploads/Landing2.png",
       alt: "Church leader preaching"
     },
     {
-      src: "/lovable-uploads/1d5eb230-3a20-497c-9b7c-e5d21ac111dc.png",
+      src: "/lovable-uploads/Landing1.png",
       alt: "Church leader at podium"
     }
   ];
@@ -67,7 +67,7 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
               <div className="px-8 py-4 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
                 <div className="flex items-center gap-3">
                   <Heart className="w-5 h-5 text-fem-gold" />
-                  <span className="text-white font-mont font-semibold text-lg tracking-wide">FEM Family Church • Business Connect</span>
+                  <span className="text-white font-mont font-semibold text-lg tracking-wide">Faith Connect • Business Connect</span>
                   <Sparkles className="w-5 h-5 text-fem-gold" />
                 </div>
               </div>
@@ -100,7 +100,7 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
                 {/* Subtitle with Better Typography */}
                 <div className="max-w-3xl scroll-reveal">
                    <p className="text-body-large text-gray-200 font-mont font-light leading-relaxed">
-                     Discover trusted businesses owned by fellow believers in our church community. Support local commerce while building meaningful relationships grounded in shared faith and values.
+                     Discover trusted businesses owned by fellow believers in our faith community. Support local commerce while building meaningful relationships grounded in shared faith and values.
                    </p>
                 </div>
 

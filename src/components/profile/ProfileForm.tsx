@@ -104,32 +104,19 @@ export const ProfileForm = () => {
         </div>
         
         <div className="border-t border-gray-100 pt-6">
-          <h3 className="text-lg font-semibold text-fem-navy mb-4">Church Membership</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <h3 className="text-lg font-semibold text-fem-navy mb-4">Faith Connect Membership</h3>
+          <div className="space-y-4">
             <div>
-              <Label htmlFor="churchMembership" className="text-fem-navy">Church Branch*</Label>
+              <Label htmlFor="churchMembership" className="text-fem-navy">Faith Connect Branch*</Label>
               <Input
                 id="churchMembership"
                 value={churchMembership}
                 onChange={(e) => setChurchMembership(e.target.value)}
-                placeholder="e.g. FEM Family Church - Atlanta"
-                required
+                placeholder="e.g. Faith Connect - Atlanta"
                 className="mt-1"
               />
-            </div>
-            
-            <div>
-              <Label htmlFor="membershipNumber" className="text-fem-navy">Membership Number*</Label>
-              <Input
-                id="membershipNumber"
-                value={membershipNumber}
-                onChange={(e) => setMembershipNumber(e.target.value)}
-                required
-                className="mt-1"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                This is used to verify your church membership.
+              <p className="text-sm text-gray-500 mt-1">
+                This is used to verify your faith community membership.
               </p>
             </div>
           </div>
@@ -218,7 +205,7 @@ export const ProfileForm = () => {
             <h3 className="font-semibold text-fem-navy mb-2">Privacy Notice</h3>
             <p className="text-sm text-gray-600">
               Your contact information will be masked when communicating with businesses.
-              Your profile will only be visible to verified church community members and businesses.
+              Your profile will only be visible to verified faith community members and businesses.
             </p>
           </div>
           

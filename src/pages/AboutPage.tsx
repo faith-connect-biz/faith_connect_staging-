@@ -10,103 +10,115 @@ const AboutPage = () => {
       <Navbar />
       <main className="flex-grow">
         <div className="container mx-auto px-4 py-12">
-          <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold text-fem-navy mb-6">About FEM Family Church Business Connect</h1>
-            
-            <div className="bg-white rounded-lg shadow-md p-8 mb-8">
-              <h2 className="text-2xl font-bold text-fem-terracotta mb-4">Our Mission</h2>
-              <p className="text-gray-700 mb-6">
-                FEM Family Church Business Connect is dedicated to connecting our church community with trusted businesses and services across Kenya. 
-                We believe that by supporting each other through meaningful business relationships, we strengthen our bonds as a church family and contribute 
-                to economic growth within our community.
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-fem-navy mb-6">About Faith Connect Business Directory</h1>
+            <p className="text-xl text-gray-600 leading-relaxed">
+              Faith Connect Business Directory is more than just a business directory—it's a testament to the power of faith-based community.
+              We are a house of faith where a powerful community thrives, connecting our faith community with trusted businesses and services across Kenya.
+            </p>
+          </div>
+
+          <div className="aspect-video mb-8 rounded-lg overflow-hidden shadow-lg">
+            <img 
+              src="/lovable-uploads/AboutUsPage.png" 
+              alt="Faith Connect Business Directory - Connecting Communities Through Business" 
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-12 mb-16">
+            <div>
+              <h2 className="text-2xl font-bold text-fem-navy mb-4">Our Mission</h2>
+              <p className="text-gray-600 leading-relaxed">
+                To create a thriving ecosystem where faith-based businesses and community members can connect, 
+                collaborate, and grow together in a spirit of mutual support and shared values.
               </p>
-              
-              <div className="aspect-video mb-8 rounded-lg overflow-hidden">
-                <img 
-                  src="https://res.cloudinary.com/dqxzuiaj2/image/upload/v1/media/photos/function_uuid4_at_0x7fea31a87af0_zovtfy" 
-                  alt="FEM Family Church Community" 
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              
-              <h2 className="text-2xl font-bold text-fem-terracotta mb-4">What We Do</h2>
-              <p className="text-gray-700 mb-4">
-                Our platform serves as a bridge between community members and trusted businesses within our Kenyan church community, offering:
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-fem-navy mb-4">Our Vision</h2>
+              <p className="text-gray-600 leading-relaxed">
+                To be the leading platform that bridges faith communities with trusted businesses, 
+                fostering economic growth while maintaining spiritual and ethical standards.
               </p>
-              
-              <ul className="list-disc pl-6 mb-6 space-y-2 text-gray-700">
-                <li>A trusted directory of services and products from vetted businesses</li>
-                <li>Free profile creation for church members to discover services</li>
-                <li>Direct connections between community members and business owners</li>
-                <li>Support for both services and product-based businesses</li>
-                <li>Resources for community engagement and business growth</li>
-              </ul>
-              
-              <h2 className="text-2xl font-bold text-fem-terracotta mb-4">Our Values</h2>
-              <div className="grid md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="text-xl font-semibold text-fem-navy mb-2">Community</h3>
-                  <p className="text-gray-600">Supporting each other through meaningful employment opportunities</p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="text-xl font-semibold text-fem-navy mb-2">Integrity</h3>
-                  <p className="text-gray-600">Operating with honesty and transparency in all connections</p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="text-xl font-semibold text-fem-navy mb-2">Excellence</h3>
-                  <p className="text-gray-600">Promoting quality work and professional growth</p>
-                </div>
+            </div>
+          </div>
+
+          <div className="mb-16">
+            <h2 className="text-2xl font-bold text-fem-navy mb-6 text-center">What We Offer</h2>
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <h3 className="text-xl font-semibold text-fem-navy mb-3">For Businesses</h3>
+                <ul className="text-gray-600 space-y-2">
+                  <li>Free business profile creation and management</li>
+                  <li>Access to a trusted, faith-based customer base</li>
+                  <li>Marketing tools and community engagement features</li>
+                  <li>Networking opportunities with other faith-aligned businesses</li>
+                </ul>
               </div>
-              
-              <h2 className="text-2xl font-bold text-fem-terracotta mb-4">How It Works</h2>
-              <div className="space-y-6 mb-8">
-                <div className="flex gap-4">
-                  <div className="w-12 h-12 bg-fem-gold/20 rounded-full flex items-center justify-center text-fem-navy font-bold flex-shrink-0">1</div>
-                  <div>
-                    <h3 className="text-xl font-semibold text-fem-navy mb-1">Business Directories Create Profiles</h3>
-                    <p className="text-gray-600">Business owners create profiles to list their services and products with pricing information</p>
-                  </div>
-                </div>
-                
-                <div className="flex gap-4">
-                  <div className="w-12 h-12 bg-fem-gold/20 rounded-full flex items-center justify-center text-fem-navy font-bold flex-shrink-0">2</div>
-                  <div>
-                    <h3 className="text-xl font-semibold text-fem-navy mb-1">Community Members Explore</h3>
-                    <p className="text-gray-600">Community members search, filter, and discover trusted businesses within our faith community</p>
-                  </div>
-                </div>
-                
-                <div className="flex gap-4">
-                  <div className="w-12 h-12 bg-fem-gold/20 rounded-full flex items-center justify-center text-fem-navy font-bold flex-shrink-0">3</div>
-                  <div>
-                    <h3 className="text-xl font-semibold text-fem-navy mb-1">Connect & Engage</h3>
-                    <p className="text-gray-600">View photos, get contact information, and connect directly with business owners</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex justify-center gap-4">
-                <Button asChild className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white">
-                  <Link to="/directory">Explore Business Directory</Link>
-                </Button>
-                <Button asChild variant="outline" className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white">
-                  <Link to="/register-business">List Your Business</Link>
-                </Button>
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <h3 className="text-xl font-semibold text-fem-navy mb-3">For Community Members</h3>
+                <ul className="text-gray-600 space-y-2">
+                  <li>Free profile creation for faith community members to discover services and support fellow believers</li>
+                  <li>Access to verified, trusted businesses within our faith community</li>
+                  <li>Community features for building meaningful relationships</li>
+                  <li>Support for local businesses that share your values</li>
+                </ul>
               </div>
             </div>
-            
-            <div className="bg-white rounded-lg shadow-md p-8">
-              <h2 className="text-2xl font-bold text-fem-terracotta mb-4">Contact Information</h2>
-              <p className="text-gray-700 mb-4">
-                If you have any questions about FEM Family Church Business Connect, please don't hesitate to contact us:
-              </p>
-              
-              <div className="space-y-4 text-gray-700">
-                <p><span className="font-semibold">Email:</span> careers@femfamilychurch.org</p>
-                <p><span className="font-semibold">Phone:</span> +254 700 123 456</p>
-                <p><span className="font-semibold">Location:</span> FEM Family Church Headquarters, Nairobi, Kenya</p>
-                <p><span className="font-semibold">Office Hours:</span> Monday to Friday, 9:00 AM to 5:00 PM EAT</p>
+          </div>
+
+          <div className="mb-16">
+            <h2 className="text-2xl font-bold text-fem-navy mb-6 text-center">How It Works</h2>
+            <div className="grid md:grid-cols-3 gap-8">
+              <div className="text-center">
+                <div className="bg-fem-terracotta text-white w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">1</div>
+                <h3 className="text-xl font-semibold text-fem-navy mb-2">Business Registration</h3>
+                <p className="text-gray-600">Businesses create detailed profiles showcasing their services, values, and faith commitment</p>
               </div>
+              <div className="text-center">
+                <div className="bg-fem-terracotta text-white w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">2</div>
+                <h3 className="text-xl font-semibold text-fem-navy mb-2">Community Discovery</h3>
+                <p className="text-gray-600">Faith community members search, filter, and discover trusted businesses within our faith family</p>
+              </div>
+              <div className="text-center">
+                <div className="bg-fem-terracotta text-white w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">3</div>
+                <h3 className="text-xl font-semibold text-fem-navy mb-2">Meaningful Connections</h3>
+                <p className="text-gray-600">Build lasting relationships and support local commerce within our faith community</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 p-8 rounded-lg text-center">
+            <h2 className="text-2xl font-bold text-fem-navy mb-4">Get Started Today</h2>
+            <p className="text-gray-600 mb-6">
+              Join our growing community of faith-based businesses and community members. 
+              Together, we can build a stronger, more connected community.
+            </p>
+            <div className="space-x-4">
+              <Link 
+                to="/register-business" 
+                className="inline-block bg-fem-terracotta text-white px-6 py-3 rounded-lg font-semibold hover:bg-fem-terracotta/90 transition-colors"
+              >
+                Register Your Business
+              </Link>
+              <Link 
+                to="/register" 
+                className="inline-block bg-fem-navy text-white px-6 py-3 rounded-lg font-semibold hover:bg-fem-navy/90 transition-colors"
+              >
+                Join Our Community
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-16 text-center">
+            <h2 className="text-2xl font-bold text-fem-navy mb-6">Contact Us</h2>
+            <p className="text-gray-600 mb-6">
+              If you have any questions about Faith Connect Business Directory, please don't hesitate to contact us:
+            </p>
+            <div className="space-y-2 text-gray-600">
+              <p><span className="font-semibold">Email:</span> info@faithconnect.org</p>
+              <p><span className="font-semibold">Phone:</span> +254 700 000 000</p>
+              <p><span className="font-semibold">Location:</span> Faith Connect Headquarters, Nairobi, Kenya</p>
             </div>
           </div>
         </div>

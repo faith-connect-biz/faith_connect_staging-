@@ -9,17 +9,17 @@ export const Footer = () => {
           <div className="space-y-2">
             <Link to="/" className="flex items-center gap-2">
               <img 
-                src="/lovable-uploads/f1a3f2a4-bbe7-46e5-be66-1ad39e35defa.png" 
+                src="/lovable-uploads/NewFaithConnect.png" 
                 alt="FEM Family Church Logo" 
                 className="h-8 w-auto" 
               />
               <div className="flex flex-col">
-                <span className="font-heading font-semibold">FEM Family Church</span>
+                <span className="font-heading font-semibold">Faith Connect</span>
                 <span className="text-xs text-gray-300">Business Connect</span>
               </div>
             </Link>
             <p className="text-xs text-gray-300">
-              Connecting our church community with trusted businesses and services.
+              Connecting our faith community with trusted businesses and services.
             </p>
           </div>
           
@@ -28,7 +28,6 @@ export const Footer = () => {
             <ul className="space-y-1 text-xs text-gray-300">
               <li><Link to="/directory" className="hover:text-fem-gold transition-colors">Explore Services</Link></li>
               <li><Link to="/profile" className="hover:text-fem-gold transition-colors">Create Profile</Link></li>
-              <li><Link to="/chat" className="hover:text-fem-gold transition-colors">Connect with Businesses</Link></li>
               <li><Link to="/about" className="hover:text-fem-gold transition-colors">Learn More</Link></li>
             </ul>
           </div>
@@ -38,7 +37,6 @@ export const Footer = () => {
             <ul className="space-y-1 text-xs text-gray-300">
               <li><Link to="/register-business" className="hover:text-fem-gold transition-colors">List Your Business</Link></li>
               <li><Link to="/profile" className="hover:text-fem-gold transition-colors">Manage Profile</Link></li>
-              <li><Link to="/chat" className="hover:text-fem-gold transition-colors">Connect with Community</Link></li>
               <li><Link to="/about" className="hover:text-fem-gold transition-colors">Learn More</Link></li>
             </ul>
           </div>
@@ -47,7 +45,6 @@ export const Footer = () => {
             <h3 className="font-heading font-semibold mb-2 text-fem-gold text-sm">Contact</h3>
             <ul className="space-y-1 text-xs text-gray-300">
               <li><Link to="/about" className="hover:text-fem-gold transition-colors">About Us</Link></li>
-              <li><Link to="/contact" className="hover:text-fem-gold transition-colors">Contact Us</Link></li>
               <li><Link to="/faq" className="hover:text-fem-gold transition-colors">FAQ</Link></li>
               <li><Link to="/privacy-policy" className="hover:text-fem-gold transition-colors">Privacy Policy</Link></li>
             </ul>
@@ -56,7 +53,7 @@ export const Footer = () => {
         
         <div className="border-t border-gray-700 mt-4 pt-2 flex flex-col md:flex-row justify-between items-center">
           <p className="text-xs text-gray-300">
-            © {new Date().getFullYear()} FEM Family Church. All rights reserved.
+            © {new Date().getFullYear()} Faith Connect. All rights reserved.
           </p>
           <div className="flex gap-2 mt-2 md:mt-0">
             <Link to="#" className="text-gray-300 hover:text-white">

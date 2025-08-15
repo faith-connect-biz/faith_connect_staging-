@@ -4,6 +4,7 @@ import { Footer } from "@/components/layout/Footer";
 
 import { ServiceList } from "@/components/directory/ServiceList";
 import { ProductList } from "@/components/directory/ProductList";
+import { BusinessList } from "@/components/directory/BusinessList";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,6 +35,7 @@ import {
   Grid3X3,
   List,
   Shield,
+  Building2,
 
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -66,7 +68,7 @@ const DirectoryPage = () => {
   }
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState("services");
+  const [activeTab, setActiveTab] = useState("businesses");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [filters, setFilters] = useState({
@@ -458,7 +460,7 @@ const DirectoryPage = () => {
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
                       <TrendingUp className="w-5 h-5" />
-                      {activeTab === "services" ? "Services" : "Products"}
+                      {activeTab === "businesses" ? "Businesses" : activeTab === "services" ? "Services" : "Products"}
                     </CardTitle>
                     <div className="flex items-center gap-2">
                       <Button
@@ -474,7 +476,14 @@ const DirectoryPage = () => {
                 </CardHeader>
                 <CardContent className="p-6">
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 bg-gray-100/50 backdrop-blur-sm">
+                    <TabsList className="grid w-full grid-cols-3 bg-gray-100/50 backdrop-blur-sm">
+                      <TabsTrigger 
+                        value="businesses" 
+                        className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-fem-terracotta data-[state=active]:to-fem-gold data-[state=active]:text-white"
+                      >
+                        <Building2 className="w-4 h-4" />
+                        Businesses
+                      </TabsTrigger>
                       <TabsTrigger 
                         value="services" 
                         className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-fem-terracotta data-[state=active]:to-fem-gold data-[state=active]:text-white"
@@ -484,12 +493,23 @@ const DirectoryPage = () => {
                       </TabsTrigger>
                       <TabsTrigger 
                         value="products" 
-                        className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-fem-terracotta data-[state=active]:to-fem-gold data-[state=active]:text-white"
+                        className="flex items-center gap-2 data-[state=active]:bg-gradient-outline data-[state=active]:bg-gradient-to-r data-[state=active]:from-fem-terracotta data-[state=active]:to-fem-gold data-[state=active]:text-white"
                       >
                         <Package className="w-4 h-4" />
                         Products
                       </TabsTrigger>
                     </TabsList>
+
+                    <TabsContent value="businesses" className="mt-4 sm:mt-6">
+                      <div className="mb-6">
+                        <h3 className="text-xl sm:text-2xl font-bold text-fem-navy mb-2">Local Businesses</h3>
+                        <p className="text-gray-600">Discover trusted businesses in our community</p>
+                      </div>
+                      
+                      <BusinessList 
+                        filters={{ ...filters, searchTerm }} 
+                      />
+                    </TabsContent>
 
                     <TabsContent value="services" className="mt-4 sm:mt-6">
                       <div className="mb-6">
