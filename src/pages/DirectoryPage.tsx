@@ -48,7 +48,7 @@ import { useBusiness } from "@/contexts/BusinessContext";
 gsap.registerPlugin(ScrollTrigger);
 
 const DirectoryPage = () => {
-  const { businesses, categories, services, products, isLoading } = useBusiness();
+  const { businesses, categories, services, products, isLoading, fetchBusinesses, fetchProducts, totalCount } = useBusiness();
   
   // Debug logging
   console.log('DirectoryPage - businesses:', businesses);
@@ -84,13 +84,38 @@ const DirectoryPage = () => {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(12); // Show 12 items per page
+  const [itemsPerPage, setItemsPerPage] = useState(15); // Changed from 12 to 15 businesses per page
   
   const headerRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  // Fetch businesses with pagination and filters
+  useEffect(() => {
+    // Always fetch businesses, but use categories for filtering when available
+    if (fetchBusinesses) {
+      const params = {
+        page: currentPage,
+        limit: itemsPerPage,
+        category: categories && filters.category !== 'all' ? categories.find(cat => cat.name === filters.category)?.id : undefined,
+        county: filters.county !== 'all' ? filters.county : undefined,
+        rating: filters.rating[1] < 5 ? filters.rating[1] : undefined,
+        is_featured: filters.verifiedOnly
+      };
+      console.log('DirectoryPage - calling fetchBusinesses with params:', params);
+      fetchBusinesses(params);
+    }
+  }, [currentPage, itemsPerPage, filters, categories, fetchBusinesses]);
+
+  // Fetch products when products tab is active
+  useEffect(() => {
+    if (activeTab === "products" && fetchProducts) {
+      console.log('DirectoryPage - calling fetchProducts for products tab');
+      fetchProducts();
+    }
+  }, [activeTab, fetchProducts]);
 
   // Pagination functions
   const handlePageChange = (page: number) => {
@@ -99,6 +124,15 @@ const DirectoryPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Handle page size change
+  const handlePageSizeChange = (newPageSize: number) => {
+    setItemsPerPage(newPageSize);
+    setCurrentPage(1); // Reset to first page when changing page size
+    // Scroll to top when page size changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Reset pagination when filters change
   const resetPagination = () => {
     setCurrentPage(1);
   };
@@ -205,15 +239,15 @@ const DirectoryPage = () => {
   // Get category names from categories
   const categoryNames = Array.isArray(categories) ? categories.map(cat => cat.name) : [];
 
-  const handleSearch = () => {
-    // Search functionality is handled by BusinessList component
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
     setIsSearchExpanded(false);
-    resetPagination();
+    resetPagination(); // Reset pagination when searching
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSearch();
+      handleSearch(e);
     }
   };
 
@@ -380,14 +414,19 @@ const DirectoryPage = () => {
                     {/* Category Filter */}
                     <div>
                       <Label className="text-sm font-medium text-fem-navy">Category</Label>
-                      <Select value={filters.category} onValueChange={(value) => setFilters(prev => ({ ...prev, category: value }))}>
-                        <SelectTrigger className="mt-1">
+                      <Select value={filters.category} onValueChange={(value) => {
+                        setFilters(prev => ({ ...prev, category: value }));
+                        resetPagination();
+                      }}>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="All Categories" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Categories</SelectItem>
-                          {categoryNames.map((category) => (
-                            <SelectItem key={category} value={category}>{category}</SelectItem>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.name}>
+                              {category.name}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -396,7 +435,10 @@ const DirectoryPage = () => {
                   {/* County Filter */}
                     <div>
                       <Label className="text-sm font-medium text-fem-navy">County</Label>
-                    <Select value={filters.county} onValueChange={(value) => setFilters(prev => ({ ...prev, county: value }))}>
+                    <Select value={filters.county} onValueChange={(value) => {
+                      setFilters(prev => ({ ...prev, county: value }));
+                      resetPagination();
+                    }}>
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="All Counties" />
                       </SelectTrigger>
@@ -414,11 +456,14 @@ const DirectoryPage = () => {
                       <Label className="text-sm font-medium text-fem-navy">Rating: {filters.rating[0]} - {filters.rating[1]}</Label>
                     <Slider
                       value={filters.rating}
-                        onValueChange={(value) => setFilters(prev => ({ ...prev, rating: value as [number, number] }))}
+                      onValueChange={(value) => {
+                        setFilters(prev => ({ ...prev, rating: value as [number, number] }));
+                        resetPagination();
+                      }}
                       max={5}
                       min={0}
                       step={0.5}
-                      className="mt-2"
+                      className="w-full"
                     />
                     </div>
 
@@ -428,9 +473,14 @@ const DirectoryPage = () => {
                       <Checkbox
                         id="verified"
                         checked={filters.verifiedOnly}
-                        onCheckedChange={(checked) => setFilters(prev => ({ ...prev, verifiedOnly: checked as boolean }))}
+                        onCheckedChange={(checked) => {
+                          setFilters(prev => ({ ...prev, verifiedOnly: checked as boolean }));
+                          resetPagination();
+                        }}
                       />
-                        <Label htmlFor="verified" className="text-sm">Verified Only</Label>
+                      <Label htmlFor="verified" className="text-sm text-fem-navy">
+                        Verified businesses only
+                      </Label>
                     </div>
                     </div>
 
@@ -508,7 +558,40 @@ const DirectoryPage = () => {
                       
                       <BusinessList 
                         filters={{ ...filters, searchTerm }} 
+                        currentPage={currentPage}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={handlePageChange}
+                        totalCount={totalCount}
                       />
+                      
+                      {/* Page Size Selector and Pagination for Businesses */}
+                      <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-gray-50/50 rounded-lg border">
+                        <div className="flex items-center gap-3">
+                          <Label htmlFor="page-size" className="text-sm font-medium text-gray-700">
+                            Items per page:
+                          </Label>
+                          <Select value={itemsPerPage.toString()} onValueChange={(value) => handlePageSizeChange(Number(value))}>
+                            <SelectTrigger className="w-20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="15">15</SelectItem>
+                              <SelectItem value="30">30</SelectItem>
+                              <SelectItem value="60">60</SelectItem>
+                              <SelectItem value="100">100</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {/* Pagination Info */}
+                        <div className="text-sm text-gray-600">
+                          {isLoading ? (
+                            <span>Loading...</span>
+                          ) : (
+                            `Showing ${((currentPage - 1) * itemsPerPage) + 1} to ${Math.min(currentPage * itemsPerPage, totalCount || 0)} of ${totalCount || 0} businesses`
+                          )}
+                        </div>
+                      </div>
                     </TabsContent>
 
                     <TabsContent value="services" className="mt-4 sm:mt-6">

@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
-import { apiService, Business, Category, BusinessCreateRequest } from '@/services/api';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
+import { apiService, Business, Category, BusinessCreateRequest, Service, Product } from '@/services/api';
 
 interface BusinessContextType {
   businesses: Business[];
@@ -24,9 +24,19 @@ interface BusinessContextType {
     is_featured?: boolean;
     ordering?: string;
     page?: number;
+    limit?: number;
+    offset?: number;
   }) => Promise<void>;
   
   fetchCategories: () => Promise<void>;
+  fetchProducts: (params?: {
+    search?: string;
+    category?: string;
+    in_stock?: boolean;
+    price_currency?: string;
+    ordering?: string;
+    page?: number;
+  }) => Promise<void>;
   createBusiness: (data: BusinessCreateRequest) => Promise<Business>;
   updateBusiness: (id: string, data: BusinessCreateRequest) => Promise<Business>;
   deleteBusiness: (id: string) => Promise<void>;
@@ -45,7 +55,10 @@ interface BusinessProviderProps {
 }
 
 export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) => {
+  console.log('BusinessProvider: Initializing...');
   const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,32 +96,33 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     }) : [], [businesses]
   );
 
-  const computedProducts = useMemo(() => 
-    Array.isArray(businesses) ? businesses.flatMap(business => {
-      console.log(`Processing business ${business.id} products:`, business.products);
-      return business.products?.map((product, index) => ({
-        ...product,
-        id: `${business.id}-product-${index}`, // Generate unique ID
-        business: {
-          id: business.id,
-          business_name: business.business_name,
-          category: business.category,
-          city: business.city,
-          county: business.county,
-          rating: business.rating,
-          is_verified: business.is_verified,
-          is_active: business.is_active
-        }
-      })) || [];
-    }) : [], [businesses]
-  );
+  // Use fetched products instead of computed ones
+  // const computedProducts = useMemo(() => 
+  //   Array.isArray(businesses) ? businesses.flatMap(business => {
+  //     console.log(`Processing business ${business.id} products:`, business.products);
+  //     return business.products?.map((product, index) => ({
+  //       ...product,
+  //       id: `${business.id}-product-${index}`, // Generate unique ID
+  //       business: {
+  //       id: business.id,
+  //       business_name: business.business_name,
+  //       category: business.category,
+  //       city: business.city,
+  //       county: business.county,
+  //       rating: business.rating,
+  //       is_verified: business.is_verified,
+  //       is_active: business.is_active
+  //     }
+  //   })) || [];
+  // }) : [], [businesses]
+  // );
 
   // Debug logging
   console.log('BusinessContext - businesses:', businesses);
   console.log('BusinessContext - computedServices:', computedServices);
-  console.log('BusinessContext - computedProducts:', computedProducts);
+  console.log('BusinessContext - computedProducts:', products); // Changed from computedProducts to products
 
-  const fetchBusinesses = async (params?: {
+  const fetchBusinesses = useCallback(async (params?: {
     search?: string;
     category?: number;
     city?: string;
@@ -117,17 +131,29 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     is_featured?: boolean;
     ordering?: string;
     page?: number;
+    limit?: number;
+    offset?: number;
   }) => {
+    console.log('fetchBusinesses - Called with params:', params);
     try {
       setIsLoading(true);
       setError(null);
       
-      const response = await apiService.getBusinesses(params);
+      // Calculate offset if page and limit are provided
+      let apiParams = { ...params };
+      if (params?.page && params?.limit) {
+        apiParams.offset = (params.page - 1) * params.limit;
+        apiParams.limit = params.limit;
+      }
+      
+      console.log('fetchBusinesses - API params being sent:', apiParams);
+      const response = await apiService.getBusinesses(apiParams);
       console.log('fetchBusinesses - API response:', response);
       
       // Ensure businesses is always an array
       if (response && response.results && Array.isArray(response.results)) {
         console.log('fetchBusinesses - Using response.results:', response.results);
+        console.log('fetchBusinesses - Setting businesses to:', response.results);
         setBusinesses(response.results);
         setTotalCount(response.count || 0);
         setCurrentPage(params?.page || 1);
@@ -161,18 +187,22 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const fetchCategories = async () => {
     try {
+      console.log('fetchCategories: Starting...');
       setError(null);
       const response = await apiService.getCategories();
+      console.log('fetchCategories: API response:', response);
       
       // Handle paginated response
       if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
+        console.log('fetchCategories: Using paginated response, setting categories to:', response.results);
         setCategories(response.results);
       } else if (Array.isArray(response)) {
         // Handle direct array response
+        console.log('fetchCategories: Using direct array response, setting categories to:', response);
         setCategories(response);
       } else {
         console.error('Categories API returned unexpected response format:', response);
@@ -187,6 +217,52 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     }
   };
 
+  const fetchProducts = async (params?: {
+    search?: string;
+    category?: string;
+    in_stock?: boolean;
+    price_currency?: string;
+    ordering?: string;
+    page?: number;
+  }) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await apiService.getAllProducts(params);
+      if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
+        setProducts(response.results);
+        setTotalCount(response.count || 0);
+        setCurrentPage(params?.page || 1);
+        setHasNextPage(!!response.next);
+        setHasPreviousPage(!!response.previous);
+      } else if (Array.isArray(response)) {
+        setProducts(response);
+        setTotalCount(response.length);
+        setCurrentPage(1);
+        setHasNextPage(false);
+        setHasPreviousPage(false);
+      } else {
+        console.error('Products API returned unexpected response format:', response);
+        setProducts([]);
+        setTotalCount(0);
+        setCurrentPage(1);
+        setHasNextPage(false);
+        setHasPreviousPage(false);
+        setError('Products API returned invalid format');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products';
+      setError(errorMessage);
+      console.error('Failed to fetch products:', err);
+      setProducts([]);
+      setTotalCount(0);
+      setCurrentPage(1);
+      setHasNextPage(false);
+      setHasPreviousPage(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 
   const createBusiness = async (data: BusinessCreateRequest): Promise<Business> => {
@@ -289,18 +365,29 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     setError(null);
   };
 
-  // Load initial data
+  // Initial data loading
   useEffect(() => {
-    fetchBusinesses();
-    fetchCategories();
-  }, []);
+    console.log('BusinessContext: Initial data loading useEffect triggered');
+    if (fetchBusinesses) {
+      console.log('BusinessContext: Calling fetchBusinesses with page: 1, limit: 15');
+      fetchBusinesses({ page: 1, limit: 15 });
+    }
+    if (fetchCategories) {
+      console.log('BusinessContext: Calling fetchCategories');
+      fetchCategories();
+    }
+    if (fetchProducts) {
+      console.log('BusinessContext: Calling fetchProducts');
+      fetchProducts();
+    }
+  }, [fetchBusinesses, fetchCategories, fetchProducts]);
 
   const value: BusinessContextType = {
     businesses,
     categories,
     featuredBusinesses,
     services: computedServices,
-    products: computedProducts,
+    products: products, // Changed from computedProducts to products
     isLoading,
     error,
     totalCount,
@@ -309,6 +396,7 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     hasPreviousPage,
     fetchBusinesses,
     fetchCategories,
+    fetchProducts,
     createBusiness,
     updateBusiness,
     deleteBusiness,

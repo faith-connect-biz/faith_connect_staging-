@@ -47,7 +47,7 @@ interface ProductListProps {
   onPageChange?: (page: number) => void;
 }
 
-export const ProductList = ({ filters, currentPage = 1, itemsPerPage = 12, onPageChange }: ProductListProps) => {
+export const ProductList = ({ filters, currentPage = 1, itemsPerPage = 15, onPageChange }: ProductListProps) => {
   const navigate = useNavigate();
   const { products, businesses, isLoading } = useBusiness();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -55,6 +55,12 @@ export const ProductList = ({ filters, currentPage = 1, itemsPerPage = 12, onPag
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+
+  // Debug logging
+  console.log('ProductList - products received:', products);
+  console.log('ProductList - businesses received:', businesses);
+  console.log('ProductList - isLoading:', isLoading);
+  console.log('ProductList - filters:', filters);
 
   // GSAP Scroll Animations
   useEffect(() => {
@@ -70,8 +76,7 @@ export const ProductList = ({ filters, currentPage = 1, itemsPerPage = 12, onPag
   // Filter products based on filters
   const filteredProducts = Array.isArray(products) ? products.filter(product => {
     // Get the business for this product
-    // Handle both string and object business references
-    const businessId = typeof product.business === 'string' ? product.business : product.business.id;
+    const businessId = typeof product.business === 'string' ? product.business : product.business?.id;
     const business = businesses.find(b => b.id === businessId);
     if (!business) return false;
 

@@ -36,12 +36,15 @@ import {
   PenTool,
   Plus,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ImageIcon
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { MotionWrapper, HoverCard, GlassmorphismCard } from "@/components/ui/MotionWrapper";
+import { BusinessLogo } from "@/components/ui/ImageWithFallback";
+import { getBusinessImageUrl, getBusinessLogoUrl } from "@/utils/imageUtils";
 import { apiService } from "@/services/api";
 import type { Business, Review } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -100,6 +103,10 @@ const BusinessDetailPage = () => {
   // Service form states
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [editingService, setEditingService] = useState<any>(null);
+
+  // Image upload states
+  const [isUploadingProfileImage, setIsUploadingProfileImage] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   const headerRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
@@ -225,6 +232,22 @@ const BusinessDetailPage = () => {
     console.log('Reviews length:', reviews.length);
     console.log('Business review count:', business?.review_count);
   }, [reviews, business?.review_count]);
+
+  // Debug logging for business data
+  useEffect(() => {
+    if (business) {
+      console.log('BusinessDetailPage - Business data:', {
+        id: business.id,
+        name: business.business_name,
+        business_image_url: business.business_image_url,
+        business_logo_url: business.business_logo_url,
+        hasImage: !!business.business_image_url,
+        hasLogo: !!business.business_logo_url,
+        processedImageUrl: getBusinessImageUrl(business),
+        processedLogoUrl: getBusinessLogoUrl(business)
+      });
+    }
+  }, [business]);
 
   const handleToggleFavorite = () => {
     setIsFavorite(!isFavorite);
@@ -570,6 +593,133 @@ const BusinessDetailPage = () => {
     </AnimatePresence>
   );
 
+  // Image upload functions
+  const handleProfileImageUpload = async (file: File) => {
+    if (!file || !business) return;
+
+    setIsUploadingProfileImage(true);
+    try {
+      // Get pre-signed URL for upload
+      const uploadData = await apiService.getBusinessProfileImageUploadUrl(business.id, file.name, file.type);
+      
+      // Upload to S3
+      const uploadResponse = await fetch(uploadData.presigned_url, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload image to S3');
+      }
+
+      // Update business with new image
+      const updateResponse = await apiService.updateBusinessProfileImage(business.id, uploadData.file_key);
+      
+      // Update local state
+      setBusiness(prev => ({
+        ...prev,
+        business_image_url: updateResponse.business_image_url
+      }));
+
+      toast({
+        title: "Success",
+        description: "Profile image updated successfully!",
+      });
+    } catch (error) {
+      console.error('Error uploading profile image:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload profile image. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploadingProfileImage(false);
+    }
+  };
+
+  const handleLogoUpload = async (file: File) => {
+    if (!file || !business) return;
+
+    setIsUploadingLogo(true);
+    try {
+      // Get pre-signed URL for upload
+      const uploadData = await apiService.getBusinessLogoUploadUrl(business.id, file.name, file.type);
+      
+      // Upload to S3
+      const uploadResponse = await fetch(uploadData.presigned_url, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload logo to S3');
+      }
+
+      // Update business with new logo
+      const updateResponse = await apiService.updateBusinessLogo(business.id, uploadData.file_key);
+      
+      // Update local state
+      setBusiness(prev => ({
+        ...prev,
+        business_logo_url: updateResponse.business_logo_url
+      }));
+
+      toast({
+        title: "Success",
+        description: "Logo updated successfully!",
+      });
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload logo. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const handleImageFileSelect = (event: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'logo') => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please select an image file.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Image must be less than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (type === 'profile') {
+      handleProfileImageUpload(file);
+    } else {
+      handleLogoUpload(file);
+    }
+
+    // Reset input
+    event.target.value = '';
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -663,9 +813,16 @@ const BusinessDetailPage = () => {
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden">
               <div className="relative h-64 md:h-80">
                 <img 
-                  src={business.business_image_url || business.business_logo_url || "/placeholder.svg"} 
+                  src={getBusinessImageUrl(business) || getBusinessLogoUrl(business) || "/placeholder.svg"} 
                   alt={business.business_name}
-                  className="w-full h-full object-cover"
+                  className={`w-full h-full ${
+                    getBusinessImageUrl(business) ? 'object-cover' : 'object-contain'
+                  } ${!getBusinessImageUrl(business) && getBusinessLogoUrl(business) ? 'bg-white' : ''}`}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = "/placeholder.svg";
+                    target.className = "w-full h-full object-cover";
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                 
@@ -745,6 +902,117 @@ const BusinessDetailPage = () => {
                     
                     <TabsContent value="overview" className="mt-6">
                       <div className="space-y-6">
+                        {/* Business Logo Display - Prominent Section */}
+                        <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-fem-navy flex items-center gap-2">
+                              <ImageIcon className="w-5 h-5 text-fem-terracotta" />
+                              Business Logo
+                            </h3>
+                            {user && user.user_type === 'business' && isBusinessOwner && (
+                              <div className="flex gap-2">
+                                <input
+                                  type="file"
+                                  id="logo-upload"
+                                  accept="image/*"
+                                  onChange={(e) => handleImageFileSelect(e, 'logo')}
+                                  className="hidden"
+                                  disabled={isUploadingLogo}
+                                />
+                                <label
+                                  htmlFor="logo-upload"
+                                  className={`cursor-pointer px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
+                                    isUploadingLogo
+                                      ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                      : 'bg-fem-terracotta text-white border-fem-terracotta hover:bg-fem-terracotta/90'
+                                  }`}
+                                >
+                                  {isUploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                                </label>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex justify-center">
+                            <div className="w-32 h-32 rounded-lg overflow-hidden border border-gray-300 bg-white flex items-center justify-center shadow-md">
+                              {business.business_logo_url ? (
+                                <img 
+                                  src={business.business_logo_url} 
+                                  alt={`${business.business_name} logo`}
+                                  className="w-full h-full object-contain"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    // Show fallback text
+                                    const fallback = document.createElement('div');
+                                    fallback.className = 'w-full h-full flex items-center justify-center text-gray-400 text-sm';
+                                    fallback.textContent = 'Logo not available';
+                                    target.parentNode?.appendChild(fallback);
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+                                  {user && user.user_type === 'business' && isBusinessOwner 
+                                    ? 'Click Upload Logo to add your business logo'
+                                    : 'No logo available'
+                                  }
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Business Profile Image Upload Section */}
+                        {user && user.user_type === 'business' && isBusinessOwner && (
+                          <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-fem-navy flex items-center gap-2">
+                                <Camera className="w-5 h-5 text-fem-terracotta" />
+                                Business Profile Image
+                              </h3>
+                              <div className="flex gap-2">
+                                <input
+                                  type="file"
+                                  id="profile-image-upload"
+                                  accept="image/*"
+                                  onChange={(e) => handleImageFileSelect(e, 'profile')}
+                                  className="hidden"
+                                  disabled={isUploadingProfileImage}
+                                />
+                                <label
+                                  htmlFor="profile-image-upload"
+                                  className={`cursor-pointer px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
+                                    isUploadingProfileImage
+                                      ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                      : 'bg-fem-terracotta text-white border-fem-terracotta hover:bg-fem-terracotta/90'
+                                  }`}
+                                >
+                                  {isUploadingProfileImage ? 'Uploading...' : 'Upload Image'}
+                                </label>
+                              </div>
+                            </div>
+                            <div className="flex justify-center">
+                              <div className="w-32 h-32 rounded-lg overflow-hidden border border-gray-300 bg-white flex items-center justify-center shadow-md">
+                                {business.business_image_url ? (
+                                  <img 
+                                    src={business.business_image_url} 
+                                    alt={`${business.business_name} profile image`}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.src = "/placeholder.svg";
+                                      target.className = "w-full h-full object-cover";
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+                                    Click Upload Image to add your business profile image
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         <div>
                           <h3 className="text-xl font-semibold text-fem-navy mb-3">About</h3>
                           <p className="text-gray-600 leading-relaxed">
@@ -786,6 +1054,18 @@ const BusinessDetailPage = () => {
                           <div>
                             <h4 className="font-semibold text-fem-navy mb-3">Business Information</h4>
                             <div className="space-y-2">
+                              {/* Business Logo Display */}
+                              {business.business_logo_url && (
+                                <div className="flex items-center gap-2 text-gray-600">
+                                  <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200 bg-white flex items-center justify-center">
+                                    <BusinessLogo 
+                                      business={business}
+                                      className="w-full h-full"
+                                    />
+                                  </div>
+                                  <span className="text-sm text-gray-500">Business Logo</span>
+                                </div>
+                              )}
                               <div className="flex items-center gap-2 text-gray-600">
                                 <Package className="w-4 h-4 text-fem-terracotta" />
                                 <span>Category: {business.category?.name}</span>

@@ -176,6 +176,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     success: boolean; 
     message: string; 
     user_id?: number; 
+    registration_token?: string;
     requires_otp?: boolean; 
     otp_sent_to?: string; 
     user?: User; 
@@ -185,14 +186,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await apiService.register(data);
       
       if (response.success && response.requires_otp) {
-        // Store user ID for OTP verification
-        setRegistrationToken(response.user_id?.toString() || '');
+        // Store registration token for OTP verification
+        const token = response.registration_token || response.user_id?.toString() || '';
+        setRegistrationToken(token);
         setOtpSentTo(response.otp_sent_to || '');
         
         return {
           success: true,
           message: response.message,
           user_id: response.user_id,
+          registration_token: response.registration_token,
           requires_otp: true,
           otp_sent_to: response.otp_sent_to
         };

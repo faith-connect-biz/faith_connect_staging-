@@ -73,6 +73,10 @@ export const BusinessImage: React.FC<{
       src={imageSrc}
       alt={`${business.business_name} photo`}
       className={className}
+      fallbackSrc="/placeholder.svg"
+      onError={() => {
+        console.warn(`Failed to load image for business: ${business.business_name}`);
+      }}
       {...props}
     />
   );
@@ -90,6 +94,10 @@ export const BusinessLogo: React.FC<{
       src={logoSrc}
       alt={`${business.business_name} logo`}
       className={cn("object-contain", className)}
+      fallbackSrc="/placeholder.svg"
+      onError={() => {
+        console.warn(`Failed to load logo for business: ${business.business_name}`);
+      }}
       {...props}
     />
   );

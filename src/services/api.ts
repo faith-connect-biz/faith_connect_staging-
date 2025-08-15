@@ -313,19 +313,19 @@ class ApiService {
       (config) => {
         // List of public endpoints that don't require authentication
         const publicEndpoints = [
-          '/register',
-          '/verify-registration-otp',
-          '/resend-registration-otp',
-          '/login',
-          '/logout',
-          '/refresh-token',
-          '/verify-email',
-          '/verify-email-confirm',
-          '/verify-phone',
-          '/verify-phone-confirm',
-          '/forgot-password',
-          '/reset-password',
-          '/categories'
+          'register',
+          'verify-registration-otp',
+          'resend-registration-otp',
+          'login',
+          'logout',
+          'refresh-token',
+          'verify-email',
+          'verify-email-confirm',
+          'verify-phone',
+          'verify-phone-confirm',
+          'forgot-password',
+          'reset-password',
+          'categories'
         ];
         
         // Check if the current endpoint is public
@@ -404,6 +404,7 @@ class ApiService {
     success: boolean; 
     message: string; 
     user_id?: number; 
+    registration_token?: string;
     requires_otp?: boolean; 
     otp_sent_to?: string; 
     user?: User; 
@@ -428,6 +429,20 @@ class ApiService {
     return response.data;
   }
 
+  // New method to verify registration OTP using registration token
+  async verifyRegistrationOTPWithToken(registrationToken: string, otp: string): Promise<{ 
+    success: boolean; 
+    message: string; 
+    user?: User; 
+    tokens?: AuthTokens; 
+  }> {
+    const response = await this.api.post('/verify-registration-otp', {
+      registration_token: registrationToken,
+      otp: otp
+    });
+    return response.data;
+  }
+
   // New method to resend registration OTP
   async resendRegistrationOTP(userId: number): Promise<{ 
     success: boolean; 
@@ -436,6 +451,18 @@ class ApiService {
   }> {
     const response = await this.api.post('/resend-registration-otp', {
       user_id: userId
+    });
+    return response.data;
+  }
+
+  // New method to resend registration OTP using registration token
+  async resendRegistrationOTPWithToken(registrationToken: string): Promise<{ 
+    success: boolean; 
+    message: string; 
+    otp_sent_to?: string; 
+  }> {
+    const response = await this.api.post('/resend-registration-otp', {
+      registration_token: registrationToken
     });
     return response.data;
   }
@@ -585,7 +612,10 @@ class ApiService {
     is_featured?: boolean;
     ordering?: string;
     page?: number;
+    limit?: number;
+    offset?: number;
   }): Promise<{ results: Business[]; count: number; next?: string; previous?: string }> {
+    console.log('API getBusinesses - params received:', params);
     const response = await this.api.get('/business/', { params }); // Business list is at /api/business/ endpoint
     console.log('API getBusinesses - Raw response:', response);
     console.log('API getBusinesses - response.data:', response.data);
@@ -1556,6 +1586,74 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('Error getting profile photo upload URL:', error);
+      throw error;
+    }
+  }
+
+  // Business Profile Image Upload using S3 pre-signed URLs
+  async getBusinessProfileImageUploadUrl(businessId: string, fileName: string, contentType: string): Promise<{
+    presigned_url: string;
+    file_key: string;
+    expires_in_minutes: number;
+  }> {
+    try {
+      const response = await this.api.post(`business/${businessId}/upload-profile-image/`, {
+        file_name: fileName,
+        content_type: contentType
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error getting business profile image upload URL:', error);
+      throw error;
+    }
+  }
+
+  // Update business with uploaded profile image
+  async updateBusinessProfileImage(businessId: string, fileKey: string): Promise<{
+    business_image_url: string;
+    s3_url: string;
+  }> {
+    try {
+      const response = await this.api.put(`business/${businessId}/update-profile-image/`, {
+        file_key: fileKey
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating business profile image:', error);
+      throw error;
+    }
+  }
+
+  // Business Logo Upload using S3 pre-signed URLs
+  async getBusinessLogoUploadUrl(businessId: string, fileName: string, contentType: string): Promise<{
+    presigned_url: string;
+    file_key: string;
+    expires_in_minutes: number;
+  }> {
+    try {
+      const response = await this.api.post(`business/${businessId}/upload-logo/`, {
+        file_name: fileName,
+        content_type: contentType
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error getting business logo upload URL:', error);
+      throw error;
+    }
+  }
+
+  // Update business with uploaded logo
+  async updateBusinessLogo(businessId: string, fileKey: string): Promise<{
+    business_logo_url: string;
+    s3_url: string;
+  }> {
+    try {
+      const response = await this.api.put(`business/${businessId}/update-logo/`, {
+        file_key: fileKey
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating business logo:', error);
       throw error;
     }
   }

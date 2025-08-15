@@ -138,25 +138,25 @@ const HomePage: React.FC = () => {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
           <div className="text-center">
             <h3 className="text-lg font-semibold text-blue-800 mb-2">
-              Want to List Your Business?
+              Welcome, Community Member!
             </h3>
             <p className="text-blue-700 mb-4">
-              You're currently logged in as a community member. To list and manage a business, 
-              you'll need to log in with a business account.
+              As a community member, you can browse our directory of trusted faith-based businesses, 
+              leave reviews, and support local commerce within our church family.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button 
-                onClick={() => {
-                  // This would typically open a login modal or redirect to business login
-                  window.location.href = '/';
-                }}
-                className="btn-outline-modern px-6 py-3"
-              >
+              <Link to="/directory" className="btn-modern px-6 py-3">
                 <div className="flex items-center gap-2">
-                  <Building2 className="w-5 h-5" />
-                  <span>Switch to Business Account</span>
+                  <Search className="w-5 h-5" />
+                  <span>Browse Business Directory</span>
                 </div>
-              </button>
+              </Link>
+              <Link to="/profile" className="btn-outline-modern px-6 py-3">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  <span>View Your Profile</span>
+                </div>
+              </Link>
             </div>
           </div>
         </div>
