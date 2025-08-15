@@ -33,6 +33,8 @@ class ServiceSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
+    business = serializers.SerializerMethodField()
+    
     class Meta:
         model = Product
         fields = [
@@ -49,6 +51,29 @@ class ProductSerializer(serializers.ModelSerializer):
             'created_at'
         ]
         read_only_fields = ['id', 'created_at']
+    
+    def get_business(self, obj):
+        """Return business information for the product"""
+        if hasattr(obj, 'business') and obj.business:
+            # Always return expanded business details since context approach is not working
+            return {
+                'id': obj.business.id,
+                'business_name': obj.business.business_name,
+                'category': {
+                    'id': obj.business.category.id,
+                    'name': obj.business.category.name
+                } if obj.business.category else None,
+                'city': obj.business.city,
+                'county': obj.business.county,
+                'address': obj.business.address,
+                'rating': obj.business.rating,
+                'review_count': obj.business.review_count,
+                'is_verified': obj.business.is_verified,
+                'is_active': obj.business.is_active,
+                'business_image_url': obj.business.business_image_url,
+                'business_logo_url': obj.business.business_logo_url
+            }
+        return None
 
 
 class ReviewSerializer(serializers.ModelSerializer):
