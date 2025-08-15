@@ -1,7 +1,10 @@
 
 import { Link } from "react-router-dom";
+import { useAuth } from '@/contexts/AuthContext';
 
 export const Footer = () => {
+  const { user, isAuthenticated, isBusiness, isCommunity } = useAuth();
+
   return (
     <footer className="bg-fem-navy text-white py-4">
       <div className="container mx-auto px-4">
@@ -33,11 +36,23 @@ export const Footer = () => {
           </div>
           
           <div>
-            <h3 className="font-heading font-semibold mb-2 text-fem-gold text-sm">For Business Directories</h3>
+            <h3 className="font-heading font-semibold mb-2 text-fem-gold text-sm">
+              {isAuthenticated && isCommunity ? "For Community Members" : "For Business Owners"}
+            </h3>
             <ul className="space-y-1 text-xs text-gray-300">
-              <li><Link to="/register-business" className="hover:text-fem-gold transition-colors">List Your Business</Link></li>
-              <li><Link to="/profile" className="hover:text-fem-gold transition-colors">Manage Profile</Link></li>
-              <li><Link to="/about" className="hover:text-fem-gold transition-colors">Learn More</Link></li>
+              {isAuthenticated && isCommunity ? (
+                <>
+                  <li className="text-gray-400">Community members support businesses</li>
+                  <li className="text-gray-400">Find and review trusted services</li>
+                  <li><Link to="/directory" className="hover:text-fem-gold transition-colors">Browse Directory</Link></li>
+                </>
+              ) : (
+                <>
+                  <li><Link to="/register-business" className="hover:text-fem-gold transition-colors">List Your Business</Link></li>
+                  <li><Link to="/profile" className="hover:text-fem-gold transition-colors">Manage Profile</Link></li>
+                  <li><Link to="/about" className="hover:text-fem-gold transition-colors">Learn More</Link></li>
+                </>
+              )}
             </ul>
           </div>
           

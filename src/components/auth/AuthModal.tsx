@@ -67,8 +67,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     userType: 'community',
     partnershipNumber: ''
   });
-  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
-  const [usePhone, setUsePhone] = useState(false); // Toggle between phone and email
+  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('phone'); // Force phone for now
+  const [usePhone, setUsePhone] = useState(true); // Toggle between phone and email - force phone for now
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -76,18 +76,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Handle toggle between phone and email
+  // Handle toggle between phone and email - disabled for now
   const handleToggleChange = (checked: boolean) => {
-    setUsePhone(checked);
-    if (checked) {
-      // Switching to phone - clear email and set auth method
-      setSignupData(prev => ({ ...prev, email: '' }));
-      setAuthMethod('phone');
-    } else {
-      // Switching to email - clear phone and set auth method
-      setSignupData(prev => ({ ...prev, phone: '' }));
-      setAuthMethod('email');
-    }
+    // Email is temporarily disabled, so force phone
+    setUsePhone(true);
+    setAuthMethod('phone');
+    // Clear email data since it's not usable
+    setSignupData(prev => ({ ...prev, email: '' }));
   };
 
   // Send OTP to phone number when phone is selected
@@ -115,7 +110,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   };
 
-  // Reset form when modal opens/closes
+  // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
       // Always reset to form step when modal opens
@@ -131,8 +126,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         userType: 'community',
         partnershipNumber: ''
       });
-      setAuthMethod('email');
-      setUsePhone(false); // Reset toggle to email
+      setAuthMethod('phone'); // Force phone for now
+      setUsePhone(true); // Reset toggle to phone
     }
   }, [isOpen]);
 
@@ -144,9 +139,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       setAuthMethod('phone');
       setSignupData(prev => ({ ...prev, email: '' }));
     } else {
-      // Set default to email for login
-      setUsePhone(false);
-      setAuthMethod('email');
+      // Set default to phone for login (email temporarily disabled)
+      setUsePhone(true);
+      setAuthMethod('phone');
       setSignupData(prev => ({ ...prev, phone: '' }));
     }
   }, [activeTab]);
@@ -173,7 +168,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       await login({ 
         identifier, 
         password, 
-        auth_method: usePhone ? 'phone' : 'email' 
+        auth_method: 'phone' // Force phone since email is disabled
       });
       toast({
         title: "Success!",
@@ -213,60 +208,124 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       return;
     }
     
-    if (!usePhone && !signupData.email) {
-      toast({
-        title: "Error",
-        description: "Please provide your email address.",
-        variant: "destructive"
-      });
-      return;
+    // Validate phone number format (basic validation)
+    if (usePhone && signupData.phone) {
+      const phoneRegex = /^\+?[\d\s\-\(\)]{7,}$/;
+      if (!phoneRegex.test(signupData.phone)) {
+        toast({
+          title: "Invalid Phone Number",
+          description: "Please enter a valid phone number with at least 7 digits.",
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
     console.log('Starting signup process...', { signupData });
     setIsLoading(true);
+    
+    // Add timeout to prevent hanging
+    const timeoutId = setTimeout(() => {
+      setIsLoading(false);
+      toast({
+        title: "Registration Timeout",
+        description: "Registration is taking longer than expected. Please try again.",
+        variant: "destructive"
+      });
+    }, 30000); // 30 second timeout
+    
     try {
       const registerResponse = await register({
         first_name: signupData.firstName,
         last_name: signupData.lastName,
         partnership_number: signupData.partnershipNumber,
-        email: usePhone ? undefined : signupData.email,
-        phone: usePhone ? signupData.phone : undefined,
+        phone: signupData.phone, // Force phone since email is disabled
+        email: undefined, // Email temporarily disabled
         password: signupData.password,
         user_type: signupData.userType as 'community' | 'business'
       });
+      
+      // Clear timeout on success
+      clearTimeout(timeoutId);
       
       console.log('Registration successful:', registerResponse);
       console.log('Registration response structure:', {
         success: registerResponse.success,
         message: registerResponse.message,
         user_id: registerResponse.user_id,
+        registration_token: registerResponse.registration_token,
         requires_otp: registerResponse.requires_otp,
         otp_sent_to: registerResponse.otp_sent_to
       });
       
+      // Handle case where response might be wrapped in data field
+      let actualResponse = registerResponse as any;
+      if (registerResponse && typeof registerResponse === 'object' && 'data' in registerResponse && registerResponse.data && typeof registerResponse.data === 'object') {
+        actualResponse = registerResponse.data as any;
+        console.log('Response was wrapped in data field, using:', actualResponse);
+      }
+      
       // Check if we have the required data
-      if (!registerResponse.user_id) {
-        console.error('Missing user_id in response:', registerResponse);
-        throw new Error('Registration failed: Missing user ID');
+      if (!actualResponse.success) {
+        console.error('Registration failed - success is false:', actualResponse);
+        throw new Error(actualResponse.message || 'Registration failed');
+      }
+      
+      // Check for either user_id or registration_token
+      if (!actualResponse.user_id && !actualResponse.registration_token) {
+        console.error('Missing both user_id and registration_token in response:', actualResponse);
+        console.error('Full response object:', registerResponse);
+        
+        // Check if this is a different response structure
+        if (actualResponse.message && actualResponse.message.includes('OTP')) {
+          // If the message mentions OTP, this might be a success case
+          console.log('Response mentions OTP, proceeding with available data');
+        } else {
+          throw new Error('Registration failed: Server did not return required verification data. Please try again or contact support.');
+        }
+      }
+      
+      if (!actualResponse.requires_otp) {
+        console.error('Registration response missing requires_otp:', actualResponse);
+        throw new Error('Registration failed: OTP verification is required but not configured. Please contact support.');
       }
       
       // Store signup data for OTP verification
       localStorage.setItem('signup_email', usePhone ? '' : signupData.email);
       localStorage.setItem('signup_phone', usePhone ? signupData.phone : '');
-      localStorage.setItem('signup_user_id', registerResponse.user_id.toString());
+      
+      // Store either user_id or registration_token
+      if (actualResponse.user_id) {
+        localStorage.setItem('signup_user_id', actualResponse.user_id.toString());
+        console.log('Using user_id for OTP verification:', actualResponse.user_id);
+      } else if (actualResponse.registration_token) {
+        localStorage.setItem('signup_registration_token', actualResponse.registration_token);
+        console.log('Using registration_token for OTP verification:', actualResponse.registration_token);
+      }
+      
       localStorage.setItem('signup_user_type', signupData.userType);
       localStorage.setItem('signup_partnership_number', signupData.partnershipNumber);
-      localStorage.setItem('signup_auth_method', usePhone ? 'phone' : 'email');
+      localStorage.setItem('signup_auth_method', 'phone'); // Force phone since email is disabled
+
+      // Verify that required data was stored correctly
+      const storedUserId = localStorage.getItem('signup_user_id');
+      const storedToken = localStorage.getItem('signup_registration_token');
+      if (!storedUserId && !storedToken) {
+        console.error('Failed to store verification data in localStorage');
+        throw new Error('Registration failed: Could not save session data. Please try again.');
+      }
+
+      console.log('Verification data stored successfully:', { storedUserId, storedToken });
 
       // Set auth method based on toggle and move to OTP step
-      setAuthMethod(usePhone ? 'phone' : 'email');
+      setAuthMethod('phone'); // Force phone since email is disabled
       setSignupStep('otp');
 
-      console.log(`Using ${usePhone ? 'phone' : 'email'} verification`);
+      console.log('Using phone verification'); // Email temporarily disabled
 
       toast({
         title: "Registration successful!",
-        description: `Please verify your ${usePhone ? 'phone number' : 'email address'} to complete registration.`,
+        description: "Please verify your phone number to complete registration.",
       });
     } catch (error: any) {
       console.error('Registration failed:', error);
@@ -276,6 +335,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         variant: "destructive"
       });
     } finally {
+      clearTimeout(timeoutId); // Always clear timeout
       setIsLoading(false);
     }
   };
@@ -286,8 +346,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       
       // Get the user ID from localStorage
       const userId = localStorage.getItem('signup_user_id');
+      const registrationToken = localStorage.getItem('signup_registration_token');
       
-      if (!userId) {
+      if (!userId && !registrationToken) {
+        console.error('No user ID or registration token found in localStorage for OTP verification');
         toast({
           title: "Error",
           description: "Registration session expired. Please register again.",
@@ -296,57 +358,82 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         return false;
       }
       
+      // Only validate user ID format if we're actually using user_id
+      let parsedUserId = 0;
+      if (userId) {
+        parsedUserId = parseInt(userId);
+        if (isNaN(parsedUserId) || parsedUserId <= 0) {
+          console.error('Invalid user ID format in localStorage:', userId);
+          toast({
+            title: "Error",
+            description: "Invalid registration session. Please register again.",
+            variant: "destructive"
+          });
+          // Clear invalid data
+          localStorage.removeItem('signup_user_id');
+          return false;
+        }
+      }
+      
       // Call the registration OTP verification endpoint
-      const data = {
-        user_id: parseInt(userId),
-        otp: otp
-      };
-
-      console.log('Calling registration OTP verification endpoint with data:', data);
-      const response = await apiService.verifyRegistrationOTP(parseInt(userId), otp);
+      let response;
+      if (userId && parsedUserId > 0) {
+        // Use user_id if available
+        response = await apiService.verifyRegistrationOTP(parsedUserId, otp);
+        console.log('OTP verification response (using user_id):', response);
+      } else if (registrationToken) {
+        // Use registration_token if user_id is not available
+        response = await apiService.verifyRegistrationOTPWithToken(registrationToken, otp);
+        console.log('OTP verification response (using registration_token):', response);
+      } else {
+        throw new Error('No valid verification data available');
+      }
+      
       console.log('OTP verification response:', response);
       
-      if (response.success) {
-        // Get stored signup data
-        const userType = localStorage.getItem('signup_user_type');
-        const partnershipNumber = localStorage.getItem('signup_partnership_number');
-        
-        // Clear stored signup data
-        localStorage.removeItem('signup_email');
-        localStorage.removeItem('signup_phone');
-        localStorage.removeItem('signup_user_id');
-        localStorage.removeItem('signup_user_type');
-        localStorage.removeItem('signup_partnership_number');
-        
-        // Store user data and tokens for immediate login
-        if (response.user && response.tokens) {
-          localStorage.setItem('user', JSON.stringify(response.user));
-          localStorage.setItem('access_token', response.tokens.access);
-          localStorage.setItem('refresh_token', response.tokens.refresh);
-        }
-        
+      if (!response.success) {
+        console.error('OTP verification failed:', response);
         toast({
-          title: "Success!",
-          description: "Account created and verified successfully! Welcome to Faith Connect!",
-        });
-
-        // Close modal and redirect based on user type
-        onClose();
-        if (userType === 'business') {
-          navigate('/register-business');
-        } else {
-          navigate('/');
-        }
-        
-        return true;
-      } else {
-        toast({
-          title: "Verification failed",
+          title: "OTP Verification Failed",
           description: response.message || "Invalid OTP. Please try again.",
           variant: "destructive"
         });
         return false;
       }
+      
+      // Get stored signup data
+      const userType = localStorage.getItem('signup_user_type');
+      const partnershipNumber = localStorage.getItem('signup_partnership_number');
+      
+      // Clear stored signup data
+      localStorage.removeItem('signup_email');
+      localStorage.removeItem('signup_phone');
+      localStorage.removeItem('signup_user_id');
+      localStorage.removeItem('signup_registration_token'); // Clear registration token
+      localStorage.removeItem('signup_user_type');
+      localStorage.removeItem('signup_partnership_number');
+      
+      // Store user data and tokens for immediate login
+      if (response.user && response.tokens) {
+        localStorage.setItem('user', JSON.stringify(response.user));
+        localStorage.setItem('access_token', response.tokens.access);
+        localStorage.setItem('refresh_token', response.tokens.refresh);
+      }
+      
+      toast({
+        title: "Success!",
+        description: "Account created and verified successfully! Welcome to Faith Connect!",
+      });
+
+      // Close modal and redirect based on user type
+      onClose();
+      if (userType === 'business') {
+        navigate('/register-business');
+      } else {
+        navigate('/');
+      }
+      
+      return true;
     } catch (error) {
       console.error('OTP verification error:', error);
       toast({
@@ -364,9 +451,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       
       // Get the user ID from localStorage
       const userId = localStorage.getItem('signup_user_id');
+      const registrationToken = localStorage.getItem('signup_registration_token');
       console.log('Retrieved user ID from localStorage:', userId);
       
-      if (!userId) {
+      if (!userId && !registrationToken) {
         toast({
           title: "Error",
           description: "Registration session expired. Please register again.",
@@ -375,14 +463,43 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         return;
       }
       
+      // Only validate user ID format if we're actually using user_id
+      let parsedUserId = 0;
+      if (userId) {
+        parsedUserId = parseInt(userId);
+        if (isNaN(parsedUserId) || parsedUserId <= 0) {
+          console.error('Invalid user ID format in localStorage:', userId);
+          toast({
+            title: "Error",
+            description: "Invalid registration session. Please register again.",
+            variant: "destructive"
+          });
+          // Clear invalid data
+          localStorage.removeItem('signup_user_id');
+          return;
+        }
+      }
+      
       // Call the registration resend OTP endpoint
-      const response = await apiService.resendRegistrationOTP(parseInt(userId));
+      let response;
+      if (userId && parsedUserId > 0) {
+        // Use user_id if available
+        response = await apiService.resendRegistrationOTP(parsedUserId);
+        console.log('Resend OTP response (using user_id):', response);
+      } else if (registrationToken) {
+        // Use registration_token if user_id is not available
+        response = await apiService.resendRegistrationOTPWithToken(registrationToken);
+        console.log('Resend OTP response (using registration_token):', response);
+      } else {
+        throw new Error('No valid verification data available for resending OTP');
+      }
+      
       console.log('Resend OTP response:', response);
       
       if (response.success) {
         toast({
           title: "OTP Resent!",
-          description: `A new verification code has been sent to your ${response.otp_sent_to === 'email' ? 'email' : 'phone'}.`,
+          description: "A new verification code has been sent to your phone.", // Email temporarily disabled
         });
       } else {
         toast({
@@ -432,16 +549,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               {/* OTP Input Component - This will handle all the display */}
               <OTPInput
                 type="signup"
-                email={usePhone ? undefined : signupData.email}
-                phone={usePhone ? signupData.phone : undefined}
+                email={undefined} // Email temporarily disabled
+                phone={signupData.phone} // Force phone
                 onVerify={handleVerifyOTP}
                 onResend={handleResendOTP}
                 onBack={handleBackToSignup}
-                title={authMethod === 'email' ? 'Verify Your Email' : 'Verify Your Phone'}
-                description={authMethod === 'email' 
-                  ? 'We sent a verification link to your email address'
-                  : 'We sent a 6-digit verification code to your phone number'
-                }
+                title="Verify Your Phone" // Email temporarily disabled
+                description="We sent a 6-digit verification code to your phone number"
               />
 
               {/* Back to Signup Button */}
@@ -476,13 +590,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium">Login with</Label>
                       <div className="flex items-center space-x-2">
-                        <span className={`text-xs ${!usePhone ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
-                          Email
+                        <span className="text-xs text-gray-400 font-medium">
+                          Email (Temporarily Disabled)
                         </span>
                         <Switch
                           checked={usePhone}
                           onCheckedChange={handleToggleChange}
                           className="data-[state=checked]:bg-blue-600"
+                          disabled={true}
                         />
                         <span className={`text-xs ${usePhone ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
                           Phone
@@ -506,13 +621,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       </div>
                     ) : (
                       <div>
-                        <Label htmlFor="login-email">Email Address</Label>
+                        <Label htmlFor="login-email" className="text-gray-400">Email Address (Temporarily Disabled)</Label>
                         <Input
                           id="login-email"
                           name="email"
                           type="email"
-                          placeholder="Enter your email address"
+                          placeholder="Email temporarily disabled - use phone instead"
                           required
+                          disabled={true}
+                          className="bg-gray-100 text-gray-400 cursor-not-allowed"
                         />
                       </div>
                     )}
@@ -602,13 +719,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       <div className="flex items-center justify-between">
                         <Label className="text-sm font-medium">Contact Method</Label>
                         <div className="flex items-center space-x-2">
-                          <span className={`text-xs ${!usePhone ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
-                            Email
+                          <span className="text-xs text-gray-400 font-medium">
+                            Email (Temporarily Disabled)
                           </span>
                           <Switch
                             checked={usePhone}
                             onCheckedChange={handleToggleChange}
                             className="data-[state=checked]:bg-blue-600"
+                            disabled={true}
                           />
                           <span className={`text-xs ${usePhone ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
                             Phone (Default)
@@ -635,18 +753,19 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         </div>
                       ) : (
                         <div>
-                          <Label htmlFor="email" className="text-sm">Email Address</Label>
+                          <Label htmlFor="email" className="text-sm text-gray-400">Email Address (Temporarily Disabled)</Label>
                           <Input
                             id="email"
                             type="email"
                             value={signupData.email}
                             onChange={(e) => setSignupData({...signupData, email: e.target.value})}
-                            placeholder="Enter your email address"
-                            className="text-sm"
+                            placeholder="Email temporarily disabled - use phone instead"
+                            className="text-sm bg-gray-100 text-gray-400 cursor-not-allowed"
                             required
+                            disabled={true}
                           />
-                          <p className="text-xs text-gray-500 mt-1">
-                            Verification link will be sent to this email
+                          <p className="text-xs text-gray-400 mt-1">
+                            Email verification temporarily disabled - use phone instead
                           </p>
                         </div>
                       )}

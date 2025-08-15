@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LikeButton } from "@/components/LikeButton";
+import { Pagination } from "@/components/Pagination";
 import { 
   Star, 
   Phone, 
@@ -37,9 +38,13 @@ gsap.registerPlugin(ScrollTrigger);
 
 interface BusinessListProps {
   filters: any;
+  currentPage?: number;
+  itemsPerPage?: number;
+  onPageChange?: (page: number) => void;
+  totalCount?: number;
 }
 
-export const BusinessList = ({ filters }: BusinessListProps) => {
+export const BusinessList = ({ filters, currentPage = 1, itemsPerPage = 15, onPageChange, totalCount }: BusinessListProps) => {
   const navigate = useNavigate();
   const { businesses, isLoading } = useBusiness();
   const { user } = useAuth();
@@ -99,6 +104,16 @@ export const BusinessList = ({ filters }: BusinessListProps) => {
     
     return true;
   }) : [];
+
+  // Pagination logic - removed since we're getting paginated data from API
+  // const totalItems = filteredBusinesses.length;
+  // const totalPages = Math.ceil(totalItems / itemsPerPage);
+  // const startIndex = (currentPage - 1) * itemsPerPage;
+  // const endIndex = startIndex + itemsPerPage;
+  // const paginatedBusinesses = filteredBusinesses.slice(startIndex, endIndex);
+  
+  // Use all businesses received from API (they're already paginated)
+  const paginatedBusinesses = filteredBusinesses;
 
   const toggleFavorite = async (businessId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -186,7 +201,7 @@ export const BusinessList = ({ filters }: BusinessListProps) => {
             {/* Action Buttons */}
             <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               {/* Like Button - Only show if user doesn't own the business */}
-              {user && business.user?.id !== user.id && (
+              {user && business.user?.id !== Number(user.id) && (
                 <LikeButton
                   id={business.id}
                   type="business"
@@ -194,7 +209,6 @@ export const BusinessList = ({ filters }: BusinessListProps) => {
                   likeCount={0}
                   onLikeChange={() => {}}
                   disabled={false}
-                  className="bg-white/80 hover:bg-white text-gray-600"
                 />
               )}
               
@@ -338,7 +352,7 @@ export const BusinessList = ({ filters }: BusinessListProps) => {
         </div>
         
         <div className="text-sm text-gray-500">
-          {filteredBusinesses.length} business{filteredBusinesses.length !== 1 ? 'es' : ''} found
+          {totalCount || filteredBusinesses.length} business{(totalCount || filteredBusinesses.length) !== 1 ? 'es' : ''} found
         </div>
       </div>
 
@@ -348,11 +362,22 @@ export const BusinessList = ({ filters }: BusinessListProps) => {
         : "space-y-4"
       }>
         <AnimatePresence>
-          {filteredBusinesses.map((business) => (
+          {paginatedBusinesses.map((business) => (
             <BusinessCard key={business.id} business={business} />
           ))}
         </AnimatePresence>
       </div>
+      
+      {/* Pagination */}
+      {totalCount && totalCount > itemsPerPage && onPageChange && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={Math.ceil(totalCount / itemsPerPage)}
+          onPageChange={onPageChange}
+          totalItems={totalCount}
+          itemsPerPage={itemsPerPage}
+        />
+      )}
     </div>
   );
 };

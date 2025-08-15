@@ -116,6 +116,11 @@ export const CallToAction = () => {
                        <AlertCircle className="w-4 h-4" />
                        You already have a business listed on Faith Connect.
                      </div>
+                   ) : user && user.user_type === 'community' ? (
+                     <div className="flex items-center justify-center gap-2 text-gray-600 text-sm">
+                       <AlertCircle className="w-4 h-4" />
+                       Community members cannot list businesses.
+                     </div>
                    ) : (
                      <Link to="/register-business" className="block">
                        <Button 

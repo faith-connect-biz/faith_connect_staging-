@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Search, ArrowRight, Sparkles, Users, Briefcase, Target, Globe, Zap, Plus, Heart, Star } from "lucide-react";
 import { useState, ReactNode } from "react";
 import ImageCarousel from "@/components/ui/ImageCarousel";
+import { useAuth } from '@/contexts/AuthContext';
 
 interface HeroProps {
   actionButtons?: ReactNode;
@@ -11,6 +12,7 @@ interface HeroProps {
 export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const { user, isAuthenticated, isBusiness, isCommunity } = useAuth();
 
   const handleSearch = () => {
     if (searchTerm.trim()) {
@@ -118,15 +120,17 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
                         </button>
                       </Link>
                       
-                      <Link to="/register-business" className="group">
-                        <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
-                          <div className="flex items-center gap-3">
-                            <Plus className="w-6 h-6" />
-                            <span className="font-mont font-semibold tracking-wide">List Your Business</span>
-                            <ArrowRight className="w-6 h-6 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
-                          </div>
-                        </button>
-                      </Link>
+                      {isAuthenticated && (isBusiness || !isCommunity) && (
+                        <Link to="/register-business" className="group">
+                          <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+                            <div className="flex items-center gap-3">
+                              <Plus className="w-6 h-6" />
+                              <span className="font-mont font-semibold tracking-wide">List Your Business</span>
+                              <ArrowRight className="w-6 h-6 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
+                            </div>
+                          </button>
+                        </Link>
+                      )}
                     </>
                   )}
                 </div>

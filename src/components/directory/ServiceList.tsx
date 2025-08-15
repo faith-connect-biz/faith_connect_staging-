@@ -46,7 +46,7 @@ interface ServiceListProps {
   onPageChange?: (page: number) => void;
 }
 
-export const ServiceList = ({ filters, currentPage = 1, itemsPerPage = 12, onPageChange }: ServiceListProps) => {
+export const ServiceList = ({ filters, currentPage = 1, itemsPerPage = 15, onPageChange }: ServiceListProps) => {
   const navigate = useNavigate();
   const { services, businesses, isLoading } = useBusiness();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
