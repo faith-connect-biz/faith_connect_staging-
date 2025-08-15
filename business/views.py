@@ -31,6 +31,10 @@ from datetime import datetime, timedelta
 from django.http import Http404
 from django.db import models
 from rest_framework.decorators import permission_classes as drf_permission_classes
+from .models import PhotoRequest
+from .serializers import PhotoRequestSerializer
+from .models import BusinessLike, ReviewLike
+from .serializers import BusinessLikeSerializer, ReviewLikeSerializer
 
 
 # Create your views here.
@@ -54,6 +58,10 @@ class BusinessListCreateAPIView(generics.ListCreateAPIView):
     filterset_fields = ['category', 'city', 'county', 'is_featured']
     search_fields = ['business_name', 'description', 'city']
     ordering_fields = ['created_at', 'rating']
+    
+    # Add pagination
+    pagination_class = 'rest_framework.pagination.PageNumberPagination'
+    page_size = 20  # Number of businesses per page
 
     def get_serializer_context(self):
         return {"request": self.request}
@@ -825,6 +833,10 @@ class ServiceListAPIView(generics.ListAPIView):
     filterset_fields = ['business__category', 'price_range']
     search_fields = ['name', 'description', 'business__business_name']
     ordering_fields = ['created_at', 'name']
+    
+    # Add pagination
+    pagination_class = 'rest_framework.pagination.PageNumberPagination'
+    page_size = 20  # Number of services per page
 
 
 class ServiceRetrieveUpdateView(generics.RetrieveUpdateAPIView):
@@ -863,4 +875,257 @@ class ProductListAPIView(generics.ListAPIView):
     filterset_fields = ['business__category', 'in_stock', 'price_currency']
     search_fields = ['name', 'description', 'business__business_name']
     ordering_fields = ['created_at', 'name', 'price']
+    
+    # Add pagination
+    pagination_class = 'rest_framework.pagination.PageNumberPagination'
+    page_size = 20  # Number of products per page
+
+
+class BusinessHourCreateView(generics.CreateAPIView):
+    serializer_class = BusinessHourSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        business_id = self.kwargs.get('business_id')
+        business = get_object_or_404(Business, id=business_id, user=self.request.user)
+        serializer.save(business=business)
+
+
+class PhotoRequestCreateView(generics.CreateAPIView):
+    """Create a new photo request"""
+    serializer_class = PhotoRequestSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def perform_create(self, serializer):
+        photo_request = serializer.save()
+        
+        # Send email notification to business owner
+        # Email functionality temporarily disabled - just save to database
+        pass
+        
+        return photo_request
+
+
+class UserFavoritesView(generics.ListAPIView):
+    """Get all favorites for the current user"""
+    serializer_class = FavoriteSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return Favorite.objects.filter(user=self.request.user).select_related('business', 'business__category')
+
+
+class UserReviewsView(generics.ListAPIView):
+    """Get all reviews written by the current user"""
+    serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return Review.objects.filter(user=self.request.user).select_related('business', 'business__category')
+
+
+class PhotoRequestListView(generics.ListAPIView):
+    """List photo requests for a business owner"""
+    serializer_class = PhotoRequestSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        # Only show photo requests for businesses owned by the current user
+        return PhotoRequest.objects.filter(
+            business__user=self.request.user
+        ).select_related('user', 'business')
+
+
+class PhotoRequestUpdateView(generics.UpdateAPIView):
+    """Update photo request status (for business owners)"""
+    serializer_class = PhotoRequestSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = PhotoRequest.objects.all()
+    
+    def get_queryset(self):
+        # Only allow business owners to update their photo requests
+        return PhotoRequest.objects.filter(business__user=self.request.user)
+    
+    def perform_update(self, serializer):
+        photo_request = serializer.save()
+        
+        # If status is being updated to completed, set completed_date
+        if photo_request.status == 'completed' and not photo_request.completed_date:
+            photo_request.completed_date = timezone.now()
+            photo_request.save()
+        
+        # Email functionality removed - just save to database
+        
+        return photo_request
+
+
+class BusinessLikeToggleView(generics.CreateAPIView):
+    """Toggle business like (like/unlike)"""
+    serializer_class = BusinessLikeSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, *args, **kwargs):
+        business_id = self.kwargs.get('business_id')
+        user = request.user
+        
+        try:
+            business = Business.objects.get(id=business_id)
+            
+            # Check if user already liked this business
+            existing_like = BusinessLike.objects.filter(user=user, business=business).first()
+            
+            if existing_like:
+                # Unlike: delete the like
+                existing_like.delete()
+                return Response({
+                    'liked': False,
+                    'message': 'Business unliked successfully'
+                })
+            else:
+                # Like: create new like
+                # Validate that user is not liking their own business
+                if user == business.user:
+                    return Response({
+                        'error': 'You cannot like your own business'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                like = BusinessLike.objects.create(user=user, business=business)
+                return Response({
+                    'liked': True,
+                    'message': 'Business liked successfully'
+                })
+                
+        except Business.DoesNotExist:
+            return Response({
+                'error': 'Business not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ReviewLikeToggleView(generics.CreateAPIView):
+    """Toggle review like (like/unlike)"""
+    serializer_class = ReviewLikeSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, *args, **kwargs):
+        review_id = self.kwargs.get('review_id')
+        user = request.user
+        
+        try:
+            review = Review.objects.get(id=review_id)
+            
+            # Check if user already liked this review
+            existing_like = ReviewLike.objects.filter(user=user, review=review).first()
+            
+            if existing_like:
+                # Unlike: delete the like
+                existing_like.delete()
+                return Response({
+                    'liked': False,
+                    'message': 'Review unliked successfully'
+                })
+            else:
+                # Like: create new like
+                # Validate that user is not liking their own review
+                if user == review.user:
+                    return Response({
+                        'error': 'You cannot like your own review'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                like = ReviewLike.objects.create(user=user, review=review)
+                return Response({
+                    'liked': True,
+                    'message': 'Review liked successfully'
+                })
+                
+        except Review.DoesNotExist:
+            return Response({
+                'error': 'Review not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserActivityView(generics.ListAPIView):
+    """Get user's activity including favorites, likes, and reviews"""
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        # This will be a custom queryset that combines different types of activities
+        return []
+    
+    def list(self, request, *args, **kwargs):
+        user = request.user
+        
+        # Get user's favorites
+        favorites = Favorite.objects.filter(user=user).select_related('business', 'business__category')
+        
+        # Get user's business likes
+        business_likes = BusinessLike.objects.filter(user=user).select_related('business', 'business__category')
+        
+        # Get user's review likes
+        review_likes = ReviewLike.objects.filter(user=user).select_related('review', 'review__business')
+        
+        # Get user's reviews
+        reviews = Review.objects.filter(user=user).select_related('business', 'business__category')
+        
+        # Combine all activities and sort by date
+        activities = []
+        
+        for favorite in favorites:
+            activities.append({
+                'type': 'favorite',
+                'id': favorite.id,
+                'business_name': favorite.business.business_name,
+                'business_category': favorite.business.category.name if favorite.business.category else 'Uncategorized',
+                'date': favorite.created_at,
+                'business_id': favorite.business.id
+            })
+        
+        for like in business_likes:
+            activities.append({
+                'type': 'business_like',
+                'id': like.id,
+                'business_name': like.business.business_name,
+                'business_category': like.business.category.name if like.business.category else 'Uncategorized',
+                'date': like.created_at,
+                'business_id': like.business.id
+            })
+        
+        for like in review_likes:
+            activities.append({
+                'type': 'review_like',
+                'id': like.id,
+                'business_name': like.review.business.business_name,
+                'business_category': like.review.business.category.name if like.review.business.category else 'Uncategorized',
+                'date': like.created_at,
+                'business_id': like.review.business.id,
+                'review_text': like.review.review_text[:100] + "..." if like.review.review_text and len(like.review.review_text) > 100 else like.review.review_text
+            })
+        
+        for review in reviews:
+            activities.append({
+                'type': 'review',
+                'id': review.id,
+                'business_name': review.business.business_name,
+                'business_category': review.business.category.name if review.business.category else 'Uncategorized',
+                'date': review.created_at,
+                'business_id': review.business.id,
+                'rating': review.rating,
+                'review_text': review.review_text
+            })
+        
+        # Sort activities by date (newest first)
+        activities.sort(key=lambda x: x['date'], reverse=True)
+        
+        return Response({
+            'activities': activities,
+            'total_count': len(activities)
+        })
 

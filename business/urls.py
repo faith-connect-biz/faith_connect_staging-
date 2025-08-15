@@ -7,7 +7,9 @@ from .views import (
     BusinessImageUploadView,
     get_service_image_upload_url, update_service_image,
     get_product_image_upload_url, update_product_image, UserBusinessView, BusinessServiceListCreateView, BusinessAnalyticsView,
-    ServiceListAPIView, ProductListAPIView, MyBusinessView, ServiceRetrieveUpdateView
+    ServiceListAPIView, ProductListAPIView, MyBusinessView, ServiceRetrieveUpdateView,
+    PhotoRequestCreateView, PhotoRequestListView, PhotoRequestUpdateView,
+    BusinessLikeToggleView, ReviewLikeToggleView, UserActivityView, UserFavoritesView, UserReviewsView
 )
 
 urlpatterns = [
@@ -37,4 +39,18 @@ urlpatterns = [
     # Product Image Upload URLs
     path('products/<int:product_id>/upload-image/', get_product_image_upload_url, name="product-image-upload-url"),
     path('products/<int:product_id>/update-image/', update_product_image, name="product-image-update"),
+    
+    # Photo Request URLs
+    path('<uuid:business_id>/photo-request/', PhotoRequestCreateView.as_view(), name="photo-request-create"),
+    path('photo-requests/', PhotoRequestListView.as_view(), name="photo-request-list"),
+    path('photo-requests/<uuid:pk>/', PhotoRequestUpdateView.as_view(), name="photo-request-update"),
+    
+    # Like URLs
+    path('<uuid:business_id>/like/', BusinessLikeToggleView.as_view(), name="business-like-toggle"),
+    path('reviews/<int:review_id>/like/', ReviewLikeToggleView.as_view(), name="review-like-toggle"),
+    
+    # User Activity URLs
+    path('user-activity/', UserActivityView.as_view(), name="user-activity"),
+    path('favorites/', UserFavoritesView.as_view(), name="user-favorites"),
+    path('user-reviews/', UserReviewsView.as_view(), name="user-reviews"),
 ]

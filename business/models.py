@@ -110,8 +110,8 @@ class Service(models.Model):
 
 class Review(models.Model):
     business = models.ForeignKey('Business', on_delete=models.CASCADE, related_name='reviews')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reviews')
-    rating = models.PositiveSmallIntegerField()
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='business_reviews')
+    rating = models.IntegerField(choices=[(i, i) for i in range(1, 6)])
     review_text = models.TextField(blank=True, null=True)
     is_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -119,12 +119,39 @@ class Review(models.Model):
 
     class Meta:
         unique_together = ('business', 'user')
-        constraints = [
-            models.CheckConstraint(check=models.Q(rating__gte=1, rating__lte=5), name='rating_between_1_and_5'),
-        ]
+        ordering = ['-created_at']
 
     def __str__(self):
-        return f"Review by {self.user} on {self.business}"
+        return f"{self.user.first_name} {self.user.last_name} - {self.business.business_name}"
+
+
+class PhotoRequest(models.Model):
+    """Model to handle professional photo requests from users"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    business = models.ForeignKey('Business', on_delete=models.CASCADE, related_name='photo_requests')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='photo_requests')
+    request_date = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', 'Pending'),
+            ('approved', 'Approved'),
+            ('rejected', 'Rejected'),
+            ('completed', 'Completed')
+        ],
+        default='pending'
+    )
+    notes = models.TextField(blank=True, null=True, help_text="Additional notes from the user")
+    business_response = models.TextField(blank=True, null=True, help_text="Response from the business owner")
+    completed_date = models.DateTimeField(blank=True, null=True)
+    
+    class Meta:
+        unique_together = ('business', 'user')
+        ordering = ['-request_date']
+    
+    def __str__(self):
+        return f"Photo request from {self.user.first_name} {self.user.last_name} to {self.business.business_name}"
+
 
 class Favorite(models.Model):
     user = models.ForeignKey(
@@ -165,3 +192,43 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.business.business_name})"
+
+
+class BusinessLike(models.Model):
+    """Model to handle business likes"""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='business_likes')
+    business = models.ForeignKey('Business', on_delete=models.CASCADE, related_name='likes')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('user', 'business')
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.first_name} {self.user.last_name} liked {self.business.business_name}"
+    
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        # Prevent users from liking their own business
+        if self.user == self.business.user:
+            raise ValidationError("Users cannot like their own business")
+
+
+class ReviewLike(models.Model):
+    """Model to handle review likes"""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='review_likes')
+    review = models.ForeignKey('Review', on_delete=models.CASCADE, related_name='likes')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('user', 'review')
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.first_name} {self.user.last_name} liked review by {self.review.user.first_name}"
+    
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        # Prevent users from liking their own reviews
+        if self.user == self.review.user:
+            raise ValidationError("Users cannot like their own reviews")

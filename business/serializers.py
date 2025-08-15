@@ -1,5 +1,9 @@
-from business.models import BusinessHour, Service, Review, Business, Category, Favorite, Product
 from rest_framework import serializers
+from .models import (
+    Business, Category, Favorite, Product, Review, BusinessHour, 
+    PhotoRequest, BusinessLike, ReviewLike, Service
+)
+
 
 
 class BusinessHourSerializer(serializers.ModelSerializer):
@@ -271,3 +275,87 @@ class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Favorite
         fields = ['id', 'business', 'created_at']
+
+
+class PhotoRequestSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    business_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = PhotoRequest
+        fields = [
+            'id', 'business', 'user', 'user_name', 'business_name',
+            'request_date', 'status', 'notes', 'business_response', 'completed_date'
+        ]
+        read_only_fields = ['id', 'request_date', 'business_response', 'completed_date']
+    
+    def get_user_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}"
+    
+    def get_business_name(self, obj):
+        return obj.business.business_name
+    
+    def create(self, validated_data):
+        # Ensure the user can only create one photo request per business
+        user = self.context['request'].user
+        business = validated_data['business']
+        
+        # Check if a photo request already exists
+        existing_request = PhotoRequest.objects.filter(user=user, business=business).first()
+        if existing_request:
+            raise serializers.ValidationError("You have already submitted a photo request for this business.")
+        
+        validated_data['user'] = user
+        return super().create(validated_data)
+
+
+class BusinessLikeSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    business_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = BusinessLike
+        fields = ['id', 'user', 'business', 'user_name', 'business_name', 'created_at']
+        read_only_fields = ['id', 'created_at']
+    
+    def get_user_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}"
+    
+    def get_business_name(self, obj):
+        return obj.business.business_name
+    
+    def validate(self, data):
+        user = self.context['request'].user
+        business = data['business']
+        
+        # Prevent users from liking their own business
+        if user == business.user:
+            raise serializers.ValidationError("You cannot like your own business.")
+        
+        return data
+
+
+class ReviewLikeSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    review_text = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ReviewLike
+        fields = ['id', 'user', 'review', 'user_name', 'review_text', 'created_at']
+        read_only_fields = ['id', 'created_at']
+    
+    def get_user_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}"
+    
+    def get_review_text(self, obj):
+        return obj.review.review_text[:100] + "..." if obj.review.review_text and len(obj.review.review_text) > 100 else obj.review.review_text
+    
+    def validate(self, data):
+        user = self.context['request'].user
+        review = data['review']
+        
+        # Prevent users from liking their own reviews
+        if user == review.user:
+            raise serializers.ValidationError("You cannot like your own review.")
+        
+        return data
