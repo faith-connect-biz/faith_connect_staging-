@@ -31,6 +31,7 @@ from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework.response import Response
 
 from utils.zeptomail import send_email_verification_code
+from utils.communication import send_sms
 from .UserSerializer.Serializers import RegisterSerializer, LoginSerializer, ForgotPasswordOTPSerializer, \
     ResetPasswordWithOTPSerializer, UserRegistrationSerializer
 from .utils import success_response, error_response
@@ -39,6 +40,37 @@ from .utils import success_response, error_response
 def generate_otp():
     """Generate a 6-digit OTP"""
     return str(random.randint(100000, 999999))
+
+def clear_otp_cache(registration_token):
+    """Clear OTP-related cache entries"""
+    try:
+        registration_cache_key = f'registration_{registration_token}'
+        otp_cache_key = f'otp_{registration_token}'
+        cache.delete(registration_cache_key)
+        cache.delete(otp_cache_key)
+        logger.info(f"Cleared cache for registration token: {registration_token}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to clear cache: {e}")
+        return False
+
+def get_cache_status(registration_token):
+    """Get cache status for debugging"""
+    try:
+        registration_cache_key = f'registration_{registration_token}'
+        otp_cache_key = f'otp_{registration_token}'
+        
+        registration_data = cache.get(registration_cache_key)
+        stored_otp = cache.get(otp_cache_key)
+        
+        return {
+            'registration_data_exists': bool(registration_data),
+            'otp_exists': bool(stored_otp),
+            'otp_value': stored_otp if stored_otp else None
+        }
+    except Exception as e:
+        logger.error(f"Failed to get cache status: {e}")
+        return {'error': str(e)}
 
 def send_verification_email(email, otp):
     """Send verification email with OTP"""
@@ -414,7 +446,7 @@ class SendPhoneOTPView(APIView):
         otp = str(random.randint(100000, 999999))
         user.otp = otp
         user.save()
-        success, response = send_email_verification_code(phone, otp)
+        success, response = send_sms(phone, otp)
         if success:
             return success_response(message="OTP sent successfully.")
         else:
@@ -479,8 +511,8 @@ class ConfirmPhoneOTPView(APIView):
             
             # Send welcome SMS
             try:
-                from utils.communication import send_welcome_message
-                send_welcome_message(phone, f"{user.first_name} {user.last_name}")
+                from utils.communication import send_welcome_sms
+                send_welcome_sms(phone, f"{user.first_name} {user.last_name}")
                 logger.info(f"Welcome SMS sent to {phone} after verification")
             except Exception as e:
                 logger.warning(f"Failed to send welcome SMS: {str(e)}")
@@ -522,10 +554,13 @@ class VerifyRegistrationOTPView(APIView):
             otp_cache_key = f'otp_{registration_token}'
             stored_otp = cache.get(otp_cache_key)
             
+            # If OTP not in cache, try to regenerate it (fallback mechanism)
             if not stored_otp:
+                logger.warning(f"OTP not found in cache for token: {registration_token}")
                 return Response({
                     'success': False,
-                    'message': 'OTP expired or invalid. Please request a new one.'
+                    'message': 'OTP expired. Please request a new OTP using the resend endpoint.',
+                    'requires_resend': True
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # Verify OTP
@@ -555,42 +590,28 @@ class VerifyRegistrationOTPView(APIView):
                         phone_verified=bool(user_data.get('phone'))
                     )
                     
-                    # Clear cache data
+                    # Clear cache after successful account creation
                     cache.delete(registration_cache_key)
                     cache.delete(otp_cache_key)
                     
-                    # Send welcome messages
-                    try:
-                        if user.email:
-                            from utils.zeptomail import send_welcome_email
-                            send_welcome_email(user.email, f"{user.first_name} {user.last_name}")
-                            logger.info(f"Welcome email sent to {user.email}")
-                        
-                        if user.phone:
-                            from utils.communication import send_welcome_message
-                            send_welcome_message(user.phone, f"{user.first_name} {user.last_name}")
-                            logger.info(f"Welcome SMS sent to {user.phone}")
-                    except Exception as e:
-                        logger.warning(f"Failed to send welcome message: {str(e)}")
-                        # Don't fail the registration if welcome message fails
-                    
-                    # Generate authentication tokens
+                    # Generate tokens
                     refresh = RefreshToken.for_user(user)
                     access_token = str(refresh.access_token)
                     refresh_token = str(refresh)
                     
+                    logger.info(f"[REGISTRATION SUCCESS] - User {user.id} created successfully")
+                    
                     return Response({
                         'success': True,
-                        'message': 'Account created successfully! Welcome to our platform.',
+                        'message': 'Account created successfully!',
                         'user': {
                             'id': user.id,
                             'first_name': user.first_name,
                             'last_name': user.last_name,
+                            'partnership_number': user.partnership_number,
                             'email': user.email,
                             'phone': user.phone,
                             'user_type': user.user_type,
-                            'partnership_number': user.partnership_number,
-                            'is_active': user.is_active,
                             'is_verified': user.is_verified
                         },
                         'tokens': {
