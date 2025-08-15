@@ -284,12 +284,33 @@ class ReviewListCreateView(generics.ListCreateAPIView):
             raise PermissionDenied("Authentication required to create a review.")
         
         business_id = self.kwargs.get('business_id')
+        
+        # Get the business to check ownership
+        try:
+            business = Business.objects.get(id=business_id)
+        except Business.DoesNotExist:
+            raise PermissionDenied("Business not found.")
+        
+        # Prevent business owners from reviewing their own business
+        if business.user == self.request.user:
+            raise PermissionDenied("Business owners cannot review their own business.")
+        
+        # Check for existing review (this is now protected by database unique constraint)
+        # but we keep the check for better user experience
         if Review.objects.filter(business_id=business_id, user=self.request.user).exists():
-            raise PermissionDenied("You’ve already reviewed this business.")
+            raise PermissionDenied("You've already reviewed this business.")
+        
+        # Save the review - the unique constraint will prevent duplicates at DB level
         serializer.save(
             business_id=business_id,
             user=self.request.user
         )
+    
+    def get_serializer_context(self):
+        """Add business_id to serializer context for validation"""
+        context = super().get_serializer_context()
+        context['business_id'] = self.kwargs.get('business_id')
+        return context
 
 
 class ReviewUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):

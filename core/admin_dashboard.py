@@ -11,7 +11,7 @@ from business.models import Business, Review, Category, Product, Service, Favori
 from user_auth.models import User
 
 class FEMAdminSite(AdminSite):
-    site_header = "FEM Family Business Directory Administration"
+    site_header = "Faith Connect Business Directory Administration"
     site_title = "FEM Admin"
     index_title = "Welcome to FEM Business Directory Management"
     site_url = "/"

@@ -443,6 +443,15 @@ class ConfirmEmailVerificationView(APIView):
             user.is_verified = True
             user.save()
             
+            # Send welcome email
+            try:
+                from utils.zeptomail import send_welcome_email
+                send_welcome_email(email, f"{user.first_name} {user.last_name}")
+                logger.info(f"Welcome email sent to {email} after verification")
+            except Exception as e:
+                logger.warning(f"Failed to send welcome email: {str(e)}")
+                # Don't fail the verification if welcome email fails
+            
             logger.info(f"[EMAIL VERIFICATION SUCCESS] - User {user.id}, Email: {email}")
             return success_response(message="Email verified successfully! Your account is now active.")
         return error_response(message="Invalid verification token.")
@@ -467,6 +476,15 @@ class ConfirmPhoneOTPView(APIView):
             user.is_active = True
             user.is_verified = True
             user.save()
+            
+            # Send welcome SMS
+            try:
+                from utils.communication import send_welcome_message
+                send_welcome_message(phone, f"{user.first_name} {user.last_name}")
+                logger.info(f"Welcome SMS sent to {phone} after verification")
+            except Exception as e:
+                logger.warning(f"Failed to send welcome SMS: {str(e)}")
+                # Don't fail the verification if welcome SMS fails
             
             logger.info(f"[PHONE VERIFICATION SUCCESS] - User {user.id}, Phone: {phone}")
             return success_response(message="Phone number verified successfully! Your account is now active.")
@@ -540,6 +558,21 @@ class VerifyRegistrationOTPView(APIView):
                     # Clear cache data
                     cache.delete(registration_cache_key)
                     cache.delete(otp_cache_key)
+                    
+                    # Send welcome messages
+                    try:
+                        if user.email:
+                            from utils.zeptomail import send_welcome_email
+                            send_welcome_email(user.email, f"{user.first_name} {user.last_name}")
+                            logger.info(f"Welcome email sent to {user.email}")
+                        
+                        if user.phone:
+                            from utils.communication import send_welcome_message
+                            send_welcome_message(user.phone, f"{user.first_name} {user.last_name}")
+                            logger.info(f"Welcome SMS sent to {user.phone}")
+                    except Exception as e:
+                        logger.warning(f"Failed to send welcome message: {str(e)}")
+                        # Don't fail the registration if welcome message fails
                     
                     # Generate authentication tokens
                     refresh = RefreshToken.for_user(user)
