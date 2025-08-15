@@ -77,7 +77,7 @@ class NdovubaseSMS:
             return False
 
         # Check if it starts with valid Kenyan mobile prefixes
-        valid_prefixes = ['25470', '25471', '25472', '25473', '25474', '25475', '25476', '25477', '25478', '25479']
+        valid_prefixes = ['25470', '25471', '25472', '25473', '25474', '25475', '25476', '25477', '25478', '25479','25401']
         return any(formatted.startswith(prefix) for prefix in valid_prefixes)
 
     def send_sms(self, phone_number: str, message: str) -> Tuple[bool, Dict]:
