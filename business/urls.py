@@ -9,7 +9,9 @@ from .views import (
     get_product_image_upload_url, update_product_image, UserBusinessView, BusinessServiceListCreateView, BusinessAnalyticsView,
     ServiceListAPIView, ProductListAPIView, MyBusinessView, ServiceRetrieveUpdateView,
     PhotoRequestCreateView, PhotoRequestListView, PhotoRequestUpdateView,
-    BusinessLikeToggleView, ReviewLikeToggleView, UserActivityView, UserFavoritesView, UserReviewsView
+    BusinessLikeToggleView, ReviewLikeToggleView, UserActivityView, UserFavoritesView, UserReviewsView,
+    get_business_profile_image_upload_url, update_business_profile_image,
+    get_business_logo_upload_url, update_business_logo
 )
 
 urlpatterns = [
@@ -39,6 +41,12 @@ urlpatterns = [
     # Product Image Upload URLs
     path('products/<int:product_id>/upload-image/', get_product_image_upload_url, name="product-image-upload-url"),
     path('products/<int:product_id>/update-image/', update_product_image, name="product-image-update"),
+    
+    # Business Image Upload URLs
+    path('<uuid:business_id>/upload-profile-image/', get_business_profile_image_upload_url, name="business-profile-image-upload-url"),
+    path('<uuid:business_id>/update-profile-image/', update_business_profile_image, name="business-profile-image-update"),
+    path('<uuid:business_id>/upload-logo/', get_business_logo_upload_url, name="business-logo-upload-url"),
+    path('<uuid:business_id>/update-logo/', update_business_logo, name="business-logo-update"),
     
     # Photo Request URLs
     path('<uuid:business_id>/photo-request/', PhotoRequestCreateView.as_view(), name="photo-request-create"),

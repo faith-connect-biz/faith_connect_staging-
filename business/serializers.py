@@ -17,7 +17,19 @@ class BusinessHourSerializer(serializers.ModelSerializer):
 class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
-        exclude = ['id', 'business']
+        fields = [
+            'id',
+            'business',
+            'name',
+            'description',
+            'price_range',
+            'duration',
+            'service_image_url',
+            'images',
+            'is_active',
+            'created_at'
+        ]
+        read_only_fields = ['id', 'business', 'created_at']
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -49,8 +61,8 @@ class ReviewSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """
-        Custom validation to prevent business owners from reviewing their own business
-        and to check for duplicate reviews
+        Custom validation to check for duplicate reviews
+        Business owner validation is handled at the view level
         """
         request = self.context.get('request')
         if not request or not request.user.is_authenticated:
@@ -68,11 +80,8 @@ class ReviewSerializer(serializers.ModelSerializer):
         except Business.DoesNotExist:
             raise serializers.ValidationError("Business not found.")
         
-        # Prevent business owners from reviewing their own business
-        if business.user == request.user:
-            raise serializers.ValidationError("Business owners cannot review their own business.")
-        
-        # Check for existing review
+        # Check for existing review (this is now protected by database unique constraint)
+        # but we keep the check for better user experience
         if Review.objects.filter(business_id=business_id, user=request.user).exists():
             raise serializers.ValidationError("You have already reviewed this business.")
         

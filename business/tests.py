@@ -86,7 +86,7 @@ class ReviewValidationTests(APITestCase):
     
     def test_duplicate_review_prevention(self):
         """Test that users cannot create duplicate reviews for the same business"""
-        url = reverse('business:review-list-create', kwargs={'business_id': self.business.id})
+        url = reverse('business-reviews', kwargs={'business_id': self.business.id})
         
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.reviewer_token}')
         
@@ -99,14 +99,14 @@ class ReviewValidationTests(APITestCase):
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         
-        # Try to create duplicate review
+        # Try to create duplicate review - should get 400 (validation error from serializer)
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('already reviewed this business', str(response.data))
     
     def test_unauthenticated_user_cannot_review(self):
         """Test that unauthenticated users cannot create reviews"""
-        url = reverse('business:review-list-create', kwargs={'business_id': self.business.id})
+        url = reverse('business-reviews', kwargs={'business_id': self.business.id})
         
         data = {
             'rating': 5,

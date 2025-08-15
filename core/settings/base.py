@@ -147,6 +147,8 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_PAGINATION_CLASS': 'core.pagination.CustomLimitOffsetPagination',
+    'PAGE_SIZE': 15,  # Changed from 20 to 15 to match frontend default
 }
 
 
@@ -277,3 +279,34 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+# Cache Configuration
+# Use database cache as default for reliability
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'cache_table',
+        'TIMEOUT': 600,  # 10 minutes default timeout
+    }
+}
+
+# Try to use Redis if available (for production)
+try:
+    import redis
+    redis_url = config('REDIS_URL', default='')
+    if redis_url:
+        redis.Redis.from_url(redis_url).ping()
+        CACHES = {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+                'LOCATION': redis_url,
+                'OPTIONS': {
+                    'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                },
+                'KEY_PREFIX': 'faithconnect',
+                'TIMEOUT': 600,  # 10 minutes default timeout
+            }
+        }
+except:
+    # Fallback to database cache
+    pass

@@ -30,8 +30,8 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework.response import Response
 
-from utils.zeptomail import send_email_verification_code
-from utils.communication import send_sms
+from utils.zeptomail import send_email_verification_code, send_welcome_email
+from utils.communication import send_sms, send_otp_sms, send_welcome_message
 from .UserSerializer.Serializers import RegisterSerializer, LoginSerializer, ForgotPasswordOTPSerializer, \
     ResetPasswordWithOTPSerializer, UserRegistrationSerializer
 from .utils import success_response, error_response
@@ -75,7 +75,6 @@ def get_cache_status(registration_token):
 def send_verification_email(email, otp):
     """Send verification email with OTP"""
     try:
-        from utils.zeptomail import send_email_verification_code
         success, response = send_email_verification_code(
             email=email,
             token=otp,
@@ -90,7 +89,6 @@ def send_verification_email(email, otp):
 def send_verification_sms(phone, otp):
     """Send verification SMS with OTP"""
     try:
-        from utils.communication import send_otp_sms
         success, response = send_otp_sms(phone, otp)
         if not success:
             raise Exception(f"SMS service error: {response}")
@@ -113,7 +111,7 @@ def mask_sensitive_data(data, sensitive_fields=None):
 
 class RegisterAPIView(APIView):
     """
-    User registration view that stores data temporarily until OTP verification
+    User registration view that creates user in DB and sends OTP for verification
     """
     permission_classes = [AllowAny]
     
@@ -121,90 +119,85 @@ class RegisterAPIView(APIView):
         try:
             serializer = UserRegistrationSerializer(data=request.data)
             if serializer.is_valid():
-                # Generate a unique registration token
-                registration_token = str(uuid.uuid4())
-                
-                # Store registration data temporarily (expires in 10 minutes)
-                registration_data = {
-                    'user_data': serializer.validated_data,
-                    'timestamp': timezone.now().isoformat(),
-                    'verified': False
-                }
-                
-                # Store in cache with 10-minute expiration
-                cache_key = f'registration_{registration_token}'
-                cache.set(cache_key, registration_data, timeout=600)  # 10 minutes
-                
-                # Send OTP to user's email/phone
                 user_data = serializer.validated_data
                 email = user_data.get('email')
                 phone = user_data.get('phone')
                 
-                if email:
-                    # Send email OTP
-                    try:
-                        # Generate OTP
-                        otp = generate_otp()
-                        
-                        # Store OTP in cache with registration token
-                        otp_cache_key = f'otp_{registration_token}'
-                        cache.set(otp_cache_key, otp, timeout=600)  # 10 minutes
-                        
-                        # Send email with OTP
-                        send_verification_email(email, otp)
-                        
-                        return Response({
-                            'success': True,
-                            'message': 'Registration data received. Please check your email for OTP verification.',
-                            'registration_token': registration_token,
-                            'requires_otp': True,
-                            'otp_sent_to': 'email'
-                        }, status=status.HTTP_200_OK)
-                        
-                    except Exception as e:
-                        # Remove registration data if OTP sending fails
-                        cache.delete(cache_key)
-                        return Response({
-                            'success': False,
-                            'message': f'Failed to send OTP: {str(e)}'
-                        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                
-                elif phone:
-                    # Send phone OTP
-                    try:
-                        # Generate OTP
-                        otp = generate_otp()
-                        
-                        # Store OTP in cache with registration token
-                        otp_cache_key = f'otp_{registration_token}'
-                        cache.set(otp_cache_key, otp, timeout=600)  # 10 minutes
-                        
-                        # Send SMS with OTP
-                        send_verification_sms(phone, otp)
-                        
-                        return Response({
-                            'success': True,
-                            'message': 'Registration data received. Please check your phone for OTP verification.',
-                            'registration_token': registration_token,
-                            'requires_otp': True,
-                            'otp_sent_to': 'phone'
-                        }, status=status.HTTP_200_OK)
-                        
-                    except Exception as e:
-                        # Remove registration data if OTP sending fails
-                        cache.delete(cache_key)
-                        return Response({
-                            'success': False,
-                            'message': f'Failed to send OTP: {str(e)}'
-                        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                
-                else:
-                    # No email or phone provided
-                    cache.delete(cache_key)
+                if not email and not phone:
                     return Response({
                         'success': False,
                         'message': 'Either email or phone is required for registration.'
                     }, status=status.HTTP_400_BAD_REQUEST)
+                
+                try:
+                    with transaction.atomic():
+                        # Create user with inactive status (will be activated after OTP verification)
+                        user = User.objects.create(
+                            first_name=user_data['first_name'],
+                            last_name=user_data['last_name'],
+                            partnership_number=user_data['partnership_number'],
+                            email=email,
+                            phone=phone,
+                            user_type=user_data['user_type'],
+                            password=make_password(user_data['password']),
+                            is_active=False,  # User is inactive until OTP verification
+                            is_verified=False,  # User is not verified yet
+                            email_verified=False,
+                            phone_verified=False
+                        )
+                        
+                        # Generate OTP
+                        otp = generate_otp()
+                        
+                        # Store OTP in user model (temporary field)
+                        user.otp = otp
+                        user.save()
+                        
+                        logger.info(f"User created with ID: {user.id}, OTP: {otp}")
+                        
+                        # Send OTP based on contact method
+                        if email:
+                            try:
+                                send_verification_email(email, otp)
+                                return Response({
+                                    'success': True,
+                                    'message': 'Account created! Please check your email for OTP verification.',
+                                    'user_id': user.id,
+                                    'requires_otp': True,
+                                    'otp_sent_to': 'email'
+                                }, status=status.HTTP_201_CREATED)
+                            except Exception as e:
+                                # If email fails, delete the user and return error
+                                user.delete()
+                                return Response({
+                                    'success': False,
+                                    'message': f'Failed to send OTP: {str(e)}'
+                                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                        
+                        elif phone:
+                            try:
+                                send_verification_sms(phone, otp)
+                                return Response({
+                                    'success': True,
+                                    'message': 'Account created! Please check your phone for OTP verification.',
+                                    'user_id': user.id,
+                                    'requires_otp': True,
+                                    'otp_sent_to': 'phone'
+                                }, status=status.HTTP_201_CREATED)
+                            except Exception as e:
+                                # If SMS fails, delete the user and return error
+                                user.delete()
+                                return Response({
+                                    'success': False,
+                                    'message': f'Failed to send OTP: {str(e)}'
+                                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+                except Exception as e:
+                    logger.error(f"Failed to create user: {str(e)}")
+                    return Response({
+                        'success': False,
+                        'message': f'Failed to create account: {str(e)}'
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             else:
                 return Response({
@@ -477,7 +470,6 @@ class ConfirmEmailVerificationView(APIView):
             
             # Send welcome email
             try:
-                from utils.zeptomail import send_welcome_email
                 send_welcome_email(email, f"{user.first_name} {user.last_name}")
                 logger.info(f"Welcome email sent to {email} after verification")
             except Exception as e:
@@ -511,7 +503,6 @@ class ConfirmPhoneOTPView(APIView):
             
             # Send welcome SMS
             try:
-                from utils.communication import send_welcome_sms
                 send_welcome_sms(phone, f"{user.first_name} {user.last_name}")
                 logger.info(f"Welcome SMS sent to {phone} after verification")
             except Exception as e:
@@ -525,85 +516,71 @@ class ConfirmPhoneOTPView(APIView):
 
 class VerifyRegistrationOTPView(APIView):
     """
-    Verify OTP and create user account
+    Verify OTP and activate user account
     """
     permission_classes = [AllowAny]
     
     def post(self, request):
         try:
-            registration_token = request.data.get('registration_token')
+            user_id = request.data.get('user_id')
             otp = request.data.get('otp')
             
-            if not registration_token or not otp:
+            if not user_id or not otp:
                 return Response({
                     'success': False,
-                    'message': 'Registration token and OTP are required.'
+                    'message': 'User ID and OTP are required.'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            # Get registration data from cache
-            registration_cache_key = f'registration_{registration_token}'
-            registration_data = cache.get(registration_cache_key)
-            
-            if not registration_data:
+            try:
+                # Get user from database
+                user = User.objects.get(id=user_id, is_active=False)
+            except User.DoesNotExist:
                 return Response({
                     'success': False,
-                    'message': 'Registration token expired or invalid. Please register again.'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Get OTP from cache
-            otp_cache_key = f'otp_{registration_token}'
-            stored_otp = cache.get(otp_cache_key)
-            
-            # If OTP not in cache, try to regenerate it (fallback mechanism)
-            if not stored_otp:
-                logger.warning(f"OTP not found in cache for token: {registration_token}")
-                return Response({
-                    'success': False,
-                    'message': 'OTP expired. Please request a new OTP using the resend endpoint.',
-                    'requires_resend': True
+                    'message': 'User not found or already verified.'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # Verify OTP
-            if str(otp) != str(stored_otp):
+            if str(otp) != str(user.otp):
                 return Response({
                     'success': False,
                     'message': 'Invalid OTP. Please check and try again.'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            # OTP is valid, create the user
-            user_data = registration_data['user_data']
-            
+            # OTP is valid, activate the user
             try:
                 with transaction.atomic():
-                    # Create user with verified status
-                    user = User.objects.create(
-                        first_name=user_data['first_name'],
-                        last_name=user_data['last_name'],
-                        partnership_number=user_data['partnership_number'],
-                        email=user_data.get('email'),
-                        phone=user_data.get('phone'),
-                        user_type=user_data['user_type'],
-                        password=make_password(user_data['password']),
-                        is_active=True,  # User is now active
-                        is_verified=True,  # User is verified
-                        email_verified=bool(user_data.get('email')),
-                        phone_verified=bool(user_data.get('phone'))
-                    )
+                    # Activate user account
+                    user.is_active = True
+                    user.is_verified = True
+                    user.email_verified = bool(user.email)
+                    user.phone_verified = bool(user.phone)
+                    user.otp = None  # Clear OTP after use
+                    user.save()
                     
-                    # Clear cache after successful account creation
-                    cache.delete(registration_cache_key)
-                    cache.delete(otp_cache_key)
+                    logger.info(f"User {user.id} activated successfully")
                     
-                    # Generate tokens
+                    # Send welcome messages
+                    try:
+                        if user.email:
+                            send_welcome_email(user.email, f"{user.first_name} {user.last_name}")
+                            logger.info(f"Welcome email sent to {user.email}")
+                        
+                        if user.phone:
+                            send_welcome_message(user.phone, f"{user.first_name} {user.last_name}")
+                            logger.info(f"Welcome SMS sent to {user.phone}")
+                    except Exception as e:
+                        logger.warning(f"Failed to send welcome message: {str(e)}")
+                        # Don't fail the activation if welcome message fails
+                    
+                    # Generate authentication tokens
                     refresh = RefreshToken.for_user(user)
                     access_token = str(refresh.access_token)
                     refresh_token = str(refresh)
                     
-                    logger.info(f"[REGISTRATION SUCCESS] - User {user.id} created successfully")
-                    
                     return Response({
                         'success': True,
-                        'message': 'Account created successfully!',
+                        'message': 'Account activated successfully! Welcome to our platform.',
                         'user': {
                             'id': user.id,
                             'first_name': user.first_name,
@@ -612,21 +589,24 @@ class VerifyRegistrationOTPView(APIView):
                             'email': user.email,
                             'phone': user.phone,
                             'user_type': user.user_type,
+                            'is_active': user.is_active,
                             'is_verified': user.is_verified
                         },
                         'tokens': {
                             'access': access_token,
                             'refresh': refresh_token
                         }
-                    }, status=status.HTTP_201_CREATED)
+                    }, status=status.HTTP_200_OK)
                     
             except Exception as e:
+                logger.error(f"Failed to activate user {user.id}: {str(e)}")
                 return Response({
                     'success': False,
-                    'message': f'Failed to create account: {str(e)}'
+                    'message': f'Failed to activate account: {str(e)}'
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
         except Exception as e:
+            logger.error(f"OTP verification failed: {str(e)}")
             return Response({
                 'success': False,
                 'message': f'OTP verification failed: {str(e)}'
@@ -641,35 +621,35 @@ class ResendRegistrationOTPView(APIView):
     
     def post(self, request):
         try:
-            registration_token = request.data.get('registration_token')
+            user_id = request.data.get('user_id')
             
-            if not registration_token:
+            if not user_id:
                 return Response({
                     'success': False,
-                    'message': 'Registration token is required.'
+                    'message': 'User ID is required.'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            # Get registration data from cache
-            registration_cache_key = f'registration_{registration_token}'
-            registration_data = cache.get(registration_cache_key)
-            
-            if not registration_data:
+            try:
+                # Get user from database
+                user = User.objects.get(id=user_id, is_active=False)
+            except User.DoesNotExist:
                 return Response({
                     'success': False,
-                    'message': 'Registration token expired or invalid. Please register again.'
+                    'message': 'User not found or already verified.'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # Generate new OTP
             new_otp = generate_otp()
             
-            # Store new OTP in cache
-            otp_cache_key = f'otp_{registration_token}'
-            cache.set(otp_cache_key, new_otp, timeout=600)  # 10 minutes
+            # Update user's OTP
+            user.otp = new_otp
+            user.save()
             
-            # Send new OTP
-            user_data = registration_data['user_data']
-            email = user_data.get('email')
-            phone = user_data.get('phone')
+            logger.info(f"New OTP generated for user {user.id}: {new_otp}")
+            
+            # Send new OTP based on contact method
+            email = user.email
+            phone = user.phone
             
             if email:
                 try:
@@ -680,6 +660,7 @@ class ResendRegistrationOTPView(APIView):
                         'otp_sent_to': 'email'
                     }, status=status.HTTP_200_OK)
                 except Exception as e:
+                    logger.error(f"Failed to send email OTP to {email}: {str(e)}")
                     return Response({
                         'success': False,
                         'message': f'Failed to send email OTP: {str(e)}'
@@ -694,6 +675,7 @@ class ResendRegistrationOTPView(APIView):
                         'otp_sent_to': 'phone'
                     }, status=status.HTTP_200_OK)
                 except Exception as e:
+                    logger.error(f"Failed to send SMS OTP to {phone}: {str(e)}")
                     return Response({
                         'success': False,
                         'message': f'Failed to send SMS OTP: {str(e)}'
@@ -706,8 +688,8 @@ class ResendRegistrationOTPView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
                 
         except Exception as e:
+            logger.error(f"Failed to resend OTP: {str(e)}")
             return Response({
                 'success': False,
                 'message': f'Failed to resend OTP: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
