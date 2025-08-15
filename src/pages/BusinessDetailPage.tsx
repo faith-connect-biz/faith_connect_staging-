@@ -34,7 +34,9 @@ import {
   ExternalLink,
   TrendingUp,
   PenTool,
-  Plus
+  Plus,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
@@ -46,6 +48,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ProductForm } from "@/components/ProductForm";
+import { ServiceForm } from "@/components/ServiceForm";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
@@ -70,16 +74,7 @@ const BusinessDetailPage = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
-  const [productFormData, setProductFormData] = useState({
-    name: '',
-    description: '',
-    price: 0,
-    price_currency: 'USD',
-    product_image_url: '',
-    images: [] as string[], // Multiple images support
-    in_stock: true
-  });
-  const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
+
   
   // Image viewer state
   const [showImageModal, setShowImageModal] = useState(false);
@@ -92,6 +87,19 @@ const BusinessDetailPage = () => {
   // Business ownership state
   const [isBusinessOwner, setIsBusinessOwner] = useState(false);
 
+  // Enhanced product and service detail states
+  const [showProductDetailModal, setShowProductDetailModal] = useState(false);
+  const [selectedProductDetail, setSelectedProductDetail] = useState<any>(null);
+  const [currentProductImageIndex, setCurrentProductImageIndex] = useState(0);
+  
+  const [showServiceDetailModal, setShowServiceDetailModal] = useState(false);
+  const [selectedServiceDetail, setSelectedServiceDetail] = useState<any>(null);
+  const [currentServiceImageIndex, setCurrentServiceImageIndex] = useState(0);
+  
+  // Service form states
+  const [showServiceForm, setShowServiceForm] = useState(false);
+  const [editingService, setEditingService] = useState<any>(null);
+
   const headerRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
 
@@ -103,26 +111,47 @@ const BusinessDetailPage = () => {
       try {
         setIsLoading(true);
         const businessData = await apiService.getBusiness(id);
+        if (!businessData) {
+          throw new Error('Failed to fetch business data');
+        }
         setBusiness(businessData);
         
         // Fetch reviews for this business
-        const reviewsData = await apiService.getBusinessReviews(id);
-        setReviews(reviewsData);
-        
-        // Fetch services for this business
-        setIsLoadingServices(true);
-        const servicesData = await apiService.getBusinessServices(id);
-        setServices(servicesData);
+        let reviewsArray: Review[] = [];
+        try {
+          const reviewsData = await apiService.getBusinessReviews(id);
+          // Ensure reviewsData is an array
+          reviewsArray = Array.isArray(reviewsData) ? reviewsData : [];
+          setReviews(reviewsArray);
+          console.log('Reviews fetched successfully:', reviewsArray);
+        } catch (error) {
+          console.error('Failed to fetch reviews:', error);
+          // Set empty reviews array and show error toast
+          setReviews([]);
+          toast({
+            title: "Reviews Unavailable",
+            description: "Unable to load reviews at this time. The business stats show there are reviews, but we cannot display them due to a technical issue.",
+            variant: "destructive"
+          });
+        }
         
         // Check if current user has already reviewed this business
-        if (user) {
-          const userReview = reviewsData.find((review: Review) => review.user === user.partnership_number);
+        if (user && reviewsArray.length > 0) {
+          const userReview = reviewsArray.find((review: Review) => review.user === user.partnership_number);
           if (userReview) {
             setUserReviewData(userReview);
             setUserRating(userReview.rating);
             setUserReview(userReview.review_text || '');
           }
         }
+        
+        // Fetch services for this business
+        setIsLoadingServices(true);
+        const servicesData = await apiService.getBusinessServices(id);
+        // Ensure servicesData is an array
+        const servicesArray = Array.isArray(servicesData) ? servicesData : [];
+        setServices(servicesArray);
+        
       } catch (error) {
         console.error('Error fetching business data:', error);
         toast({
@@ -189,6 +218,13 @@ const BusinessDetailPage = () => {
     checkBusinessOwnership();
   }, [user, business]);
 
+  // Debug reviews state
+  useEffect(() => {
+    console.log('Reviews state changed:', reviews);
+    console.log('Reviews length:', reviews.length);
+    console.log('Business review count:', business?.review_count);
+  }, [reviews, business?.review_count]);
+
   const handleToggleFavorite = () => {
     setIsFavorite(!isFavorite);
     // TODO: Implement favorite toggle with API
@@ -212,7 +248,6 @@ const BusinessDetailPage = () => {
       
       return (
         <button
-          key={starIndex}
           type="button"
           onClick={() => interactive && onRatingChange?.(starIndex + 1)}
           className={`${interactive ? 'cursor-pointer hover:scale-110' : 'cursor-default'} transition-all duration-200`}
@@ -233,7 +268,11 @@ const BusinessDetailPage = () => {
 
     return (
       <div className="flex items-center gap-1">
-        {[...Array(5)].map((_, index) => renderStar(index))}
+        {[...Array(5)].map((_, index) => (
+          <div key={index}>
+            {renderStar(index)}
+          </div>
+        ))}
       </div>
     );
   };
@@ -349,29 +388,11 @@ const BusinessDetailPage = () => {
   // Product Management Functions
   const handleAddProduct = () => {
     setEditingProduct(null);
-    setProductFormData({
-      name: '',
-      description: '',
-      price: 0,
-      price_currency: 'USD',
-      product_image_url: '',
-      images: [],
-      in_stock: true
-    });
     setShowProductForm(true);
   };
 
   const handleEditProduct = (product: any) => {
     setEditingProduct(product);
-    setProductFormData({
-      name: product.name || '',
-      description: product.description || '',
-      price: product.price || 0,
-      price_currency: product.price_currency || 'USD',
-      product_image_url: product.product_image_url || '',
-      images: product.images || [],
-      in_stock: product.in_stock !== undefined ? product.in_stock : true
-    });
     setShowProductForm(true);
   };
 
@@ -398,100 +419,112 @@ const BusinessDetailPage = () => {
     }
   };
 
-  const handleSubmitProduct = async () => {
-    if (!productFormData.name || productFormData.price <= 0) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields.",
-        variant: "destructive"
-      });
-      return;
-    }
 
-    setIsSubmittingProduct(true);
-    try {
-      if (editingProduct) {
-        // Update existing product
-        await apiService.updateProduct(editingProduct.id, productFormData);
-        toast({
-          title: "Product Updated",
-          description: "Product has been updated successfully.",
-          variant: "default"
-        });
-      } else {
-        // Create new product
-        await apiService.createProduct(id!, productFormData);
-        toast({
-          title: "Product Added",
-          description: "Product has been added successfully.",
-          variant: "default"
-        });
-      }
-      
-      // Refresh business data
-      const businessData = await apiService.getBusiness(id!);
-      setBusiness(businessData);
-      
-      // Reset form
-      setShowProductForm(false);
-      setEditingProduct(null);
-      setProductFormData({
-        name: '',
-        description: '',
-        price: 0,
-        price_currency: 'USD',
-        product_image_url: '',
-        images: [],
-        in_stock: true
-      });
-    } catch (error) {
-      console.error('Error saving product:', error);
-      toast({
-        title: "Save Failed",
-        description: "Failed to save product. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmittingProduct(false);
-    }
-  };
 
-  const handleAddImage = () => {
-    if (productFormData.images.length >= 10) {
-      toast({
-        title: "Image Limit Reached",
-        description: "You can add a maximum of 10 images per product.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    const imageUrl = prompt("Enter image URL:");
-    if (imageUrl && imageUrl.trim()) {
-      setProductFormData(prev => ({
-        ...prev,
-        images: [...prev.images, imageUrl.trim()]
-      }));
-    }
-  };
 
-  const handleRemoveImage = (index: number) => {
-    setProductFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
-  };
-
-  const handleImageUrlChange = (index: number, newUrl: string) => {
-    setProductFormData(prev => ({
-      ...prev,
-      images: prev.images.map((url, i) => i === index ? newUrl : url)
-    }));
-  };
 
   const handleViewProductImages = (product: any) => {
     setSelectedProductForImages(product);
     setShowImageModal(true);
+  };
+
+  // Enhanced product and service detail functions
+  const handleProductClick = (product: any) => {
+    setSelectedProductDetail(product);
+    setCurrentProductImageIndex(0);
+    setShowProductDetailModal(true);
+  };
+
+  const handleServiceClick = (service: any) => {
+    setSelectedServiceDetail(service);
+    setCurrentServiceImageIndex(0);
+    setShowServiceDetailModal(true);
+  };
+
+  const nextProductImage = () => {
+    if (selectedProductDetail) {
+      const totalImages = (selectedProductDetail.images?.length || 0) + (selectedProductDetail.product_image_url ? 1 : 0);
+      setCurrentProductImageIndex((prev) => (prev + 1) % totalImages);
+    }
+  };
+
+  const prevProductImage = () => {
+    if (selectedProductDetail) {
+      const totalImages = (selectedProductDetail.images?.length || 0) + (selectedProductDetail.product_image_url ? 1 : 0);
+      setCurrentProductImageIndex((prev) => (prev - 1 + totalImages) % totalImages);
+    }
+  };
+
+  const nextServiceImage = () => {
+    if (selectedServiceDetail) {
+      const totalImages = (selectedServiceDetail.images?.length || 0) + (selectedServiceDetail.service_image_url ? 1 : 0);
+      setCurrentServiceImageIndex((prev) => (prev + 1) % totalImages);
+    }
+  };
+
+  const prevServiceImage = () => {
+    if (selectedServiceDetail) {
+      const totalImages = (selectedServiceDetail.images?.length || 0) + (selectedServiceDetail.service_image_url ? 1 : 0);
+      setCurrentServiceImageIndex((prev) => (prev - 1 + totalImages) % totalImages);
+    }
+  };
+
+  const getCurrentProductImage = () => {
+    if (!selectedProductDetail) return '';
+    if (currentProductImageIndex === 0 && selectedProductDetail.product_image_url) {
+      return selectedProductDetail.product_image_url;
+    }
+    const imageIndex = selectedProductDetail.product_image_url ? currentProductImageIndex - 1 : currentProductImageIndex;
+    return selectedProductDetail.images?.[imageIndex] || '';
+  };
+
+  const getCurrentServiceImage = () => {
+    if (!selectedServiceDetail) return '';
+    if (currentProductImageIndex === 0 && selectedServiceDetail.service_image_url) {
+      return selectedServiceDetail.service_image_url;
+    }
+    const imageIndex = selectedServiceDetail.service_image_url ? currentProductImageIndex - 1 : currentProductImageIndex;
+    return selectedServiceDetail.images?.[imageIndex] || '';
+  };
+
+  // Service management functions
+  const handleAddService = () => {
+    setEditingService(null);
+    setShowServiceForm(true);
+  };
+
+  const handleEditService = (service: any) => {
+    setEditingService(service);
+    setShowServiceForm(true);
+  };
+
+  const handleDeleteService = async (serviceId: string) => {
+    if (!confirm('Are you sure you want to delete this service?')) return;
+    
+    try {
+      await apiService.deleteService(serviceId);
+      // Refresh services data
+      const servicesData = await apiService.getBusinessServices(id!);
+      setServices(servicesData);
+      toast({
+        title: "Service Deleted",
+        description: "Service has been deleted successfully.",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error('Error deleting service:', error);
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete service. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleServiceSuccess = async () => {
+    // Refresh services data
+    const servicesData = await apiService.getBusinessServices(id!);
+    setServices(servicesData);
   };
 
   const ProductPhotoModal = ({ product, onClose }: { product: any, onClose: () => void }) => (
@@ -704,8 +737,8 @@ const BusinessDetailPage = () => {
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className="grid w-full grid-cols-4 bg-gray-100/50 backdrop-blur-sm">
                       <TabsTrigger value="overview">Overview</TabsTrigger>
-                      <TabsTrigger value="services">Services</TabsTrigger>
-                      <TabsTrigger value="products">Products</TabsTrigger>
+                      <TabsTrigger value="services">Services ({services.length}/20)</TabsTrigger>
+                      <TabsTrigger value="products">Products ({business.products ? business.products.length : 0}/20)</TabsTrigger>
                       <TabsTrigger value="reviews">Reviews</TabsTrigger>
                     </TabsList>
                     
@@ -774,14 +807,22 @@ const BusinessDetailPage = () => {
                       <div className="space-y-6">
                         <div className="flex items-center justify-between">
                           <h3 className="text-xl font-semibold text-fem-navy">Services</h3>
-                          {user && user.user_type === 'business' && (
-                            <Button
-                              onClick={() => {/* TODO: Add service form */}}
-                              className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
-                            >
-                              <Settings className="w-4 h-4 mr-2" />
-                              Add Service
-                            </Button>
+                          {user && user.user_type === 'business' && isBusinessOwner && (
+                            <div className="flex items-center gap-3">
+                              {services.length >= 20 ? (
+                                <div className="text-sm text-gray-500 italic">
+                                  Service limit reached (20/20)
+                                </div>
+                              ) : (
+                                <Button
+                                  onClick={handleAddService}
+                                  className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                                >
+                                  <Settings className="w-4 h-4 mr-2" />
+                                  Add Service ({services.length}/20)
+                                </Button>
+                              )}
+                            </div>
                           )}
                         </div>
 
@@ -792,42 +833,110 @@ const BusinessDetailPage = () => {
                             <p className="text-gray-600 mt-2">Loading services...</p>
                           </div>
                         ) : services && services.length > 0 ? (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                             {services.map((service: any) => (
-                              <Card key={service.id} className="h-full hover:shadow-lg transition-shadow duration-200">
+                              <Card 
+                                key={service.id} 
+                                className="h-full hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                                onClick={() => handleServiceClick(service)}
+                              >
                                 <div className="relative">
                                   {/* Service Image */}
                                   <img 
                                     src={service.service_image_url || service.images?.[0] || "/placeholder.svg"} 
                                     alt={service.name}
-                                    className="w-full h-48 object-cover rounded-t-lg"
+                                    className="w-full h-48 sm:h-40 md:h-48 object-cover rounded-t-lg hover:opacity-90 transition-opacity"
                                   />
                                   
+                                  {/* Multiple Images Indicator */}
+                                  {service.images && service.images.length > 0 && (
+                                    <div className="absolute top-2 left-2">
+                                      <Badge className="bg-black/80 text-white text-xs font-medium px-2 py-1 rounded-full border border-white/20 shadow-lg">
+                                        {service.images.length + (service.service_image_url ? 1 : 0)} images
+                                      </Badge>
+                                    </div>
+                                  )}
+                                  
                                   <div className="absolute top-2 right-2">
-                                    <Badge className={`${service.is_active ? 'bg-green-500' : 'bg-red-500'} text-white`}>
+                                    <Badge className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                      service.is_active
+                                        ? 'bg-green-100 text-green-800 border border-green-200' 
+                                        : 'bg-red-100 text-red-800 border border-red-200'
+                                    }`}>
                                       {service.is_active ? 'Available' : 'Unavailable'}
                                     </Badge>
                                   </div>
+                                  
+                                  {/* Image Gallery Preview */}
+                                  {service.images && service.images.length > 0 && (
+                                    <div className="absolute bottom-2 left-2 right-2">
+                                      <div className="flex space-x-1">
+                                        {service.images.slice(0, 4).map((imageUrl: string, index: number) => (
+                                          <img
+                                            key={index}
+                                            src={imageUrl}
+                                            alt={`${service.name} view ${index + 1}`}
+                                            className="w-8 h-8 object-cover rounded border border-white shadow-sm"
+                                          />
+                                        ))}
+                                        {service.images.length > 4 && (
+                                          <div className="w-8 h-8 bg-black/70 rounded border border-white shadow-sm flex items-center justify-center">
+                                            <span className="text-white text-xs font-bold">+{service.images.length - 4}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
-                                <CardContent className="p-4">
-                                  <h4 className="font-semibold text-fem-navy mb-2">{service.name}</h4>
-                                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                                <CardContent className="p-3 md:p-4">
+                                  <h4 className="font-semibold text-fem-navy mb-2 text-sm md:text-base line-clamp-2">{service.name}</h4>
+                                  <p className="text-xs md:text-sm text-gray-600 mb-3 line-clamp-2">
                                     {service.description || 'No description available'}
                                   </p>
                                   <div className="space-y-2">
                                     {service.price_range && (
-                                      <div className="flex items-center gap-2 text-sm">
+                                      <div className="flex items-center gap-2 text-xs md:text-sm">
                                         <span className="text-gray-500">Price:</span>
-                                        <span className="font-semibold text-fem-terracotta">{service.price_range}</span>
+                                        <span className="font-semibold text-fem-terracotta bg-gradient-to-r from-fem-terracotta to-fem-gold bg-clip-text text-transparent">{service.price_range}</span>
                                       </div>
                                     )}
                                     {service.duration && (
-                                      <div className="flex items-center gap-2 text-sm">
+                                      <div className="flex items-center gap-2 text-xs md:text-sm">
                                         <span className="text-gray-500">Duration:</span>
                                         <span className="font-semibold text-gray-700">{service.duration}</span>
                                       </div>
                                     )}
                                   </div>
+                                  
+                                  {/* Action Buttons for Business Owners */}
+                                  {user && user.user_type === 'business' && isBusinessOwner && (
+                                    <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleEditService(service);
+                                        }}
+                                        className="text-xs border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white transition-colors flex-1 min-w-0"
+                                      >
+                                        <PenTool className="w-3 h-3 mr-1 flex-shrink-0" />
+                                        <span className="truncate">Edit</span>
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteService(service.id);
+                                        }}
+                                        className="text-xs text-red-600 border-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-700 transition-colors flex-1 min-w-0"
+                                      >
+                                        <X className="w-3 h-3 mr-1 flex-shrink-0" />
+                                        <span className="truncate">Delete</span>
+                                      </Button>
+                                    </div>
+                                  )}
                                 </CardContent>
                               </Card>
                             ))}
@@ -842,14 +951,20 @@ const BusinessDetailPage = () => {
                                 : "This business hasn't added any services yet."
                               }
                             </p>
-                            {user && user.user_type === 'business' && (
-                              <Button
-                                onClick={() => {/* TODO: Add service form */}}
-                                className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
-                              >
-                                <Settings className="w-4 h-4 mr-2" />
-                                Add Your First Service
-                              </Button>
+                            {user && user.user_type === 'business' && isBusinessOwner && (
+                              services.length >= 20 ? (
+                                <div className="text-sm text-gray-500 italic">
+                                  Service limit reached (20/20)
+                                </div>
+                              ) : (
+                                <Button
+                                  onClick={handleAddService}
+                                  className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                                >
+                                  <Settings className="w-4 h-4 mr-2" />
+                                  Add Your First Service ({services.length}/20)
+                                </Button>
+                              )
                             )}
                           </div>
                         )}
@@ -860,43 +975,69 @@ const BusinessDetailPage = () => {
                       <div className="space-y-6">
                         <div className="flex items-center justify-between">
                           <h3 className="text-xl font-semibold text-fem-navy">Products</h3>
-                          {user && user.user_type === 'business' && (
-                            <Button
-                              onClick={handleAddProduct}
-                              className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
-                            >
-                              <Package className="w-4 h-4 mr-2" />
-                              Add Product
-                            </Button>
+                          {user && user.user_type === 'business' && isBusinessOwner && (
+                            <div className="flex items-center gap-3">
+                              {business.products && business.products.length >= 20 ? (
+                                <div className="text-sm text-gray-500 italic">
+                                  Product limit reached (20/20)
+                                </div>
+                              ) : (
+                                <Button
+                                  onClick={handleAddProduct}
+                                  className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                                >
+                                  <Package className="w-4 h-4 mr-2" />
+                                  Add Product ({business.products ? business.products.length : 0}/20)
+                                </Button>
+                              )}
+                            </div>
                           )}
                         </div>
 
                         {/* Products List */}
                         {business.products && business.products.length > 0 ? (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                             {business.products.map((product: any) => (
-                              <Card key={product.id} className="h-full hover:shadow-lg transition-shadow duration-200">
+                              <Card 
+                                key={product.id} 
+                                className="h-full hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                                onClick={() => handleProductClick(product)}
+                              >
                                 <div className="relative">
                                   {/* Main Product Image */}
                                   <img 
                                     src={product.product_image_url || product.images?.[0] || "/placeholder.svg"} 
                                     alt={product.name}
-                                    className="w-full h-48 object-cover rounded-t-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                    onClick={() => handleViewProductImages(product)}
+                                    className="w-full h-48 sm:h-40 md:h-48 object-cover rounded-t-lg hover:opacity-90 transition-opacity"
                                   />
                                   
                                   {/* Multiple Images Indicator */}
                                   {product.images && product.images.length > 0 && (
                                     <div className="absolute top-2 left-2">
-                                      <Badge className="bg-black/70 text-white text-xs">
+                                      <Badge className="bg-black/80 text-white text-xs font-medium px-2 py-1 rounded-full border border-white/20 shadow-lg">
                                         {product.images.length + (product.product_image_url ? 1 : 0)} images
                                       </Badge>
                                     </div>
                                   )}
                                   
-                                  <div className="absolute top-2 right-2">
-                                    <Badge className={`${product.in_stock ? 'bg-green-500' : 'bg-red-500'} text-white`}>
+                                  {/* Status Badges - Better positioned and spaced */}
+                                  <div className="absolute top-2 right-2 flex flex-col gap-1">
+                                    {/* Stock Status Badge */}
+                                    <Badge className={`px-2 py-1 text-xs font-medium rounded-full shadow-sm ${
+                                      product.in_stock 
+                                        ? 'bg-green-100 text-green-800 border border-green-200' 
+                                        : 'bg-red-100 text-red-800 border border-red-200'
+                                    }`}>
                                       {product.in_stock ? 'In Stock' : 'Out of Stock'}
+                                    </Badge>
+                                    
+                                    {/* Active Status Badge */}
+                                    <Badge className={`px-2 py-1 text-xs font-medium rounded-full shadow-sm ${
+                                      product.is_active !== false
+                                        ? 'bg-blue-100 text-blue-800 border border-blue-200' 
+                                        : 'bg-gray-100 text-gray-800 border border-gray-200'
+                                    }`}>
+                                      {product.is_active !== false ? 'Active' : 'Inactive'}
                                     </Badge>
                                   </div>
                                   
@@ -921,38 +1062,46 @@ const BusinessDetailPage = () => {
                                     </div>
                                   )}
                                 </div>
-                                <CardContent className="p-4">
-                                  <h4 className="font-semibold text-fem-navy mb-2">{product.name}</h4>
-                                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                                <CardContent className="p-3 md:p-4">
+                                  <h4 className="font-semibold text-fem-navy mb-2 text-sm md:text-base line-clamp-2 leading-tight">{product.name}</h4>
+                                  <p className="text-xs md:text-sm text-gray-600 mb-3 line-clamp-2 leading-relaxed">
                                     {product.description || 'No description available'}
                                   </p>
                                   <div className="flex items-center justify-between mb-3">
-                                    <div className="text-lg font-bold text-fem-terracotta">
-                                      ${product.price} {product.price_currency}
+                                    <div className="text-base md:text-lg font-bold text-fem-terracotta bg-gradient-to-r from-fem-terracotta to-fem-gold bg-clip-text text-transparent">
+                                      {product.price} {product.price_currency}
                                     </div>
-                                    {user && user.user_type === 'business' && (
-                                      <div className="flex gap-2">
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => handleEditProduct(product)}
-                                          className="text-xs"
-                                        >
-                                          <PenTool className="w-3 h-3 mr-1" />
-                                          Edit
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => handleDeleteProduct(product.id)}
-                                          className="text-xs text-red-600 border-red-600 hover:bg-red-50"
-                                        >
-                                          <X className="w-3 h-3 mr-1" />
-                                          Delete
-                                        </Button>
-                                      </div>
-                                    )}
                                   </div>
+                                  
+                                  {/* Action Buttons - Fixed layout and spacing */}
+                                  {user && user.user_type === 'business' && (
+                                    <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleEditProduct(product);
+                                        }}
+                                        className="text-xs border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white transition-colors flex-1 min-w-0 h-8"
+                                      >
+                                        <PenTool className="w-3 h-3 mr-1 flex-shrink-0" />
+                                        <span className="truncate">Edit</span>
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteProduct(product.id);
+                                        }}
+                                        className="text-xs text-red-600 border-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-700 transition-colors flex-1 min-w-0 h-8"
+                                      >
+                                        <X className="w-3 h-3 mr-1 flex-shrink-0" />
+                                        <span className="truncate">Delete</span>
+                                      </Button>
+                                    </div>
+                                  )}
                                 </CardContent>
                               </Card>
                             ))}
@@ -967,14 +1116,20 @@ const BusinessDetailPage = () => {
                                 : "This business hasn't added any products yet."
                               }
                             </p>
-                            {user && user.user_type === 'business' && (
-                              <Button
-                                onClick={handleAddProduct}
-                                className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
-                              >
-                                <Package className="w-4 h-4 mr-2" />
-                                Add Your First Product
-                              </Button>
+                            {user && user.user_type === 'business' && isBusinessOwner && (
+                              (business.products && business.products.length >= 20) ? (
+                                <div className="text-sm text-gray-500 italic">
+                                  Product limit reached (20/20)
+                                </div>
+                              ) : (
+                                <Button
+                                  onClick={handleAddProduct}
+                                  className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                                >
+                                  <Package className="w-4 h-4 mr-2" />
+                                  Add Your First Product ({business.products ? business.products.length : 0}/20)
+                                </Button>
+                              )
                             )}
                           </div>
                         )}
@@ -1025,8 +1180,16 @@ const BusinessDetailPage = () => {
                               <div key={review.id} className="bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-gray-200">
                                 <div className="flex items-start justify-between mb-2">
                                   <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-fem-navy to-fem-terracotta flex items-center justify-center text-white text-sm font-bold">
-                                      {review.user?.[0] || 'U'}
+                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 border border-gray-200">
+                                      <img 
+                                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(review.user || 'User')}&background=6366f1&color=fff&size=32&font-size=14&bold=true`}
+                                        alt={review.user || 'User'}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(review.user?.[0] || 'U')}&background=6366f1&color=fff&size=32&font-size=14&bold=true`;
+                                        }}
+                                      />
                                     </div>
                                     <span className="font-medium text-gray-900">{review.user}</span>
                                     {review.is_verified && (
@@ -1060,8 +1223,15 @@ const BusinessDetailPage = () => {
                         ) : (
                         <div className="text-center py-12">
                           <MessageSquare className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold text-fem-navy mb-2">No Reviews Yet</h3>
-                            <p className="text-gray-600">Be the first to review this business!</p>
+                            <h3 className="text-lg font-semibold text-fem-navy mb-2">
+                              {business?.review_count > 0 ? 'Reviews Temporarily Unavailable' : 'No Reviews Yet'}
+                            </h3>
+                            <p className="text-gray-600">
+                              {business?.review_count > 0 
+                                ? `This business has ${business.review_count} reviews, but they cannot be displayed at the moment due to a technical issue. Please try again later.`
+                                : 'Be the first to review this business!'
+                              }
+                            </p>
                         </div>
                         )}
                       </div>
@@ -1152,193 +1322,6 @@ const BusinessDetailPage = () => {
         </div>
       </main>
 
-      {/* Product Form Modal */}
-      <AnimatePresence>
-        {showProductForm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowProductForm(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-fem-navy">
-                  {editingProduct ? 'Edit Product' : 'Add New Product'}
-                </h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowProductForm(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-5 h-5" />
-                </Button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="productName" className="text-sm font-medium text-gray-700">Product Name *</Label>
-                  <Input
-                    id="productName"
-                    value={productFormData.name}
-                    onChange={(e) => setProductFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter product name"
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="productDescription" className="text-sm font-medium text-gray-700">Description</Label>
-                  <Textarea
-                    id="productDescription"
-                    value={productFormData.description}
-                    onChange={(e) => setProductFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Describe your product"
-                    rows={3}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="productPrice" className="text-sm font-medium text-gray-700">Price *</Label>
-                    <Input
-                      id="productPrice"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={productFormData.price}
-                      onChange={(e) => setProductFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-                      placeholder="0.00"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="productCurrency" className="text-sm font-medium text-gray-700">Currency</Label>
-                    <Select value={productFormData.price_currency} onValueChange={(value) => setProductFormData(prev => ({ ...prev, price_currency: value }))}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="USD">USD ($)</SelectItem>
-                        <SelectItem value="EUR">EUR (€)</SelectItem>
-                        <SelectItem value="GBP">GBP (£)</SelectItem>
-                        <SelectItem value="KES">KES (KSh)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="productImage" className="text-sm font-medium text-gray-700">Image URL</Label>
-                  <Input
-                    id="productImage"
-                    value={productFormData.product_image_url}
-                    onChange={(e) => setProductFormData(prev => ({ ...prev, product_image_url: e.target.value }))}
-                    placeholder="https://example.com/image.jpg"
-                    className="mt-1"
-                  />
-                </div>
-
-                {/* Multiple Images Section */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <Label className="text-sm font-medium text-gray-700">
-                      Additional Images ({productFormData.images.length}/10)
-                    </Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAddImage}
-                      disabled={productFormData.images.length >= 10}
-                      className="text-xs"
-                    >
-                      <Plus className="w-3 h-3 mr-1" />
-                      Add Image
-                    </Button>
-                  </div>
-                  
-                  {productFormData.images.length > 0 && (
-                    <div className="space-y-2">
-                      {productFormData.images.map((imageUrl, index) => (
-                        <div key={index} className="flex items-center space-x-2">
-                          <Input
-                            value={imageUrl}
-                            onChange={(e) => handleImageUrlChange(index, e.target.value)}
-                            placeholder="https://example.com/image.jpg"
-                            className="flex-1 text-sm"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRemoveImage(index)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {productFormData.images.length === 0 && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Add up to 10 additional images to showcase your product from different angles
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="productInStock"
-                    checked={productFormData.in_stock}
-                    onCheckedChange={(checked) => setProductFormData(prev => ({ ...prev, in_stock: checked as boolean }))}
-                  />
-                  <Label htmlFor="productInStock" className="text-sm font-medium text-gray-700">In Stock</Label>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <Button
-                  onClick={handleSubmitProduct}
-                  disabled={isSubmittingProduct}
-                  className="flex-1 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
-                >
-                  {isSubmittingProduct ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Package className="w-4 h-4 mr-2" />
-                      {editingProduct ? 'Update Product' : 'Add Product'}
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowProductForm(false)}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Image Viewer Modal */}
       {showImageModal && selectedProductForImages && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
@@ -1390,6 +1373,298 @@ const BusinessDetailPage = () => {
           </div>
         </div>
       )}
+
+      {/* Enhanced Product Detail Modal */}
+      <AnimatePresence>
+        {showProductDetailModal && selectedProductDetail && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowProductDetailModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-fem-navy">
+                  {selectedProductDetail.name}
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowProductDetailModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              <div className="relative h-64 md:h-80 mb-4 rounded-lg overflow-hidden">
+                <img 
+                  src={getCurrentProductImage()} 
+                  alt={selectedProductDetail.name}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-between p-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={prevProductImage}
+                    disabled={currentProductImageIndex === 0 && !selectedProductDetail.product_image_url}
+                    className="text-white hover:bg-black/70"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={nextProductImage}
+                    disabled={(selectedProductDetail.images?.length || 0) === 0}
+                    className="text-white hover:bg-black/70"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-fem-navy">Description</h3>
+                <p className="text-gray-700 leading-relaxed">{selectedProductDetail.description}</p>
+                
+                {/* Enhanced Status Section */}
+                <div className="flex items-center justify-between">
+                  <div className="text-lg font-bold text-fem-terracotta bg-gradient-to-r from-fem-terracotta to-fem-gold bg-clip-text text-transparent">
+                    {selectedProductDetail.price} {selectedProductDetail.price_currency}
+                  </div>
+                  
+                  {/* Status Badges */}
+                  <div className="flex items-center gap-3">
+                    {/* Stock Status Badge */}
+                    <Badge 
+                      className={`px-3 py-1.5 text-xs font-medium rounded-full ${
+                        selectedProductDetail.in_stock 
+                          ? 'bg-green-100 text-green-800 border border-green-200' 
+                          : 'bg-red-100 text-red-800 border border-red-200'
+                      }`}
+                    >
+                      {selectedProductDetail.in_stock ? 'In Stock' : 'Out of Stock'}
+                    </Badge>
+                    
+                    {/* Active Status Badge */}
+                    <Badge 
+                      className={`px-3 py-1.5 text-xs font-medium rounded-full ${
+                        selectedProductDetail.is_active !== false
+                          ? 'bg-blue-100 text-blue-800 border border-blue-200' 
+                          : 'bg-gray-100 text-gray-800 border border-gray-200'
+                      }`}
+                    >
+                      {selectedProductDetail.is_active !== false ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
+                </div>
+                
+                {/* Additional Product Info */}
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+                  <div className="flex items-center gap-2 text-gray-600 text-sm">
+                    <Package className="w-4 h-4 text-fem-terracotta" />
+                    <span>Stock: {selectedProductDetail.in_stock ? 'Available' : 'Unavailable'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600 text-sm">
+                    <Clock className="w-4 h-4 text-fem-terracotta" />
+                    <span>Added: {selectedProductDetail.created_at ? new Date(selectedProductDetail.created_at).toLocaleDateString() : 'N/A'}</span>
+                  </div>
+                </div>
+                
+                {/* Action Buttons for Business Owners */}
+                {user && user.user_type === 'business' && (
+                  <div className="flex gap-2 pt-2 border-t border-gray-100">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEditProduct(selectedProductDetail)}
+                      className="text-xs border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white transition-colors"
+                    >
+                      <PenTool className="w-3 h-3 mr-1" />
+                      Edit Product
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDeleteProduct(selectedProductDetail.id)}
+                      className="text-xs text-red-600 border-red-600 hover:bg-red-50"
+                    >
+                      <X className="w-3 h-3 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {selectedProductDetail.images && selectedProductDetail.images.length > 0 && (
+                <div className="mt-6 grid grid-cols-1 gap-2">
+                  {selectedProductDetail.images.map((imageUrl, index) => (
+                    <img
+                      key={index}
+                      src={imageUrl}
+                      alt={`${selectedProductDetail.name} detail image ${index + 1}`}
+                      className="w-full h-24 object-cover rounded-md cursor-pointer hover:opacity-90"
+                      onClick={() => {
+                        setSelectedProductDetail(prev => ({ ...prev, product_image_url: imageUrl }));
+                        setCurrentProductImageIndex(index);
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Enhanced Service Detail Modal */}
+      <AnimatePresence>
+        {showServiceDetailModal && selectedServiceDetail && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowServiceDetailModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-fem-navy">
+                  {selectedServiceDetail.name}
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowServiceDetailModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              <div className="relative h-64 md:h-80 mb-4 rounded-lg overflow-hidden">
+                <img 
+                  src={getCurrentServiceImage()} 
+                  alt={selectedServiceDetail.name}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-between p-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={prevServiceImage}
+                    disabled={currentServiceImageIndex === 0 && !selectedServiceDetail.service_image_url}
+                    className="text-white hover:bg-black/70"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={nextServiceImage}
+                    disabled={(selectedServiceDetail.images?.length || 0) === 0}
+                    className="text-white hover:bg-black/70"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-fem-navy">Description</h3>
+                <p className="text-gray-700 leading-relaxed">{selectedServiceDetail.description}</p>
+                
+                {/* Enhanced Status Section */}
+                <div className="flex items-center justify-between">
+                  <div className="text-lg font-bold text-fem-terracotta bg-gradient-to-r from-fem-terracotta to-fem-gold bg-clip-text text-transparent">
+                    {selectedServiceDetail.price_range}
+                  </div>
+                  
+                  {/* Status Badge */}
+                  <Badge 
+                    className={`px-3 py-1.5 text-xs font-medium rounded-full ${
+                      selectedServiceDetail.is_active
+                        ? 'bg-green-100 text-green-800 border border-green-200' 
+                        : 'bg-red-100 text-red-800 border border-red-200'
+                    }`}
+                  >
+                    {selectedServiceDetail.is_active ? 'Available' : 'Unavailable'}
+                  </Badge>
+                </div>
+                
+                {/* Additional Service Info */}
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+                  <div className="flex items-center gap-2 text-gray-600 text-sm">
+                    <Clock className="w-4 h-4 text-fem-terracotta" />
+                    <span>Duration: {selectedServiceDetail.duration || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600 text-sm">
+                    <Package className="w-4 h-4 text-fem-terracotta" />
+                    <span>Status: {selectedServiceDetail.is_active ? 'Active' : 'Inactive'}</span>
+                  </div>
+                </div>
+                
+                {/* Action Buttons for Business Owners */}
+                {user && user.user_type === 'business' && (
+                  <div className="flex gap-2 pt-2 border-t border-gray-100">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEditService(selectedServiceDetail)}
+                      className="text-xs border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white transition-colors"
+                    >
+                      <PenTool className="w-3 h-3 mr-1" />
+                      Edit Service
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDeleteService(selectedServiceDetail.id)}
+                      className="text-xs text-red-600 border-red-600 hover:bg-red-50"
+                    >
+                      <X className="w-3 h-3 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {selectedServiceDetail.images && selectedServiceDetail.images.length > 0 && (
+                <div className="mt-6 grid grid-cols-1 gap-2">
+                  {selectedServiceDetail.images.map((imageUrl, index) => (
+                    <img
+                      key={index}
+                      src={imageUrl}
+                      alt={`${selectedServiceDetail.name} detail image ${index + 1}`}
+                      className="w-full h-24 object-cover rounded-md cursor-pointer hover:opacity-90"
+                      onClick={() => {
+                        setSelectedServiceDetail(prev => ({ ...prev, service_image_url: imageUrl }));
+                        setCurrentServiceImageIndex(index);
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Review Form Modal */}
       <AnimatePresence>
@@ -1501,6 +1776,30 @@ const BusinessDetailPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+
+
+      {/* Service Form Modal */}
+      <ServiceForm
+        isOpen={showServiceForm}
+        onClose={() => setShowServiceForm(false)}
+        businessId={id!}
+        service={editingService}
+        onSuccess={handleServiceSuccess}
+      />
+
+      {/* Product Form Modal */}
+      <ProductForm
+        isOpen={showProductForm}
+        onClose={() => setShowProductForm(false)}
+        businessId={id!}
+        product={editingProduct}
+        onSuccess={async () => {
+          // Refresh business data
+          const businessData = await apiService.getBusiness(id!);
+          setBusiness(businessData);
+        }}
+      />
 
       <Footer />
     </div>

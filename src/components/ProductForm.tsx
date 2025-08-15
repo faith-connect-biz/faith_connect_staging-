@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Plus } from 'lucide-react';
 
 interface Product {
   id?: string;
@@ -17,6 +17,7 @@ interface Product {
   price: number;
   price_currency: string;
   product_image_url?: string;
+  images?: string[];
   in_stock: boolean;
   is_active: boolean;
 }
@@ -42,12 +43,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     price: 0,
     price_currency: 'KES',
     product_image_url: '',
+    images: [],
     in_stock: true,
     is_active: true
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   useEffect(() => {
     if (product) {
@@ -58,10 +60,15 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         price: product.price || 0,
         price_currency: product.price_currency || 'KES',
         product_image_url: product.product_image_url || '',
+        images: product.images || [],
         in_stock: product.in_stock,
         is_active: product.is_active
       });
-      setImagePreview(product.product_image_url || null);
+      // Set image previews from existing images
+      const previews = [];
+      if (product.product_image_url) previews.push(product.product_image_url);
+      if (product.images) previews.push(...product.images);
+      setImagePreviews(previews);
     } else {
       setFormData({
         name: '',
@@ -69,19 +76,31 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         price: 0,
         price_currency: 'KES',
         product_image_url: '',
+        images: [],
         in_stock: true,
         is_active: true
       });
-      setImagePreview(null);
+      setImagePreviews([]);
     }
   }, [product]);
 
   const handleImageUpload = async (file: File) => {
     if (!file) return;
 
-    setUploadingImage(true);
+    // Check if we already have 5 images
+    if (imagePreviews.length >= 5) {
+      toast({
+        title: "Maximum Images Reached",
+        description: "You can only upload up to 5 images per product.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploadingImages(true);
     try {
-      // Get pre-signed URL for upload
+      // For simplicity, we'll use the profile photo upload endpoint as a general image upload
+      // This is a temporary solution until we implement proper product image handling
       const uploadData = await apiService.getProfilePhotoUploadUrl(file.name, file.type);
       
       // Upload file to S3
@@ -89,10 +108,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       
       if (uploadSuccess) {
         // Generate S3 URL
-                 const s3Url = `https://${import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp'}.s3.${import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1'}.amazonaws.com/${uploadData.file_key}`;
+        const s3Url = `https://${import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp'}.s3.${import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1'}.amazonaws.com/${uploadData.file_key}`;
         
-        setFormData(prev => ({ ...prev, product_image_url: s3Url }));
-        setImagePreview(s3Url);
+        // Add to images array
+        const newImages = [...formData.images || [], s3Url];
+        setFormData(prev => ({ ...prev, images: newImages }));
+        setImagePreviews(prev => [...prev, s3Url]);
         
         toast({
           title: "Success",
@@ -109,7 +130,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         variant: "destructive"
       });
     } finally {
-      setUploadingImage(false);
+      setUploadingImages(false);
     }
   };
 
@@ -140,9 +161,16 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     }
   };
 
-  const removeImage = () => {
-    setFormData(prev => ({ ...prev, product_image_url: '' }));
-    setImagePreview(null);
+  const removeImage = (index: number) => {
+    const newImages = [...(formData.images || [])];
+    const newPreviews = [...imagePreviews];
+    
+    // Remove from both arrays
+    newImages.splice(index, 1);
+    newPreviews.splice(index, 1);
+    
+    setFormData(prev => ({ ...prev, images: newImages }));
+    setImagePreviews(newPreviews);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -208,7 +236,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent 
-        className="sm:max-w-[500px]"
+        className="sm:max-w-[600px]"
         aria-describedby="product-form-description"
       >
         <DialogHeader>
@@ -280,44 +308,55 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             </div>
           </div>
 
-          {/* Image Upload Section */}
+          {/* Multiple Images Upload Section */}
           <div className="space-y-2">
-            <Label>Product Image (Optional)</Label>
+            <Label>Product Images (Up to 5)</Label>
             <div className="space-y-3">
-              {imagePreview ? (
-                <div className="relative">
-                  <img 
-                    src={imagePreview} 
-                    alt="Product preview" 
-                    className="w-full h-32 object-cover rounded-lg border"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    className="absolute top-2 right-2"
-                    onClick={removeImage}
-                    disabled={uploadingImage}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <Label htmlFor="product-image" className="cursor-pointer text-sm text-gray-600">
-                    {uploadingImage ? 'Uploading...' : 'Click to upload image or drag and drop'}
-                  </Label>
-                  <Input
-                    id="product-image"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                    disabled={uploadingImage}
-                  />
-                </div>
-              )}
+              {/* Image Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                {imagePreviews.map((image, index) => (
+                  <div key={index} className="relative">
+                    <img 
+                      src={image} 
+                      alt={`Product image ${index + 1}`} 
+                      className="w-full h-32 object-cover rounded-lg border"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={() => removeImage(index)}
+                      disabled={uploadingImages}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+                
+                {/* Upload Button - Only show if less than 5 images */}
+                {imagePreviews.length < 5 && (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <Label htmlFor="product-images" className="cursor-pointer text-sm text-gray-600">
+                      {uploadingImages ? 'Uploading...' : 'Click to upload image'}
+                    </Label>
+                    <Input
+                      id="product-images"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                      disabled={uploadingImages}
+                    />
+                  </div>
+                )}
+              </div>
+              
+              {/* Image Count */}
+              <div className="text-sm text-gray-500 text-center">
+                {imagePreviews.length}/5 images uploaded
+              </div>
             </div>
           </div>
 
@@ -346,13 +385,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={isLoading || uploadingImage}
+              disabled={isLoading || uploadingImages}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={isLoading || uploadingImage}
+              disabled={isLoading || uploadingImages}
               className="bg-fem-terracotta hover:bg-fem-terracotta/90"
             >
               {isLoading ? 'Saving...' : (product ? 'Update Product' : 'Add Product')}

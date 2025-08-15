@@ -114,8 +114,16 @@ const BusinessRegistrationPage = () => {
 
   // Check if user is authenticated and is a business user
   useEffect(() => {
+    console.log('BusinessRegistrationPage: useEffect triggered', {
+      user: user,
+      locationState: location.state,
+      editMode: location.state?.editMode,
+      businessId: location.state?.businessId
+    });
+
     // Check if user is authenticated
     if (!user) {
+      console.log('BusinessRegistrationPage: No user, redirecting to home');
       toast({
         title: "Authentication required",
         description: "Please log in to register your business",
@@ -126,6 +134,7 @@ const BusinessRegistrationPage = () => {
     }
 
     if (user.user_type !== 'business') {
+      console.log('BusinessRegistrationPage: User is not business type, redirecting to home');
       toast({
         title: "Business account required",
         description: "Only business users can register businesses",
@@ -135,11 +144,24 @@ const BusinessRegistrationPage = () => {
         return;
     }
 
-    // Check if user already has a business
+    // Check if we're in edit mode first
+    if (location.state?.editMode && location.state?.businessId) {
+      console.log('BusinessRegistrationPage: Edit mode detected, setting up edit state');
+      setIsEditMode(true);
+      setBusinessId(location.state.businessId);
+      // Load existing business data to populate the form
+      loadExistingBusinessData(location.state.businessId);
+      return; // Skip the existing business check when in edit mode
+    }
+
+    console.log('BusinessRegistrationPage: Not in edit mode, checking for existing business');
+    // Only check for existing business if NOT in edit mode
     const checkExistingBusiness = async () => {
       try {
         const existingBusiness = await apiService.getUserBusiness();
+        console.log('BusinessRegistrationPage: Existing business check result:', existingBusiness);
         if (existingBusiness) {
+          console.log('BusinessRegistrationPage: Business already exists, redirecting to manage-business');
           toast({
             title: "Business already registered",
             description: "You already have a registered business. Business owners can only have one business.",
@@ -154,21 +176,15 @@ const BusinessRegistrationPage = () => {
     };
 
     checkExistingBusiness();
-
-    // Check if we're in edit mode
-    if (location.state?.editMode && location.state?.businessId) {
-      setIsEditMode(true);
-      setBusinessId(location.state.businessId);
-      // TODO: Load existing business data to populate the form
-      loadExistingBusinessData(location.state.businessId);
-    }
   }, [user, navigate, location.state]);
 
   // Load existing business data for editing
   const loadExistingBusinessData = async (id: string) => {
+    console.log('BusinessRegistrationPage: loadExistingBusinessData called with ID:', id);
     try {
       // Fetch real business data from the API
       const business = await apiService.getBusiness(id);
+      console.log('BusinessRegistrationPage: Business data fetched from API:', business);
       
       if (business) {
         // Transform API data to match our form structure
@@ -227,6 +243,7 @@ const BusinessRegistrationPage = () => {
           photoRequestNotes: ''
         };
 
+        console.log('BusinessRegistrationPage: Transformed data for form:', transformedData);
         setFormData(transformedData);
         toast({
           title: "Edit Mode",
@@ -236,7 +253,7 @@ const BusinessRegistrationPage = () => {
         throw new Error('Business not found');
       }
     } catch (error) {
-      console.error('Error loading business data:', error);
+      console.error('BusinessRegistrationPage: Error loading business data:', error);
       toast({
         title: "Error loading business data",
         description: "Could not load existing business data for editing. Please try again.",
@@ -1305,6 +1322,54 @@ const BusinessRegistrationPage = () => {
               )}
             </div>
           ))}
+        </div>
+      </motion.div>
+
+      {/* Photography Request Section */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <Label className="text-lg font-semibold">Photography Request (Optional)</Label>
+        <p className="text-sm text-gray-600 mb-4">
+          Would you like us to take professional photos of your business? This can help showcase your business better.
+        </p>
+        
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="photoRequest"
+              checked={formData.photoRequest}
+              onCheckedChange={(checked) => handleInputChange("photoRequest", checked as boolean)}
+            />
+            <Label htmlFor="photoRequest" className="text-sm font-medium cursor-pointer">
+              Yes, I would like professional photography for my business
+            </Label>
+          </div>
+          
+          {formData.photoRequest && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-3"
+            >
+              <div>
+                <Label htmlFor="photoRequestNotes" className="text-sm font-medium">
+                  Additional Notes for Photography
+                </Label>
+                <Textarea
+                  id="photoRequestNotes"
+                  value={formData.photoRequestNotes}
+                  onChange={(e) => handleInputChange("photoRequestNotes", e.target.value)}
+                  placeholder="Tell us about specific areas, products, or services you'd like us to focus on during the photo session..."
+                  className="mt-1"
+                  rows={3}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  We'll contact you to schedule a convenient time for the photo session.
+                </p>
+              </div>
+            </motion.div>
+          )}
         </div>
       </motion.div>
     </motion.div>
