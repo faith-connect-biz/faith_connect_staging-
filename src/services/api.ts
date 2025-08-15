@@ -1043,7 +1043,7 @@ class ApiService {
       if (params?.ordering) queryParams.append('ordering', params.ordering);
       if (params?.page) queryParams.append('page', params.page.toString());
 
-      const response = await this.api.get(`/products/${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
+      const response = await this.api.get(`/business/products/${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching all products:', error);
@@ -1284,18 +1284,36 @@ class ApiService {
     return response.data;
   }
 
+  // Get product by ID
   async getProduct(productId: string): Promise<Product> {
-    const response = await this.api.get(`/products/${productId}/`);
-    return response.data;
+    try {
+      const response = await this.api.get(`/business/products/${productId}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching product:', error);
+      throw error;
+    }
   }
 
+  // Update product
   async updateProduct(productId: string, data: Partial<Product>): Promise<Product> {
-    const response = await this.api.put(`/products/${productId}/`, data);
-    return response.data;
+    try {
+      const response = await this.api.put(`/business/products/${productId}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating product:', error);
+      throw error;
+    }
   }
 
+  // Delete product
   async deleteProduct(productId: string): Promise<void> {
-    await this.api.delete(`/products/${productId}/`);
+    try {
+      await this.api.delete(`/business/products/${productId}/`);
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      throw error;
+    }
   }
 
   // Review Methods
@@ -1534,23 +1552,58 @@ class ApiService {
     }
   }
 
-  // Product Image Upload using S3 pre-signed URLs
-  async getProductImageUploadUrl(productId: string, imageType: 'main' | 'additional', fileName: string, contentType: string): Promise<{
-    presigned_url: string;
-    file_key: string;
-    expires_in_minutes: number;
-    image_type: string;
-  }> {
+  // Upload product image using S3 pre-signed URLs
+  async uploadProductImage(productId: string, imageFile: File): Promise<{ success: boolean; image_url?: string; message: string }> {
     try {
-      const response = await this.api.post(`/products/${productId}/upload-image/`, {
-        image_type: imageType,
-        file_name: fileName,
-        content_type: contentType
+      // Get pre-signed URL for upload
+      const uploadUrlResponse = await this.api.post(`/business/products/${productId}/upload-image/`, {
+        file_name: imageFile.name,
+        content_type: imageFile.type
       });
-      return response.data;
+
+      if (!uploadUrlResponse.data.success) {
+        throw new Error(uploadUrlResponse.data.message || 'Failed to get upload URL');
+      }
+
+      const { upload_url, fields, file_key } = uploadUrlResponse.data;
+
+      // Create FormData for S3 upload
+      const formData = new FormData();
+      Object.entries(fields).forEach(([key, value]) => {
+        formData.append(key, value as string);
+      });
+      formData.append('file', imageFile);
+
+      // Upload to S3
+      const s3Response = await fetch(upload_url, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!s3Response.ok) {
+        throw new Error(`S3 upload failed: ${s3Response.statusText}`);
+      }
+
+      // Update product with new image URL
+      const updateResponse = await this.api.put(`/business/products/${productId}/update-image/`, {
+        image_url: `https://${process.env.REACT_APP_S3_BUCKET}.s3.amazonaws.com/${file_key}`
+      });
+
+      if (updateResponse.data.success) {
+        return {
+          success: true,
+          image_url: updateResponse.data.image_url,
+          message: 'Image uploaded successfully'
+        };
+      } else {
+        throw new Error(updateResponse.data.message || 'Failed to update product image');
+      }
     } catch (error) {
-      console.error('Error getting product image upload URL:', error);
-      throw error;
+      console.error('Error uploading product image:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to upload image'
+      };
     }
   }
 

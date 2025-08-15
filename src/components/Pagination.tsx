@@ -83,7 +83,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         {/* Page numbers */}
         <div className="flex items-center gap-1">
           {getVisiblePages().map((page, index) => (
-            <React.Fragment key={index}>
+            <div key={index}>
               {page === '...' ? (
                 <div className="px-2 py-1">
                   <MoreHorizontal className="h-4 w-4 text-gray-400" />
@@ -98,7 +98,7 @@ export const Pagination: React.FC<PaginationProps> = ({
                   {page}
                 </Button>
               )}
-            </React.Fragment>
+            </div>
           ))}
         </div>
 
