@@ -56,30 +56,7 @@ class NdovubaseSMS:
             # Assume it's already in international format
             return cleaned
 
-    def validate_phone_number(self, phone_number: str) -> bool:
-        """
-        Validate phone number format
-
-        Args:
-            phone_number: Phone number to validate
-
-        Returns:
-            True if valid, False otherwise
-        """
-        formatted = self.format_phone_number(phone_number)
-
-        # Check if it's a valid Kenyan mobile number
-        if not formatted.startswith('254'):
-            return False
-
-        # Check length (should be 12 digits: 254 + 9 digits)
-        if len(formatted) != 12:
-            return False
-
-        # Check if it starts with valid Kenyan mobile prefixes
-        valid_prefixes = ['25470', '25471', '25472', '25473', '25474', '25475', '25476', '25477', '25478', '25479','25401']
-        return any(formatted.startswith(prefix) for prefix in valid_prefixes)
-
+  
     def send_sms(self, phone_number: str, message: str) -> Tuple[bool, Dict]:
         """
         Send SMS using Ndovubase API
@@ -91,18 +68,7 @@ class NdovubaseSMS:
         Returns:
             Tuple of (success: bool, response: dict)
         """
-        # Validate phone number
-        if not self.validate_phone_number(phone_number):
-            error_msg = f"Invalid phone number format: {phone_number}"
-            logger.error(f"[SMS ERROR] {error_msg}")
-            return False, {
-                'status_code': '1003',
-                'status_desc': 'Invalid mobile number',
-                'message_id': '0',
-                'mobile_number': phone_number,
-                'error': error_msg
-            }
-
+    
         # Format phone number
         formatted_number = self.format_phone_number(phone_number)
 
