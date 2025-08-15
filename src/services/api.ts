@@ -231,6 +231,62 @@ export interface OTPVerificationRequest {
   purpose: 'registration' | 'password_reset' | 'email_verification' | 'phone_verification';
 }
 
+export interface PhotoRequest {
+  id: string;
+  business: string;
+  user: string;
+  user_name: string;
+  business_name: string;
+  request_date: string;
+  status: 'pending' | 'approved' | 'rejected' | 'completed';
+  notes?: string;
+  business_response?: string;
+  completed_date?: string;
+}
+
+export interface CreatePhotoRequestData {
+  business: string;
+  notes?: string;
+}
+
+export interface BusinessLike {
+  id: string;
+  user: string;
+  business: string;
+  user_name: string;
+  business_name: string;
+  created_at: string;
+}
+
+export interface ReviewLike {
+  id: string;
+  user: string;
+  review: string;
+  user_name: string;
+  review_text: string;
+  created_at: string;
+}
+
+export interface Favorite {
+  id: string;
+  user: string;
+  business: string;
+  business_name: string;
+  business_category: string;
+  created_at: string;
+}
+
+export interface UserActivity {
+  type: 'favorite' | 'business_like' | 'review_like' | 'review';
+  id: string;
+  business_name: string;
+  business_category: string;
+  date: string;
+  business_id: string;
+  rating?: number;
+  review_text?: string;
+}
+
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://femdjango-production.up.railway.app/api';
 
@@ -272,17 +328,25 @@ class ApiService {
           '/categories'
         ];
         
-        // Check if the current endpoint is public or a public business endpoint
+        // Check if the current endpoint is public
         const isPublicEndpoint = publicEndpoints.some(endpoint => 
           config.url?.includes(endpoint)
-        ) || (config.url?.includes('/business/') && config.url?.includes('/reviews/'));
+        );
+        
+        // Check if this is a public business endpoint (only business listings and public reviews)
+        const isPublicBusinessEndpoint = config.url?.includes('/business/') && 
+          (config.url?.includes('/reviews/') && !config.url?.includes('/user-reviews/')) &&
+          !config.url?.includes('/user-activity/') &&
+          !config.url?.includes('/favorites/') &&
+          !config.url?.includes('/like/') &&
+          !config.url?.includes('/photo-request/');
         
         // Only add auth token for protected endpoints
-        if (!isPublicEndpoint) {
-        const token = localStorage.getItem('access_token');
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
+        if (!isPublicEndpoint && !isPublicBusinessEndpoint) {
+          const token = localStorage.getItem('access_token');
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+          }
         }
         
         return config;
@@ -1508,6 +1572,91 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('Error updating profile photo:', error);
+      throw error;
+    }
+  }
+
+  // Photo Request Methods
+  async createPhotoRequest(data: CreatePhotoRequestData): Promise<PhotoRequest> {
+    try {
+      const response = await this.api.post(`/business/${data.business}/photo-request/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating photo request:', error);
+      throw error;
+    }
+  }
+
+  async getPhotoRequests(): Promise<PhotoRequest[]> {
+    try {
+      const response = await this.api.get('/business/photo-requests/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching photo requests:', error);
+      throw error;
+    }
+  }
+
+  async updatePhotoRequest(id: string, data: Partial<PhotoRequest>): Promise<PhotoRequest> {
+    try {
+      const response = await this.api.patch(`/business/photo-requests/${id}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating photo request:', error);
+      throw error;
+    }
+  }
+
+  // Like Methods
+  async toggleBusinessLike(businessId: string): Promise<{ liked: boolean; message: string }> {
+    try {
+      const response = await this.api.post(`/business/${businessId}/like/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error toggling business like:', error);
+      throw error;
+    }
+  }
+
+  async toggleReviewLike(reviewId: string): Promise<{ liked: boolean; message: string }> {
+    try {
+      const response = await this.api.post(`/business/reviews/${reviewId}/like/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error toggling review like:', error);
+      throw error;
+    }
+  }
+
+  // User Activity Methods
+  async getUserActivity(): Promise<{ activities: UserActivity[]; total_count: number }> {
+    try {
+      const response = await this.api.get('/business/user-activity/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user activity:', error);
+      throw error;
+    }
+  }
+
+  // User Favorites Methods
+  async getUserFavorites(): Promise<Favorite[]> {
+    try {
+      const response = await this.api.get('/business/favorites/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user favorites:', error);
+      throw error;
+    }
+  }
+
+  // User Reviews Methods
+  async getUserReviews(): Promise<Review[]> {
+    try {
+      const response = await this.api.get('/business/user-reviews/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user reviews:', error);
       throw error;
     }
   }

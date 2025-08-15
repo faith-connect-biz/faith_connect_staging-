@@ -50,6 +50,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ProductForm } from "@/components/ProductForm";
 import { ServiceForm } from "@/components/ServiceForm";
+import { LikeButton } from "@/components/LikeButton";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
@@ -1214,8 +1215,25 @@ const BusinessDetailPage = () => {
                                 {review.review_text && (
                                   <p className="text-gray-700 text-sm leading-relaxed">{review.review_text}</p>
                                 )}
-                                <div className="text-xs text-gray-500 mt-2">
-                                  {new Date(review.created_at).toLocaleDateString()}
+                                
+                                {/* Review Actions */}
+                                <div className="flex items-center justify-between mt-3">
+                                  <div className="text-xs text-gray-500">
+                                    {new Date(review.created_at).toLocaleDateString()}
+                                  </div>
+                                  
+                                  {/* Like Button - Only show if user doesn't own the review */}
+                                  {user && review.user !== user.partnership_number && (
+                                    <LikeButton
+                                      id={review.id}
+                                      type="review"
+                                      initialLiked={false}
+                                      likeCount={0}
+                                      onLikeChange={() => {}}
+                                      disabled={false}
+                                      className="text-sm"
+                                    />
+                                  )}
                                 </div>
                               </div>
                             ))}

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { UserActivitySection } from "@/components/UserActivitySection";
 import { 
   Plus, 
   Star, 
@@ -36,7 +37,8 @@ import {
   Eye,
   PenTool,
   X,
-  Upload
+  Upload,
+  MessageSquare
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -65,6 +67,12 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [userStats, setUserStats] = useState({
+    favorites: 0,
+    reviewsGiven: 0,
+    businessLikes: 0,
+    reviewLikes: 0
+  });
   const navigate = useNavigate();
   const headerRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -73,6 +81,34 @@ const ProfilePage = () => {
 
   // Hidden file input for profile photo upload
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch user stats
+  const fetchUserStats = async () => {
+    try {
+      // Fetch favorites count
+      const favorites = await apiService.getUserFavorites();
+      const favoritesCount = favorites.length;
+
+      // Fetch user reviews
+      const userReviews = await apiService.getUserReviews();
+      const reviewsCount = userReviews.length;
+
+      // Fetch user activity for likes
+      const userActivityResponse = await apiService.getUserActivity();
+      const businessLikesCount = userActivityResponse.activities.filter(activity => activity.type === 'business_like').length;
+      const reviewLikesCount = userActivityResponse.activities.filter(activity => activity.type === 'review_like').length;
+
+      setUserStats({
+        favorites: favoritesCount,
+        reviewsGiven: reviewsCount,
+        businessLikes: businessLikesCount,
+        reviewLikes: reviewLikesCount
+      });
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+      // Keep default values if there's an error
+    }
+  };
 
   // Fetch complete user profile from API
   const fetchUserProfile = async () => {
@@ -100,45 +136,20 @@ const ProfilePage = () => {
           website: userData.website || ""  // Use actual website value from user data
         };
         
-        console.log('ProfilePage: Setting complete profile data:', newProfileData);
         setProfileData(newProfileData);
-      } else {
-        console.error('ProfilePage: No user data received');
-        // Fallback to basic user data if API call fails
-        if (user) {
-          const fallbackData = {
-            firstName: user.first_name || "",
-            lastName: user.last_name || "",
-            phone: user.phone || "",
-            address: user.address || "",
-            city: user.city || "",
-            county: user.county || "",
-            bio: user.bio || "",
-            website: user.website || ""  // Use actual website value from user object
-          };
-          console.log('ProfilePage: Using fallback data:', fallbackData);
-          setProfileData(fallbackData);
-        }
+        setLoading(false);
+        
+        // Fetch user stats after profile is loaded
+        await fetchUserStats();
       }
     } catch (error) {
       console.error('ProfilePage: Error fetching user profile:', error);
-      // Fallback to basic user data if API call fails
-      if (user) {
-        const fallbackData = {
-          firstName: user.first_name || "",
-          lastName: user.last_name || "",
-          phone: user.phone || "",
-          address: user.address || "",
-          city: user.city || "",
-          county: user.county || "",
-          bio: user.bio || "",
-          website: user.website || ""  // Use actual website value from user object
-        };
-        console.log('ProfilePage: Using fallback data:', fallbackData);
-        setProfileData(fallbackData);
-      }
-    } finally {
       setLoading(false);
+      toast({
+        title: "Error",
+        description: "Failed to load profile data. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -408,13 +419,6 @@ const ProfilePage = () => {
         ease: "easeOut"
       }
     }
-  };
-
-  // Calculate user stats
-  const userStats = {
-    favorites: 0, // TODO: Implement favorites
-    conversations: 0, // TODO: Implement conversations
-    reviewsGiven: 0, // TODO: Implement reviews
   };
 
   if (authLoading || loading) {
@@ -786,43 +790,7 @@ const ProfilePage = () => {
                       </TabsContent>
                       
                       <TabsContent value="activity" className="mt-8">
-                        <motion.div variants={itemVariants} className="space-y-6">
-                          <div className="text-center py-8">
-                            <div className="w-16 h-16 bg-gradient-to-br from-fem-gold/20 to-fem-terracotta/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                              <TrendingUp className="w-8 h-8 text-fem-gold" />
-                            </div>
-                            <h3 className="text-xl font-bold text-fem-navy mb-2">Activity Overview</h3>
-                            <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                              Your recent activity on the platform
-                            </p>
-                            
-                            {/* Compact Stats */}
-                            <div className="flex justify-center gap-8 mb-6">
-                              <div className="text-center">
-                                <div className="text-2xl font-bold text-fem-navy">0</div>
-                                <div className="text-sm text-gray-600">Reviews</div>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-2xl font-bold text-fem-navy">0</div>
-                                <div className="text-sm text-gray-600">Favorites</div>
-                              </div>
-                            </div>
-
-                            {/* Recent Activity List */}
-                            <div className="bg-white/50 backdrop-blur-sm rounded-xl p-4 border border-gray-200 max-w-lg mx-auto">
-                              <h4 className="text-sm font-semibold text-fem-navy mb-3 text-left">Recent Activity</h4>
-                              <div className="space-y-2">
-                                <div className="text-center py-6">
-                                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                                    <Clock className="w-6 h-6 text-gray-400" />
-                                  </div>
-                                  <p className="text-gray-500 text-sm">No recent activity</p>
-                                  <p className="text-gray-400 text-xs mt-1">Start reviewing businesses and adding favorites</p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
+                        <UserActivitySection />
                       </TabsContent>
                     </Tabs>
                   </CardContent>
@@ -836,7 +804,7 @@ const ProfilePage = () => {
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12"
             >
               <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 text-center shadow-2xl border border-white/20 hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2">
                 <div className="w-16 h-16 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -852,6 +820,22 @@ const ProfilePage = () => {
                 </div>
                 <div className="text-3xl font-bold text-fem-navy mb-2">{userStats.reviewsGiven}</div>
                 <div className="text-sm text-gray-600 font-medium">Reviews Given</div>
+              </motion.div>
+
+              <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 text-center shadow-2xl border border-white/20 hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2">
+                <div className="w-16 h-16 bg-gradient-to-br from-fem-navy to-fem-terracotta rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Heart className="w-8 h-8 text-white" />
+                </div>
+                <div className="text-3xl font-bold text-fem-navy mb-2">{userStats.businessLikes}</div>
+                <div className="text-sm text-gray-600 font-medium">Business Likes</div>
+              </motion.div>
+
+              <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 text-center shadow-2xl border border-white/20 hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2">
+                <div className="w-16 h-16 bg-gradient-to-br from-fem-terracotta to-fem-navy rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <MessageSquare className="w-8 h-8 text-white" />
+                </div>
+                <div className="text-3xl font-bold text-fem-navy mb-2">{userStats.reviewLikes}</div>
+                <div className="text-sm text-gray-600 font-medium">Review Likes</div>
               </motion.div>
             </motion.div>
           </div>

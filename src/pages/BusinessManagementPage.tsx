@@ -41,6 +41,7 @@ import { apiService, Service, Product } from '@/services/api';
 import { ServiceForm } from '@/components/ServiceForm';
 import { ProductForm } from '@/components/ProductForm';
 import { Label } from '@/components/ui/label';
+import { PhotoRequestModal } from '@/components/PhotoRequestModal';
 
 
 interface BusinessData {
@@ -123,6 +124,7 @@ export const BusinessManagementPage: React.FC = () => {
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [editingProduct, setEditingProduct] = useState<LocalProduct | null>(null);
+  const [showPhotoRequestModal, setShowPhotoRequestModal] = useState(false);
 
   // Product detail modal state
   const [selectedProduct, setSelectedProduct] = useState<LocalProduct | null>(null);
@@ -688,6 +690,35 @@ export const BusinessManagementPage: React.FC = () => {
                       </a>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+
+              {/* Professional Photo Request Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Camera className="h-5 w-5" />
+                    <span>Professional Photo Requests</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="text-center py-6">
+                    <Camera className="h-16 w-16 text-fem-terracotta mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Need Professional Photos?
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      Request professional photography services from this business. 
+                      Let them know what you need and they'll get back to you.
+                    </p>
+                    <Button 
+                      onClick={() => setShowPhotoRequestModal(true)}
+                      className="bg-fem-terracotta hover:bg-fem-terracotta/90"
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      Request Professional Photos
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -1368,6 +1399,14 @@ export const BusinessManagementPage: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Photo Request Modal */}
+      <PhotoRequestModal
+        isOpen={showPhotoRequestModal}
+        onClose={() => setShowPhotoRequestModal(false)}
+        businessId={businessData?.id || ''}
+        businessName={businessData?.business_name || ''}
+      />
       
       <Footer />
     </div>

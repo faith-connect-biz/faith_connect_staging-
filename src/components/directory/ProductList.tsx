@@ -35,15 +35,19 @@ import { MotionWrapper, HoverCard, GlassmorphismCard, GlowingCard } from "@/comp
 import { scrollAnimations, hoverAnimations } from "@/utils/animation";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { Product } from "@/services/api";
+import { Pagination } from "@/components/Pagination";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
 
 interface ProductListProps {
   filters: any;
+  currentPage?: number;
+  itemsPerPage?: number;
+  onPageChange?: (page: number) => void;
 }
 
-export const ProductList = ({ filters }: ProductListProps) => {
+export const ProductList = ({ filters, currentPage = 1, itemsPerPage = 12, onPageChange }: ProductListProps) => {
   const navigate = useNavigate();
   const { products, businesses, isLoading } = useBusiness();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -94,6 +98,13 @@ export const ProductList = ({ filters }: ProductListProps) => {
     
     return true;
   }) : [];
+
+  // Pagination logic
+  const totalItems = filteredProducts.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
 
   const toggleFavorite = (productId: string) => {
     setFavorites(prev => 
@@ -305,11 +316,24 @@ export const ProductList = ({ filters }: ProductListProps) => {
         : "space-y-4"
       }>
         <AnimatePresence>
-          {filteredProducts.map((product, index) => (
+          {paginatedProducts.map((product, index) => (
             <ProductCard key={product.id || `product-${index}`} product={product} />
           ))}
         </AnimatePresence>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-8">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={onPageChange || (() => {})}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+          />
+        </div>
+      )}
     </div>
   );
 }; 

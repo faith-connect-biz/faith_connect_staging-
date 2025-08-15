@@ -79,12 +79,27 @@ const DirectoryPage = () => {
     hasPhotos: false,
     sortBy: "default"
   });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(12); // Show 12 items per page
   
   const headerRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  // Pagination functions
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const resetPagination = () => {
+    setCurrentPage(1);
+  };
 
   // Handle URL search parameters
   useEffect(() => {
@@ -191,6 +206,7 @@ const DirectoryPage = () => {
   const handleSearch = () => {
     // Search functionality is handled by BusinessList component
     setIsSearchExpanded(false);
+    resetPagination();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -210,6 +226,7 @@ const DirectoryPage = () => {
       hasPhotos: false,
       sortBy: "default"
     });
+    resetPagination();
   };
 
   // Calculate statistics
@@ -222,7 +239,7 @@ const DirectoryPage = () => {
       
       // Calculate average rating from businesses with ratings > 0
       const businessesWithRatings = businesses.filter(b => 
-        b.rating && b.rating > 0 && !isNaN(Number(b.rating))
+        b.rating && Number(b.rating) > 0 && !isNaN(Number(b.rating))
       );
       
       if (businessesWithRatings.length === 0) return "0.0";
@@ -480,7 +497,12 @@ const DirectoryPage = () => {
                         <p className="text-gray-600">Discover trusted service providers in our community</p>
                           </div>
                           
-                      <ServiceList filters={{ ...filters, searchTerm }} />
+                      <ServiceList 
+                        filters={{ ...filters, searchTerm }} 
+                        currentPage={currentPage}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={handlePageChange}
+                      />
                     </TabsContent>
 
                     <TabsContent value="products" className="mt-4 sm:mt-6">
@@ -489,7 +511,12 @@ const DirectoryPage = () => {
                         <p className="text-gray-600">Find high-quality products from local businesses</p>
                         </div>
                         
-                      <ProductList filters={{ ...filters, searchTerm }} />
+                      <ProductList 
+                        filters={{ ...filters, searchTerm }} 
+                        currentPage={currentPage}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={handlePageChange}
+                      />
                     </TabsContent>
                   </Tabs>
                 </CardContent>

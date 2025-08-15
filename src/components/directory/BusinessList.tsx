@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LikeButton } from "@/components/LikeButton";
 import { 
   Star, 
   Phone, 
@@ -27,7 +28,9 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { MotionWrapper, HoverCard, GlassmorphismCard, GlowingCard } from "@/components/ui/MotionWrapper";
 import { scrollAnimations, hoverAnimations } from "@/utils/animation";
 import { useBusiness } from "@/contexts/BusinessContext";
-import { Business } from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { Business, apiService } from "@/services/api";
+import { toast } from "@/hooks/use-toast";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
@@ -39,11 +42,29 @@ interface BusinessListProps {
 export const BusinessList = ({ filters }: BusinessListProps) => {
   const navigate = useNavigate();
   const { businesses, isLoading } = useBusiness();
+  const { user } = useAuth();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+
+  // Load user favorites on component mount
+  useEffect(() => {
+    const loadUserFavorites = async () => {
+      if (user) {
+        try {
+          const userFavorites = await apiService.getUserFavorites();
+          const favoriteIds = userFavorites.map(fav => fav.business);
+          setFavorites(favoriteIds);
+        } catch (error) {
+          console.error('Error loading user favorites:', error);
+        }
+      }
+    };
+
+    loadUserFavorites();
+  }, [user]);
 
   // GSAP Scroll Animations
   useEffect(() => {
@@ -79,12 +100,42 @@ export const BusinessList = ({ filters }: BusinessListProps) => {
     return true;
   }) : [];
 
-  const toggleFavorite = (businessId: string) => {
-    setFavorites(prev => 
-      prev.includes(businessId) 
-        ? prev.filter(id => id !== businessId)
-        : [...prev, businessId]
-    );
+  const toggleFavorite = async (businessId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to add favorites",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await apiService.toggleFavorite(businessId);
+      
+      // Update local state
+      setFavorites(prev => 
+        prev.includes(businessId) 
+          ? prev.filter(id => id !== businessId)
+          : [...prev, businessId]
+      );
+
+      toast({
+        title: favorites.includes(businessId) ? "Removed from favorites" : "Added to favorites",
+        description: favorites.includes(businessId) 
+          ? "Business removed from your favorites" 
+          : "Business added to your favorites",
+      });
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update favorites. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleBusinessClick = (business: Business) => {
@@ -132,20 +183,33 @@ export const BusinessList = ({ filters }: BusinessListProps) => {
               </div>
             )}
 
-            {/* Favorite Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/80 hover:bg-white"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleFavorite(business.id);
-              }}
-            >
-              <Heart 
-                className={`w-4 h-4 ${favorites.includes(business.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} 
-              />
-            </Button>
+            {/* Action Buttons */}
+            <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              {/* Like Button - Only show if user doesn't own the business */}
+              {user && business.user?.id !== user.id && (
+                <LikeButton
+                  id={business.id}
+                  type="business"
+                  initialLiked={false}
+                  likeCount={0}
+                  onLikeChange={() => {}}
+                  disabled={false}
+                  className="bg-white/80 hover:bg-white text-gray-600"
+                />
+              )}
+              
+              {/* Favorite Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="bg-white/80 hover:bg-white"
+                onClick={(e) => toggleFavorite(business.id, e)}
+              >
+                <Heart 
+                  className={`w-4 h-4 ${favorites.includes(business.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} 
+                />
+              </Button>
+            </div>
           </div>
 
           <CardContent className="p-4">

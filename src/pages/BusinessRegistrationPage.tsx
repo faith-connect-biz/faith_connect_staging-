@@ -27,7 +27,6 @@ import {
   Instagram, 
   Twitter, 
   Youtube, 
-  Camera, 
   X, 
   Plus, 
   Trash2, 
@@ -91,9 +90,7 @@ const BusinessRegistrationPage = () => {
     },
     services: [] as Array<{name: string, photo?: string}>,
     products: [] as Array<{name: string, price: string, description: string, photo?: string}>,
-    features: [''],
-    photoRequest: false,
-    photoRequestNotes: ''
+    features: ['']
   });
 
   // State for new service/product inputs
@@ -238,9 +235,7 @@ const BusinessRegistrationPage = () => {
           services: [], // TODO: Fetch services when API endpoint is available
           products: [], // TODO: Fetch products when API endpoint is available
           features: [], // TODO: Fetch features when API endpoint is available
-          tags: [],
-          photoRequest: false,
-          photoRequestNotes: ''
+          tags: []
         };
 
         console.log('BusinessRegistrationPage: Transformed data for form:', transformedData);
@@ -785,9 +780,7 @@ const BusinessRegistrationPage = () => {
       hours: hours,
       services: services,
       products: products,
-      features: formData.features.filter(feature => feature.trim() !== ''),
-      photo_request: formData.photoRequest ? 'Yes' : 'No',
-      photo_request_notes: formData.photoRequestNotes.trim() || null
+      features: formData.features.filter(feature => feature.trim() !== '')
     };
 
     // Debug logging to see what's being sent
@@ -1325,53 +1318,7 @@ const BusinessRegistrationPage = () => {
         </div>
       </motion.div>
 
-      {/* Photography Request Section */}
-      <motion.div variants={itemVariants} className="space-y-4">
-        <Label className="text-lg font-semibold">Photography Request (Optional)</Label>
-        <p className="text-sm text-gray-600 mb-4">
-          Would you like us to take professional photos of your business? This can help showcase your business better.
-        </p>
-        
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="photoRequest"
-              checked={formData.photoRequest}
-              onCheckedChange={(checked) => handleInputChange("photoRequest", checked as boolean)}
-            />
-            <Label htmlFor="photoRequest" className="text-sm font-medium cursor-pointer">
-              Yes, I would like professional photography for my business
-            </Label>
-          </div>
-          
-          {formData.photoRequest && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-3"
-            >
-              <div>
-                <Label htmlFor="photoRequestNotes" className="text-sm font-medium">
-                  Additional Notes for Photography
-                </Label>
-                <Textarea
-                  id="photoRequestNotes"
-                  value={formData.photoRequestNotes}
-                  onChange={(e) => handleInputChange("photoRequestNotes", e.target.value)}
-                  placeholder="Tell us about specific areas, products, or services you'd like us to focus on during the photo session..."
-                  className="mt-1"
-                  rows={3}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  We'll contact you to schedule a convenient time for the photo session.
-                </p>
-              </div>
-            </motion.div>
-          )}
-        </div>
-      </motion.div>
+
     </motion.div>
   );
 

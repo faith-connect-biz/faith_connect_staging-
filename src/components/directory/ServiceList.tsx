@@ -34,15 +34,19 @@ import { MotionWrapper, HoverCard, GlassmorphismCard, GlowingCard } from "@/comp
 import { scrollAnimations, hoverAnimations } from "@/utils/animation";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { Service } from "@/services/api";
+import { Pagination } from "@/components/Pagination";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
 
 interface ServiceListProps {
   filters: any;
+  currentPage?: number;
+  itemsPerPage?: number;
+  onPageChange?: (page: number) => void;
 }
 
-export const ServiceList = ({ filters }: ServiceListProps) => {
+export const ServiceList = ({ filters, currentPage = 1, itemsPerPage = 12, onPageChange }: ServiceListProps) => {
   const navigate = useNavigate();
   const { services, businesses, isLoading } = useBusiness();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -50,6 +54,8 @@ export const ServiceList = ({ filters }: ServiceListProps) => {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+
+
 
   // GSAP Scroll Animations
   useEffect(() => {
@@ -90,6 +96,13 @@ export const ServiceList = ({ filters }: ServiceListProps) => {
     
     return true;
   }) : [];
+
+  // Pagination logic
+  const totalItems = filteredServices.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedServices = filteredServices.slice(startIndex, endIndex);
 
   const toggleFavorite = (serviceId: string) => {
     setFavorites(prev => 
@@ -300,11 +313,24 @@ export const ServiceList = ({ filters }: ServiceListProps) => {
         : "space-y-4"
       }>
         <AnimatePresence>
-          {filteredServices.map((service, index) => (
+          {paginatedServices.map((service, index) => (
             <ServiceCard key={service.id || `service-${index}`} service={service} />
           ))}
         </AnimatePresence>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-8">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={onPageChange || (() => {})}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+          />
+        </div>
+      )}
     </div>
   );
 }; 
