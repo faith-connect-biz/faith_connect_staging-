@@ -49,7 +49,7 @@ interface ProductListProps {
 
 export const ProductList = ({ filters, currentPage = 1, itemsPerPage = 15, onPageChange }: ProductListProps) => {
   const navigate = useNavigate();
-  const { products, businesses, isLoading } = useBusiness();
+  const { products, businesses, isLoadingProducts } = useBusiness();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -59,7 +59,7 @@ export const ProductList = ({ filters, currentPage = 1, itemsPerPage = 15, onPag
   // Debug logging
   console.log('ProductList - products received:', products);
   console.log('ProductList - businesses received:', businesses);
-  console.log('ProductList - isLoading:', isLoading);
+  console.log('ProductList - isLoadingProducts:', isLoadingProducts);
   console.log('ProductList - filters:', filters);
 
   // GSAP Scroll Animations
@@ -73,12 +73,20 @@ export const ProductList = ({ filters, currentPage = 1, itemsPerPage = 15, onPag
     };
   }, [products]);
 
-  // Filter products based on filters
+  // Filter products based on filters - wait for businesses to be loaded
   const filteredProducts = Array.isArray(products) ? products.filter(product => {
-    // Get the business for this product
-    const businessId = typeof product.business === 'string' ? product.business : product.business?.id;
-    const business = businesses.find(b => b.id === businessId);
-    if (!business) return false;
+    // If businesses are not yet loaded, show all products
+    if (!Array.isArray(businesses) || businesses.length === 0) {
+      console.log('ProductList - businesses not loaded yet, showing all products');
+      return true;
+    }
+
+    // Business should now always be an object with expanded information
+    const business = product.business;
+    if (!business || typeof business !== 'object') {
+      console.log('ProductList - product filtered out: business is not an object:', business);
+      return false;
+    }
 
     // Filter by search term
     if (filters.searchTerm && 
@@ -103,6 +111,10 @@ export const ProductList = ({ filters, currentPage = 1, itemsPerPage = 15, onPag
     
     return true;
   }) : [];
+  
+  console.log('ProductList - all products:', products);
+  console.log('ProductList - filteredProducts:', filteredProducts);
+  console.log('ProductList - totalItems:', filteredProducts.length);
 
   // Pagination logic
   const totalItems = filteredProducts.length;
@@ -121,18 +133,19 @@ export const ProductList = ({ filters, currentPage = 1, itemsPerPage = 15, onPag
 
   const handleProductClick = (product: Product) => {
     // Navigate to the business page when product is clicked
-    // Handle both string and object business references
-    const businessId = typeof product.business === 'string' ? product.business : product.business.id;
-    const business = businesses.find(b => b.id === businessId);
-    if (business) {
+    const business = product.business;
+    if (business && typeof business === 'object' && business.id) {
       navigate(`/business/${business.id}`);
     }
   };
 
   const ProductCard = ({ product }: { product: Product }) => {
-    // Handle both string and object business references
-    const businessId = typeof product.business === 'string' ? product.business : product.business.id;
-    const business = businesses.find(b => b.id === businessId);
+    // Business should now always be an object with expanded information
+    const business = product.business;
+    if (!business || typeof business !== 'object') {
+      console.log('ProductCard - business is not an object:', business);
+      return null;
+    }
     
     if (!business) return null;
 
@@ -260,7 +273,7 @@ export const ProductList = ({ filters, currentPage = 1, itemsPerPage = 15, onPag
     );
   };
 
-  if (isLoading) {
+  if (isLoadingProducts) {
     return (
       <div className="space-y-4">
         {[...Array(6)].map((_, i) => (
