@@ -106,6 +106,7 @@ class CategoryListAPIView(generics.ListAPIView):
     queryset = Category.objects.all().order_by('name')
     serializer_class = CategorySerializer
     permission_classes = [AllowAny]  # Allow public access to list categories
+    pagination_class = None  # Disable pagination for categories to show all 17
 
 
 # class GenerateSASToken(APIView):
