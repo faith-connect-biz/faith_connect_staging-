@@ -35,6 +35,7 @@ from .models import PhotoRequest
 from .serializers import PhotoRequestSerializer
 from .models import BusinessLike, ReviewLike
 from .serializers import BusinessLikeSerializer, ReviewLikeSerializer
+from core.pagination import CustomLimitOffsetPagination
 
 
 # Create your views here.
@@ -60,8 +61,7 @@ class BusinessListCreateAPIView(generics.ListCreateAPIView):
     ordering_fields = ['created_at', 'rating']
     
     # Add pagination
-    pagination_class = 'rest_framework.pagination.PageNumberPagination'
-    page_size = 20  # Number of businesses per page
+    pagination_class = CustomLimitOffsetPagination
 
     def get_serializer_context(self):
         return {"request": self.request}
@@ -148,6 +148,7 @@ class CategoryListAPIView(generics.ListAPIView):
 class UserFavoritesListView(generics.ListAPIView):
     serializer_class = FavoriteSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = CustomLimitOffsetPagination
 
     def get_queryset(self):
         return Favorite.objects.filter(user=self.request.user)
@@ -191,6 +192,7 @@ class BusinessProductListCreateView(generics.ListCreateAPIView):
     search_fields = ['name', 'description']
     ordering_fields = ['price', 'created_at']
     filterset_fields = ['in_stock', 'price_currency']
+    pagination_class = CustomLimitOffsetPagination
 
     def get_queryset(self):
         business_id = self.kwargs.get('business_id')
@@ -229,6 +231,7 @@ class ProductRetrieveUpdateView(generics.RetrieveUpdateAPIView):
 class ReviewListCreateView(generics.ListCreateAPIView):
     serializer_class = ReviewSerializer
     permission_classes = [AllowAny]  # Allow public access to list reviews, but require auth for creation
+    pagination_class = CustomLimitOffsetPagination
 
     def get_queryset(self):
         business_id = self.kwargs.get('business_id')
@@ -754,6 +757,7 @@ class BusinessServiceListCreateView(generics.ListCreateAPIView):
     """List and create services for a business"""
     serializer_class = ServiceSerializer
     permission_classes = [AllowAny]  # Allow public access to list services, but require auth for creation
+    pagination_class = CustomLimitOffsetPagination
     
     def get_queryset(self):
         business_id = self.kwargs.get('business_id')
@@ -831,8 +835,7 @@ class ServiceListAPIView(generics.ListAPIView):
     ordering_fields = ['created_at', 'name']
     
     # Add pagination
-    pagination_class = 'rest_framework.pagination.PageNumberPagination'
-    page_size = 20  # Number of services per page
+    pagination_class = CustomLimitOffsetPagination
 
 
 class ServiceRetrieveUpdateView(generics.RetrieveUpdateAPIView):
@@ -873,8 +876,7 @@ class ProductListAPIView(generics.ListAPIView):
     ordering_fields = ['created_at', 'name', 'price']
     
     # Add pagination
-    pagination_class = 'rest_framework.pagination.PageNumberPagination'
-    page_size = 20  # Number of products per page
+    pagination_class = CustomLimitOffsetPagination
 
 
 class BusinessHourCreateView(generics.CreateAPIView):
@@ -1124,4 +1126,192 @@ class UserActivityView(generics.ListAPIView):
             'activities': activities,
             'total_count': len(activities)
         })
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def get_business_profile_image_upload_url(request, business_id):
+    """Get pre-signed URL for uploading business profile image"""
+    try:
+        # Verify business ownership
+        business = get_object_or_404(Business, id=business_id, user=request.user)
+        
+        # Get file info from request
+        file_name = request.data.get('file_name')
+        content_type = request.data.get('content_type')
+        
+        if not file_name or not content_type:
+            return Response(
+                {'error': 'file_name and content_type are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Generate unique file key
+        file_extension = content_type.split('/')[-1] if '/' in content_type else 'bin'
+        file_key = f"business_profile_images/{business_id}/{uuid.uuid4()}.{file_extension}"
+        
+        # Get S3 service
+        s3_service = S3Service()
+        
+        # Generate pre-signed URL
+        result = s3_service.generate_presigned_upload_url(file_key, content_type)
+        
+        if result['success']:
+            return Response({
+                'presigned_url': result['presigned_url'],
+                'file_key': result['file_key'],
+                'expires_in_minutes': result['expires_in_minutes']
+            })
+        else:
+            return Response(
+                {'error': result['error']}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            
+    except Business.DoesNotExist:
+        return Response(
+            {'error': 'Business not found or access denied'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_business_profile_image(request, business_id):
+    """Update business with uploaded profile image"""
+    try:
+        # Verify business ownership
+        business = get_object_or_404(Business, id=business_id, user=request.user)
+        
+        # Get file key from request
+        file_key = request.data.get('file_key')
+        
+        if not file_key:
+            return Response(
+                {'error': 'file_key is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get S3 service
+        s3_service = S3Service()
+        
+        # Generate S3 URL
+        s3_url = f"https://{s3_service.bucket_name}.s3.amazonaws.com/{file_key}"
+        
+        # Update business profile image
+        business.business_image_url = s3_url
+        business.save()
+        
+        return Response({
+            'business_image_url': s3_url,
+            's3_url': s3_url
+        })
+        
+    except Business.DoesNotExist:
+        return Response(
+            {'error': 'Business not found or access denied'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def get_business_logo_upload_url(request, business_id):
+    """Get pre-signed URL for uploading business logo"""
+    try:
+        # Verify business ownership
+        business = get_object_or_404(Business, id=business_id, user=request.user)
+        
+        # Get file info from request
+        file_name = request.data.get('file_name')
+        content_type = request.data.get('content_type')
+        
+        if not file_name or not content_type:
+            return Response(
+                {'error': 'file_name and content_type are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Generate unique file key
+        file_extension = content_type.split('/')[-1] if '/' in content_type else 'bin'
+        file_key = f"business_logos/{business_id}/{uuid.uuid4()}.{file_extension}"
+        
+        # Get S3 service
+        s3_service = S3Service()
+        
+        # Generate pre-signed URL
+        result = s3_service.generate_presigned_upload_url(file_key, content_type)
+        
+        if result['success']:
+            return Response({
+                'presigned_url': result['presigned_url'],
+                'file_key': result['file_key'],
+                'expires_in_minutes': result['expires_in_minutes']
+            })
+        else:
+            return Response(
+                {'error': result['error']}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            
+    except Business.DoesNotExist:
+        return Response(
+            {'error': 'Business not found or access denied'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_business_logo(request, business_id):
+    """Update business with uploaded logo"""
+    try:
+        # Verify business ownership
+        business = get_object_or_404(Business, id=business_id, user=request.user)
+        
+        # Get file key from request
+        file_key = request.data.get('file_key')
+        
+        if not file_key:
+            return Response(
+                {'error': 'file_key is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get S3 service
+        s3_service = S3Service()
+        
+        # Generate S3 URL
+        s3_url = f"https://{s3_service.bucket_name}.s3.amazonaws.com/{file_key}"
+        
+        # Update business logo
+        business.business_logo_url = s3_url
+        business.save()
+        
+        return Response({
+            'business_logo_url': s3_url,
+            's3_url': s3_url
+        })
+        
+    except Business.DoesNotExist:
+        return Response(
+            {'error': 'Business not found or access denied'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
