@@ -1614,7 +1614,7 @@ class ApiService {
     s3_url: string;
   }> {
     try {
-      const response = await this.api.put(`/products/${productId}/update-image/`, {
+      const response = await this.api.put(`/business/products/${productId}/update-image/`, {
         image_type: imageType,
         file_key: fileKey
       });

@@ -8,6 +8,8 @@ interface BusinessContextType {
   services: any[];
   products: any[];
   isLoading: boolean;
+  isLoadingBusinesses: boolean;
+  isLoadingProducts: boolean;
   error: string | null;
   totalCount: number;
   currentPage: number;
@@ -61,6 +63,8 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingBusinesses, setIsLoadingBusinesses] = useState(false);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -136,7 +140,7 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   }) => {
     console.log('fetchBusinesses - Called with params:', params);
     try {
-      setIsLoading(true);
+      setIsLoadingBusinesses(true);
       setError(null);
       
       // Calculate offset if page and limit are provided
@@ -185,18 +189,16 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       setHasNextPage(false);
       setHasPreviousPage(false);
     } finally {
-      setIsLoading(false);
+      setIsLoadingBusinesses(false);
     }
   }, []);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
-      console.log('fetchCategories: Starting...');
       setError(null);
       const response = await apiService.getCategories();
-      console.log('fetchCategories: API response:', response);
+      console.log('fetchCategories - API response:', response);
       
-      // Handle paginated response
       if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
         console.log('fetchCategories: Using paginated response, setting categories to:', response.results);
         setCategories(response.results);
@@ -215,9 +217,9 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       console.error('Failed to fetch categories:', err);
       setCategories([]); // Set empty array on error
     }
-  };
+  }, []);
 
-  const fetchProducts = async (params?: {
+  const fetchProducts = useCallback(async (params?: {
     search?: string;
     category?: string;
     in_stock?: boolean;
@@ -226,7 +228,7 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     page?: number;
   }) => {
     try {
-      setIsLoading(true);
+      setIsLoadingProducts(true);
       setError(null);
       const response = await apiService.getAllProducts(params);
       if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
@@ -260,9 +262,9 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       setHasNextPage(false);
       setHasPreviousPage(false);
     } finally {
-      setIsLoading(false);
+      setIsLoadingProducts(false);
     }
-  };
+  }, []);
 
 
   const createBusiness = async (data: BusinessCreateRequest): Promise<Business> => {
@@ -368,19 +370,13 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   // Initial data loading
   useEffect(() => {
     console.log('BusinessContext: Initial data loading useEffect triggered');
-    if (fetchBusinesses) {
-      console.log('BusinessContext: Calling fetchBusinesses with page: 1, limit: 15');
-      fetchBusinesses({ page: 1, limit: 15 });
-    }
-    if (fetchCategories) {
-      console.log('BusinessContext: Calling fetchCategories');
-      fetchCategories();
-    }
-    if (fetchProducts) {
-      console.log('BusinessContext: Calling fetchProducts');
-      fetchProducts();
-    }
-  }, [fetchBusinesses, fetchCategories, fetchProducts]);
+    console.log('BusinessContext: Calling fetchBusinesses with page: 1, limit: 15');
+    fetchBusinesses({ page: 1, limit: 15 });
+    console.log('BusinessContext: Calling fetchCategories');
+    fetchCategories();
+    console.log('BusinessContext: Calling fetchProducts');
+    fetchProducts();
+  }, []); // Empty dependency array - only run once on mount
 
   const value: BusinessContextType = {
     businesses,
@@ -389,6 +385,8 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     services: computedServices,
     products: products, // Changed from computedProducts to products
     isLoading,
+    isLoadingBusinesses,
+    isLoadingProducts,
     error,
     totalCount,
     currentPage,

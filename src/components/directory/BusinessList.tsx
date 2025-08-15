@@ -46,13 +46,19 @@ interface BusinessListProps {
 
 export const BusinessList = ({ filters, currentPage = 1, itemsPerPage = 15, onPageChange, totalCount }: BusinessListProps) => {
   const navigate = useNavigate();
-  const { businesses, isLoading } = useBusiness();
+  const { businesses, isLoadingBusinesses } = useBusiness();
   const { user } = useAuth();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+
+  // Debug logging
+  console.log('BusinessList - businesses received:', businesses);
+  console.log('BusinessList - isLoadingBusinesses:', isLoadingBusinesses);
+  console.log('BusinessList - filters:', filters);
+  console.log('BusinessList - totalCount:', totalCount);
 
   // Load user favorites on component mount
   useEffect(() => {
@@ -301,7 +307,7 @@ export const BusinessList = ({ filters, currentPage = 1, itemsPerPage = 15, onPa
     </MotionWrapper>
   );
 
-  if (isLoading) {
+  if (isLoadingBusinesses) {
     return (
       <div className="space-y-4">
         {[...Array(6)].map((_, i) => (
