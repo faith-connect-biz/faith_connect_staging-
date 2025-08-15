@@ -923,7 +923,7 @@ class ApiService {
       if (params?.ordering) queryParams.append('ordering', params.ordering);
       if (params?.page) queryParams.append('page', params.page.toString());
 
-      const response = await this.api.get(`/business/services/${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
+      const response = await this.api.get(`/services/${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching all services:', error);
@@ -949,7 +949,7 @@ class ApiService {
       if (params?.ordering) queryParams.append('ordering', params.ordering);
       if (params?.page) queryParams.append('page', params.page.toString());
 
-      const response = await this.api.get(`/business/products/${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
+      const response = await this.api.get(`/products/${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching all products:', error);
@@ -1177,10 +1177,10 @@ class ApiService {
     name: string;
     description?: string;
     price: number;
-    price_currency?: string;
-    product_image_url?: string;
+    price_currency: string;
     images?: string[]; // Up to 10 images
     in_stock?: boolean;
+    is_active?: boolean;
   }): Promise<Product> {
     const productData = {
       ...data,
@@ -1190,19 +1190,26 @@ class ApiService {
     return response.data;
   }
 
+  async getProduct(productId: string): Promise<Product> {
+    const response = await this.api.get(`/products/${productId}/`);
+    return response.data;
+  }
+
   async updateProduct(productId: string, data: Partial<Product>): Promise<Product> {
-    const response = await this.api.put(`/business/products/${productId}/`, data);
+    const response = await this.api.put(`/products/${productId}/`, data);
     return response.data;
   }
 
   async deleteProduct(productId: string): Promise<void> {
-    await this.api.delete(`/business/products/${productId}/`);
+    await this.api.delete(`/products/${productId}/`);
   }
 
   // Review Methods
   async getBusinessReviews(businessId: string): Promise<Review[]> {
     const response = await this.api.get(`/business/${businessId}/reviews/`);
-    return response.data;
+    // The API returns a paginated response with { count, next, previous, results }
+    // We need to return the results array
+    return response.data.results || response.data;
   }
 
   // Check if current user owns a business
@@ -1381,13 +1388,18 @@ class ApiService {
     return response.data;
   }
 
+  async getService(serviceId: string): Promise<Service> {
+    const response = await this.api.get(`/services/${serviceId}/`);
+    return response.data;
+  }
+
   async updateService(serviceId: string, data: Partial<Service>): Promise<Service> {
-    const response = await this.api.put(`/business/services/${serviceId}/`, data);
+    const response = await this.api.put(`/services/${serviceId}/`, data);
     return response.data;
   }
 
   async deleteService(serviceId: string): Promise<void> {
-    await this.api.delete(`/business/services/${serviceId}/`);
+    await this.api.delete(`/services/${serviceId}/`);
   }
 
   // Service Image Upload using S3 pre-signed URLs
@@ -1398,7 +1410,7 @@ class ApiService {
     image_type: string;
   }> {
     try {
-      const response = await this.api.post(`/business/services/${serviceId}/upload-image/`, {
+      const response = await this.api.post(`/services/${serviceId}/upload-image/`, {
         image_type: imageType,
         file_name: fileName,
         content_type: contentType
@@ -1417,7 +1429,7 @@ class ApiService {
     s3_url: string;
   }> {
     try {
-      const response = await this.api.put(`/business/services/${serviceId}/update-image/`, {
+      const response = await this.api.put(`/services/${serviceId}/update-image/`, {
         image_type: imageType,
         file_key: fileKey
       });
@@ -1436,7 +1448,7 @@ class ApiService {
     image_type: string;
   }> {
     try {
-      const response = await this.api.post(`/business/products/${productId}/upload-image/`, {
+      const response = await this.api.post(`/products/${productId}/upload-image/`, {
         image_type: imageType,
         file_name: fileName,
         content_type: contentType
@@ -1455,7 +1467,7 @@ class ApiService {
     s3_url: string;
   }> {
     try {
-      const response = await this.api.put(`/business/products/${productId}/update-image/`, {
+      const response = await this.api.put(`/products/${productId}/update-image/`, {
         image_type: imageType,
         file_key: fileKey
       });

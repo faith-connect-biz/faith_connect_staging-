@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Plus } from 'lucide-react';
 
 interface Service {
   id?: number;
@@ -18,6 +18,7 @@ interface Service {
   duration?: string;
   is_active: boolean;
   service_image_url?: string;
+  images?: string[];
 }
 
 interface ServiceFormProps {
@@ -41,11 +42,12 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
     price_range: '',
     duration: '',
     is_active: true,
-    service_image_url: ''
+    service_image_url: '',
+    images: []
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   useEffect(() => {
     if (service) {
@@ -56,9 +58,14 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
         price_range: service.price_range || '',
         duration: service.duration || '',
         is_active: service.is_active,
-        service_image_url: service.service_image_url || ''
+        service_image_url: service.service_image_url || '',
+        images: service.images || []
       });
-      setImagePreview(service.service_image_url || null);
+      // Set image previews from existing images
+      const previews = [];
+      if (service.service_image_url) previews.push(service.service_image_url);
+      if (service.images) previews.push(...service.images);
+      setImagePreviews(previews);
     } else {
       setFormData({
         name: '',
@@ -66,16 +73,27 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
         price_range: '',
         duration: '',
         is_active: true,
-        service_image_url: ''
+        service_image_url: '',
+        images: []
       });
-      setImagePreview(null);
+      setImagePreviews([]);
     }
   }, [service]);
 
   const handleImageUpload = async (file: File) => {
     if (!file) return;
 
-    setUploadingImage(true);
+    // Check if we already have 5 images
+    if (imagePreviews.length >= 5) {
+      toast({
+        title: "Maximum Images Reached",
+        description: "You can only upload up to 5 images per service.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploadingImages(true);
     try {
       // Get pre-signed URL for upload
       const uploadData = await apiService.getProfilePhotoUploadUrl(file.name, file.type);
@@ -85,10 +103,10 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
       
       if (uploadSuccess) {
         // Generate S3 URL
-                 const s3Url = `https://${import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp'}.s3.${import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1'}.amazonaws.com/${uploadData.file_key}`;
+        const s3Url = `https://${import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp'}.s3.${import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1'}.amazonaws.com/${uploadData.file_key}`;
         
-        setFormData(prev => ({ ...prev, service_image_url: s3Url }));
-        setImagePreview(s3Url);
+        setFormData(prev => ({ ...prev, images: [...prev.images || [], s3Url] }));
+        setImagePreviews(prev => [...prev, s3Url]);
         
         toast({
           title: "Success",
@@ -105,40 +123,56 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
         variant: "destructive"
       });
     } finally {
-      setUploadingImage(false);
+      setUploadingImages(false);
     }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      // Check if adding these files would exceed the 5 image limit
+      if (imagePreviews.length + files.length > 5) {
         toast({
-          title: "Invalid File",
-          description: "Please select an image file",
+          title: "Too Many Images",
+          description: "You can only have up to 5 images total. Please remove some existing images first.",
           variant: "destructive"
         });
         return;
       }
 
-      // Validate file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "File Too Large",
-          description: "Image must be less than 5MB",
-          variant: "destructive"
-        });
-        return;
-      }
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          toast({
+            title: "Invalid File",
+            description: "Please select an image file",
+            variant: "destructive"
+          });
+          continue;
+        }
 
-      handleImageUpload(file);
+        // Validate file size (5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+          toast({
+            title: "File Too Large",
+            description: "Image must be less than 5MB",
+            variant: "destructive"
+          });
+          continue;
+        }
+
+        handleImageUpload(file);
+      }
     }
   };
 
-  const removeImage = () => {
-    setFormData(prev => ({ ...prev, service_image_url: '' }));
-    setImagePreview(null);
+  const removeImage = (indexToRemove: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images?.filter((_, index) => index !== indexToRemove) || []
+    }));
+    setImagePreviews(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -155,16 +189,22 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
 
     setIsLoading(true);
     try {
+      // Prepare the data to send, including images
+      const serviceData = {
+        ...formData,
+        images: imagePreviews // Send all image previews as the images array
+      };
+
       if (service?.id) {
         // Update existing service
-        await apiService.updateService(service.id.toString(), formData);
+        await apiService.updateService(service.id.toString(), serviceData);
         toast({
           title: "Success",
           description: "Service updated successfully!",
         });
       } else {
         // Create new service
-        await apiService.createService(businessId, formData);
+        await apiService.createService(businessId, serviceData);
         toast({
           title: "Success",
           description: "Service created successfully!",
@@ -266,31 +306,37 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
 
           {/* Image Upload Section */}
           <div className="space-y-2">
-            <Label>Service Image (Optional)</Label>
+            <Label>Service Images (Optional) - Up to 5 images</Label>
             <div className="space-y-3">
-              {imagePreview ? (
-                <div className="relative">
-                  <img 
-                    src={imagePreview} 
-                    alt="Service preview" 
-                    className="w-full h-32 object-cover rounded-lg border"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    className="absolute top-2 right-2"
-                    onClick={removeImage}
-                    disabled={uploadingImage}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
+              {imagePreviews.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative">
+                      <img 
+                        src={preview} 
+                        alt={`Service preview ${index + 1}`} 
+                        className="w-full h-32 object-cover rounded-lg border"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={() => removeImage(index)}
+                        disabled={uploadingImages}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              ) : (
+              ) : null}
+              
+              {imagePreviews.length < 5 && (
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                   <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                   <Label htmlFor="service-image" className="cursor-pointer text-sm text-gray-600">
-                    {uploadingImage ? 'Uploading...' : 'Click to upload image or drag and drop'}
+                    {uploadingImages ? 'Uploading...' : `Click to upload images or drag and drop (${imagePreviews.length}/5)`}
                   </Label>
                   <Input
                     id="service-image"
@@ -298,7 +344,8 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
                     accept="image/*"
                     onChange={handleImageChange}
                     className="hidden"
-                    disabled={uploadingImage}
+                    disabled={uploadingImages}
+                    multiple
                   />
                 </div>
               )}
@@ -319,13 +366,13 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={isLoading || uploadingImage}
+              disabled={isLoading || uploadingImages}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={isLoading || uploadingImage}
+              disabled={isLoading || uploadingImages}
               className="bg-fem-terracotta hover:bg-fem-terracotta/90"
             >
               {isLoading ? 'Saving...' : (service ? 'Update Service' : 'Add Service')}

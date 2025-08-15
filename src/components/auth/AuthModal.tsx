@@ -12,6 +12,42 @@ import { X, Mail, Phone, ArrowLeft, Loader2 } from 'lucide-react';
 import { OTPInput } from '@/components/otp/OTPInput';
 import { apiService } from '@/services/api';
 
+// Password strength checking functions
+const getPasswordStrength = (password: string): 'weak' | 'medium' | 'strong' => {
+  if (!password) return 'weak';
+  
+  let score = 0;
+  
+  // Length check
+  if (password.length >= 8) score += 1;
+  if (password.length >= 12) score += 1;
+  
+  // Character variety checks
+  if (/[a-z]/.test(password)) score += 1;
+  if (/[A-Z]/.test(password)) score += 1;
+  if (/[0-9]/.test(password)) score += 1;
+  if (/[^A-Za-z0-9]/.test(password)) score += 1;
+  
+  if (score <= 2) return 'weak';
+  if (score <= 4) return 'medium';
+  return 'strong';
+};
+
+const getPasswordStrengthText = (password: string): string => {
+  const strength = getPasswordStrength(password);
+  
+  switch (strength) {
+    case 'weak':
+      return 'Add more characters, numbers, and symbols';
+    case 'medium':
+      return 'Good! Add uppercase letters and symbols for better security';
+    case 'strong':
+      return 'Excellent! Your password is strong and secure';
+    default:
+      return '';
+  }
+};
+
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -33,6 +69,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   });
   const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
   const [usePhone, setUsePhone] = useState(false); // Toggle between phone and email
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const { login, register } = useAuth();
   const { toast } = useToast();
@@ -622,18 +660,48 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
                     {/* Password Fields */}
                     <div className="grid grid-cols-2 gap-4">
-              <div>
+                      <div>
                         <Label htmlFor="password">Password</Label>
-                <Input
+                        <Input
                           id="password"
-                  type="password"
+                          type="password"
                           value={signupData.password}
                           onChange={(e) => setSignupData({...signupData, password: e.target.value})}
                           placeholder="Password"
-                  required
-                />
-              </div>
-              <div>
+                          required
+                        />
+                        {/* Password Strength Indicator */}
+                        {signupData.password && (
+                          <div className="mt-2">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full transition-all duration-300 ${
+                                    getPasswordStrength(signupData.password) === 'weak' ? 'bg-red-500 w-1/3' :
+                                    getPasswordStrength(signupData.password) === 'medium' ? 'bg-yellow-500 w-2/3' :
+                                    getPasswordStrength(signupData.password) === 'strong' ? 'bg-green-500 w-full' : 'w-0'
+                                  }`}
+                                />
+                              </div>
+                              <span className={`text-xs font-medium ${
+                                getPasswordStrength(signupData.password) === 'weak' ? 'text-red-600' :
+                                getPasswordStrength(signupData.password) === 'medium' ? 'text-yellow-600' :
+                                getPasswordStrength(signupData.password) === 'strong' ? 'text-green-600' : 'text-gray-500'
+                              }`}>
+                                {getPasswordStrength(signupData.password).toUpperCase()}
+                              </span>
+                            </div>
+                            <p className={`text-xs ${
+                              getPasswordStrength(signupData.password) === 'weak' ? 'text-red-600' :
+                              getPasswordStrength(signupData.password) === 'medium' ? 'text-yellow-600' :
+                              getPasswordStrength(signupData.password) === 'strong' ? 'text-green-600' : 'text-gray-500'
+                            }`}>
+                              {getPasswordStrengthText(signupData.password)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div>
                         <Label htmlFor="confirmPassword">Confirm</Label>
                         <Input
                           id="confirmPassword"
@@ -643,8 +711,23 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                           placeholder="Confirm"
                           required
                         />
-                </div>
-              </div>
+                        {/* Password Match Indicator */}
+                        {signupData.confirmPassword && (
+                          <div className="mt-2">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${
+                                signupData.password === signupData.confirmPassword ? 'bg-green-500' : 'bg-red-500'
+                              }`} />
+                              <span className={`text-xs ${
+                                signupData.password === signupData.confirmPassword ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {signupData.password === signupData.confirmPassword ? 'Passwords match' : 'Passwords do not match'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
                     {/* User Type */}
                     <div>

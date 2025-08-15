@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Building2, 
   Settings, 
@@ -29,15 +30,17 @@ import {
   Facebook,
   Instagram,
   Twitter,
-
   Youtube,
-
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { apiService, Service, Product } from '@/services/api';
 import { ServiceForm } from '@/components/ServiceForm';
 import { ProductForm } from '@/components/ProductForm';
+import { Label } from '@/components/ui/label';
 
 
 interface BusinessData {
@@ -66,6 +69,19 @@ interface BusinessData {
   youtube_url?: string;
 }
 
+// Local interface for products that matches the API structure
+interface LocalProduct {
+  id?: string | number;
+  name: string;
+  description?: string;
+  price: number;
+  price_currency: string;
+  product_image_url?: string;
+  images?: string[];
+  is_active?: boolean;
+  in_stock: boolean;
+  created_at?: string;
+}
 
 
 export const BusinessManagementPage: React.FC = () => {
@@ -76,7 +92,7 @@ export const BusinessManagementPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [businessData, setBusinessData] = useState<BusinessData | null>(null);
   const [services, setServices] = useState<Service[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<LocalProduct[]>([]);
   const [businessHours, setBusinessHours] = useState<Array<{
     day_of_week: number;
     open_time: string | null;
@@ -106,7 +122,12 @@ export const BusinessManagementPage: React.FC = () => {
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<LocalProduct | null>(null);
+
+  // Product detail modal state
+  const [selectedProduct, setSelectedProduct] = useState<LocalProduct | null>(null);
+  const [showProductDetail, setShowProductDetail] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     // Check if user is authenticated and is a business user
@@ -335,13 +356,64 @@ export const BusinessManagementPage: React.FC = () => {
   };
 
   const handleEditService = (service: Service) => {
-    setEditingService(service);
+    setEditingService({
+      id: service.id,
+      name: service.name,
+      description: service.description,
+      price_range: service.price_range,
+      duration: service.duration,
+      is_active: service.is_active,
+      service_image_url: service.service_image_url,
+      images: service.images
+    });
     setShowServiceForm(true);
   };
 
-  const handleEditProduct = (product: Product) => {
-    setEditingProduct(product);
+  const handleEditProduct = (product: LocalProduct) => {
+    setEditingProduct({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      price_currency: product.price_currency,
+      product_image_url: product.product_image_url,
+      images: product.images,
+      is_active: product.is_active,
+      in_stock: product.in_stock,
+      created_at: product.created_at
+    });
     setShowProductForm(true);
+  };
+
+  const handleProductClick = (product: LocalProduct) => {
+    setSelectedProduct(product);
+    setCurrentImageIndex(0);
+    setShowProductDetail(true);
+  };
+
+  const handleImageNavigation = (direction: 'next' | 'prev') => {
+    if (!selectedProduct) return;
+    
+    const allImages = [
+      ...(selectedProduct.product_image_url ? [selectedProduct.product_image_url] : []),
+      ...(selectedProduct.images || [])
+    ];
+    
+    if (direction === 'next') {
+      setCurrentImageIndex((prev) => 
+        prev === allImages.length - 1 ? 0 : prev + 1
+      );
+    } else {
+      setCurrentImageIndex((prev) => 
+        prev === 0 ? allImages.length - 1 : prev - 1
+      );
+    }
+  };
+
+  const closeProductDetail = () => {
+    setShowProductDetail(false);
+    setSelectedProduct(null);
+    setCurrentImageIndex(0);
   };
 
   const handleServiceSuccess = () => {
@@ -479,10 +551,10 @@ export const BusinessManagementPage: React.FC = () => {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-4">
-                {/* Business Profile Picture - Larger and properly sized */}
+                {/* Business Profile Picture - Beautiful rounded circle */}
                 <div className="relative group">
                   <div 
-                    className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-gray-300 hover:border-fem-terracotta transition-colors cursor-pointer overflow-hidden"
+                    className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center border-4 border-gray-200 hover:border-fem-terracotta transition-all duration-300 cursor-pointer overflow-hidden shadow-lg hover:shadow-xl"
                     onClick={() => handleProfilePictureClick()}
                   >
                     {businessData.business_image_url ? (
@@ -490,17 +562,25 @@ export const BusinessManagementPage: React.FC = () => {
                         src={businessData.business_image_url} 
                         alt="Business Profile" 
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(businessData.business_name)}&background=6366f1&color=fff&size=96&font-size=32&bold=true`;
+                        }}
                       />
                     ) : (
-                      <Camera className="h-10 w-10 text-gray-500" />
+                      <div className="w-full h-full bg-gradient-to-br from-fem-navy to-fem-terracotta flex items-center justify-center">
+                        <span className="text-white text-2xl font-bold">
+                          {businessData.business_name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
                     )}
                     {isUploadingImage && (
-                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-full">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
                       </div>
                     )}
                   </div>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap shadow-lg">
                     {businessData.business_image_url ? 'Change Profile Picture' : 'Add Profile Picture'}
                   </div>
                 </div>
@@ -767,25 +847,6 @@ export const BusinessManagementPage: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Business Features & Amenities */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Tag className="h-5 w-5" />
-                    <span>Business Features & Amenities</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {/* TODO: Display actual features from API */}
-                    {['Free Wi-Fi', 'Parking Available', 'Wheelchair Accessible', 'Credit Cards Accepted'].map((feature) => (
-                      <Badge key={feature} variant="secondary" className="px-3 py-1">
-                        {feature}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
             </TabsContent>
 
             {/* Services Tab */}
@@ -887,7 +948,7 @@ export const BusinessManagementPage: React.FC = () => {
               {products.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {products.map((product, index) => (
-                    <Card key={product.id || `product-${product.name}-${index}`} className="hover:shadow-md transition-shadow">
+                    <Card key={product.id || `product-${product.name}-${index}`} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleProductClick(product)}>
                       <CardContent className="p-6">
                         <div className="flex items-start space-x-4 mb-4">
                           {/* Product Preview Image */}
@@ -931,12 +992,23 @@ export const BusinessManagementPage: React.FC = () => {
                             variant="outline" 
                             size="sm" 
                             className="flex-1"
-                            onClick={() => handleEditProduct(product)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditProduct(product);
+                            }}
                           >
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </Button>
-                          <Button variant="outline" size="sm" className="flex-1">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleProductClick(product);
+                            }}
+                          >
                             <Eye className="h-4 w-4 mr-2" />
                             View
                           </Button>
@@ -1123,6 +1195,179 @@ export const BusinessManagementPage: React.FC = () => {
         product={editingProduct}
         onSuccess={handleProductSuccess}
       />
+
+      {/* Product Detail Modal */}
+      <Dialog open={showProductDetail} onOpenChange={closeProductDetail}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{selectedProduct?.name}</span>
+              <Button variant="ghost" size="sm" onClick={closeProductDetail}>
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedProduct && (
+            <div className="space-y-6">
+              {/* Image Gallery */}
+              <div className="relative">
+                {(() => {
+                  const allImages = [
+                    ...(selectedProduct.product_image_url ? [selectedProduct.product_image_url] : []),
+                    ...(selectedProduct.images || [])
+                  ];
+                  
+                  if (allImages.length === 0) {
+                    return (
+                      <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <Image className="h-16 w-16 text-gray-400" />
+                        <span className="ml-2 text-gray-500">No images available</span>
+                      </div>
+                    );
+                  }
+                  
+                  return (
+                    <div className="relative">
+                      {/* Main Image */}
+                      <img 
+                        src={allImages[currentImageIndex]} 
+                        alt={`${selectedProduct.name} - Image ${currentImageIndex + 1}`}
+                        className="w-full h-96 object-cover rounded-lg shadow-lg"
+                      />
+                      
+                      {/* Navigation Arrows */}
+                      {allImages.length > 1 && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg"
+                            onClick={() => handleImageNavigation('prev')}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg"
+                            onClick={() => handleImageNavigation('next')}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      
+                      {/* Image Counter */}
+                      <div className="absolute bottom-2 right-2 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-medium">
+                        {currentImageIndex + 1} / {allImages.length}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+              
+              {/* Thumbnail Gallery */}
+              {(() => {
+                const allImages = [
+                  ...(selectedProduct.product_image_url ? [selectedProduct.product_image_url] : []),
+                  ...(selectedProduct.images || [])
+                ];
+                
+                if (allImages.length > 1) {
+                  return (
+                    <div className="mt-4">
+                      <Label className="text-sm font-medium text-gray-700 mb-2">All Images</Label>
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {allImages.map((image, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentImageIndex(index)}
+                            className={`flex-shrink-0 relative group ${
+                              index === currentImageIndex 
+                                ? 'ring-2 ring-fem-terracotta ring-offset-2' 
+                                : 'hover:ring-2 hover:ring-gray-300 ring-offset-2'
+                            }`}
+                          >
+                            <img
+                              src={image}
+                              alt={`${selectedProduct.name} thumbnail ${index + 1}`}
+                              className="w-20 h-20 object-cover rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-colors"
+                            />
+                            {index === currentImageIndex && (
+                              <div className="absolute inset-0 bg-fem-terracotta/20 rounded-lg flex items-center justify-center">
+                                <div className="w-2 h-2 bg-fem-terracotta rounded-full"></div>
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              
+              {/* Product Information */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">{selectedProduct.name}</h3>
+                  <p className="text-gray-600">{selectedProduct.description || 'No description available'}</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-500">Price</label>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {selectedProduct.price} {selectedProduct.price_currency}
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-500">Stock Status</label>
+                    <Badge variant={selectedProduct.in_stock ? "default" : "secondary"}>
+                      {selectedProduct.in_stock ? "In Stock" : "Out of Stock"}
+                    </Badge>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-500">Status</label>
+                    <Badge variant={selectedProduct.is_active ? "default" : "secondary"}>
+                      {selectedProduct.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                  
+                  {selectedProduct.created_at && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-500">Added</label>
+                      <p className="text-sm text-gray-600">
+                        {new Date(selectedProduct.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    closeProductDetail();
+                    handleEditProduct(selectedProduct);
+                  }}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Product
+                </Button>
+                <Button onClick={closeProductDetail}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       
       <Footer />
     </div>
