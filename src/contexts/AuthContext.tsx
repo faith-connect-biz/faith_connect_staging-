@@ -13,7 +13,7 @@ interface AuthContextType {
   register: (data: RegisterRequest) => Promise<{ 
     success: boolean; 
     message: string; 
-    registration_token?: string; 
+    user_id?: number; 
     requires_otp?: boolean; 
     otp_sent_to?: string; 
     user?: User; 
@@ -175,7 +175,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (data: RegisterRequest): Promise<{ 
     success: boolean; 
     message: string; 
-    registration_token?: string; 
+    user_id?: number; 
     requires_otp?: boolean; 
     otp_sent_to?: string; 
     user?: User; 
@@ -185,14 +185,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await apiService.register(data);
       
       if (response.success && response.requires_otp) {
-        // Store registration token for OTP verification
-        setRegistrationToken(response.registration_token || '');
+        // Store user ID for OTP verification
+        setRegistrationToken(response.user_id?.toString() || '');
         setOtpSentTo(response.otp_sent_to || '');
         
         return {
           success: true,
           message: response.message,
-          registration_token: response.registration_token,
+          user_id: response.user_id,
           requires_otp: true,
           otp_sent_to: response.otp_sent_to
         };
@@ -218,14 +218,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!registrationToken) {
         return {
           success: false,
-          message: 'No registration token found. Please register again.'
+          message: 'No user ID found. Please register again.'
         };
       }
       
-      const response = await apiService.verifyRegistrationOTP(registrationToken, otp);
+      const userId = parseInt(registrationToken);
+      if (isNaN(userId)) {
+        return {
+          success: false,
+          message: 'Invalid user ID. Please register again.'
+        };
+      }
+      
+      const response = await apiService.verifyRegistrationOTP(userId, otp);
       
       if (response.success && response.user && response.tokens) {
-        // User created successfully, set auth state
+        // User activated successfully, set auth state
         setUser(response.user);
         setAuthTokens(response.tokens);
         setUserType(response.user.user_type);
@@ -258,11 +266,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!registrationToken) {
         return {
           success: false,
-          message: 'No registration token found. Please register again.'
+          message: 'No user ID found. Please register again.'
         };
       }
       
-      const response = await apiService.resendRegistrationOTP(registrationToken);
+      const userId = parseInt(registrationToken);
+      if (isNaN(userId)) {
+        return {
+          success: false,
+          message: 'Invalid user ID. Please register again.'
+        };
+      }
+      
+      const response = await apiService.resendRegistrationOTP(userId);
       
       if (response.success) {
         setOtpSentTo(response.otp_sent_to || '');
