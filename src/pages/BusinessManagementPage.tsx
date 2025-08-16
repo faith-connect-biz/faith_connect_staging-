@@ -313,6 +313,7 @@ export const BusinessManagementPage: React.FC = () => {
     if (!businessData) return;
     try {
       const servicesData = await apiService.getBusinessServices(businessData.id);
+      console.log('Loaded business services:', servicesData);
       setServices(servicesData);
     } catch (error) {
       console.error('Error fetching business services:', error);
@@ -359,14 +360,8 @@ export const BusinessManagementPage: React.FC = () => {
 
   const handleEditService = (service: Service) => {
     setEditingService({
-      id: service.id,
-      name: service.name,
-      description: service.description,
-      price_range: service.price_range,
-      duration: service.duration,
-      is_active: service.is_active,
-      service_image_url: service.service_image_url,
-      images: service.images
+      ...service,
+      business: businessData?.id || ''
     });
     setShowServiceForm(true);
   };

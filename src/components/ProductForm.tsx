@@ -12,17 +12,7 @@ import { useBusiness } from '@/contexts/BusinessContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Upload, X, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
 
-interface Product {
-  id?: string;
-  name: string;
-  description?: string;
-  price: number;
-  price_currency: string;
-  product_image_url?: string;
-  images?: string[];
-  in_stock: boolean;
-  is_active: boolean;
-}
+import { Product } from '@/services/api';
 
 interface ProductFormProps {
   isOpen: boolean;
@@ -42,6 +32,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const { deleteProduct } = useBusiness();
   const { isAuthenticated } = useAuth();
   const [formData, setFormData] = useState<Product>({
+    business: businessId,
     name: '',
     description: '',
     price: 0,
@@ -62,15 +53,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   useEffect(() => {
     if (product) {
       setFormData({
-        id: product.id,
-        name: product.name || '',
-        description: product.description || '',
-        price: product.price || 0,
-        price_currency: product.price_currency || 'KES',
-        product_image_url: product.product_image_url || '',
-        images: product.images || [],
-        in_stock: product.in_stock,
-        is_active: product.is_active
+        ...product,
+        business: businessId
       });
       // Set image previews from existing images
       const previews = [];
@@ -79,6 +63,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       setImagePreviews(previews);
     } else {
       setFormData({
+        business: businessId,
         name: '',
         description: '',
         price: 0,
@@ -205,8 +190,25 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     setIsLoading(true);
     try {
       if (product?.id) {
-        // Update existing product
-        await apiService.updateProduct(product.id, formData);
+        // Update existing product - only send changed fields, exclude business field
+        const updateData = {
+          name: formData.name,
+          description: formData.description,
+          price: formData.price,
+          price_currency: formData.price_currency,
+          product_image_url: formData.product_image_url,
+          images: formData.images,
+          in_stock: formData.in_stock,
+          is_active: formData.is_active
+        };
+        console.log('Updating product:', { productId: product.id, updateData });
+        
+        if (!product.id) {
+          throw new Error('Product ID is required for updates');
+        }
+        
+        const result = await apiService.updateProduct(product.id.toString(), updateData);
+        console.log('Product update result:', result);
         toast({
           title: "Success",
           description: "Product updated successfully!",
@@ -269,7 +271,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent 
-        className="sm:max-w-[600px]"
+        className="w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto mx-auto"
         aria-describedby="product-form-description"
       >
         <DialogHeader>
@@ -281,7 +283,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           {product ? 'Edit existing product details' : 'Add a new product to your business'}
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 px-1">
           <div className="space-y-2">
             <Label htmlFor="name">Product Name *</Label>
             <Input
@@ -304,7 +306,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="price">Price *</Label>
               <Input
@@ -346,32 +348,32 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             <Label>Product Images (Up to 5)</Label>
             <div className="space-y-3">
               {/* Image Grid */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {imagePreviews.map((image, index) => (
                   <div key={index} className="relative">
                     <img 
                       src={image} 
                       alt={`Product image ${index + 1}`} 
-                      className="w-full h-32 object-cover rounded-lg border"
+                      className="w-full h-24 sm:h-32 object-cover rounded-lg border"
                     />
                     <Button
                       type="button"
                       variant="destructive"
                       size="sm"
-                      className="absolute top-2 right-2"
+                      className="absolute top-2 right-2 w-6 h-6 p-0"
                       onClick={() => removeImage(index)}
                       disabled={uploadingImages}
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-3 h-3" />
                     </Button>
                   </div>
                 ))}
                 
                 {/* Upload Button - Only show if less than 5 images */}
                 {imagePreviews.length < 5 && (
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                    <Label htmlFor="product-images" className="cursor-pointer text-sm text-gray-600">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
+                    <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 mx-auto mb-2" />
+                    <Label htmlFor="product-images" className="cursor-pointer text-xs sm:text-sm text-gray-600">
                       {uploadingImages ? 'Uploading...' : 'Click to upload image'}
                     </Label>
                     <Input
@@ -387,13 +389,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({
               </div>
               
               {/* Image Count */}
-              <div className="text-sm text-gray-500 text-center">
+              <div className="text-xs sm:text-sm text-gray-500 text-center">
                 {imagePreviews.length}/5 images uploaded
               </div>
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
             <div className="flex items-center space-x-2">
               <Switch
                 id="in_stock"
@@ -413,7 +415,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             </div>
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4">
             <Button
               type="button"
               variant="outline"

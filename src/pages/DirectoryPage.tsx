@@ -68,8 +68,8 @@ const DirectoryPage = () => {
   const [filters, setFilters] = useState({
     county: "all",
     category: "all",
-    rating: [0, 5],
-    priceRange: [0, 10000],
+    rating: [0, 5] as [number, number],
+    priceRange: [0, 10000] as [number, number],
     verifiedOnly: false,
     openNow: false,
     hasPhotos: false,
@@ -178,8 +178,8 @@ const DirectoryPage = () => {
     setFilters({
       county: "all",
       category: "all",
-      rating: [0, 5],
-      priceRange: [0, 10000],
+      rating: [0, 5] as [number, number],
+      priceRange: [0, 10000] as [number, number],
       verifiedOnly: false,
       openNow: false,
       hasPhotos: false,
@@ -272,8 +272,22 @@ const DirectoryPage = () => {
             </div>
           </div>
 
-          {/* Mobile Filter Toggle */}
-          <div className="lg:hidden mb-6">
+          {/* Mobile Search and Filter Toggle */}
+          <div className="lg:hidden mb-6 space-y-4">
+            {/* Mobile Search - Always Visible */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 shadow-lg">
+              <Label htmlFor="mobile-search" className="text-sm font-medium text-fem-navy mb-2 block">Search</Label>
+              <Input
+                id="mobile-search"
+                placeholder="Search services and products..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="w-full text-sm"
+              />
+            </div>
+            
+            {/* Mobile Filter Toggle */}
             <Button
               onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
               variant="outline"
