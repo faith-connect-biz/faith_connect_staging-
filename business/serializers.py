@@ -3,6 +3,7 @@ from .models import (
     Business, Category, Favorite, Product, Review, BusinessHour, 
     PhotoRequest, BusinessLike, ReviewLike, Service
 )
+from .utils import validate_and_clean_image_url, convert_cloudfront_to_s3_url
 
 
 
@@ -15,65 +16,68 @@ class BusinessHourSerializer(serializers.ModelSerializer):
 
 
 class ServiceSerializer(serializers.ModelSerializer):
+    business = serializers.SerializerMethodField()
+    service_image_url = serializers.SerializerMethodField()
+    
     class Meta:
         model = Service
         fields = [
-            'id',
-            'business',
-            'name',
-            'description',
-            'price_range',
-            'duration',
-            'service_image_url',
-            'images',
-            'is_active',
-            'created_at'
+            'id', 'business', 'name', 'description', 'price_range', 'duration',
+            'service_image_url', 'images', 'is_active', 'created_at'
         ]
         read_only_fields = ['id', 'business', 'created_at']
-
+    
+    def get_business(self, obj):
+        """Return business information"""
+        if obj.business:
+            return {
+                'id': str(obj.business.id),
+                'business_name': obj.business.business_name,
+                'category': obj.business.category.name if obj.business.category else None,
+                'city': obj.business.city,
+                'county': obj.business.county
+            }
+        return None
+    
+    def get_service_image_url(self, obj):
+        """Get service image URL with fallback"""
+        if obj.service_image_url:
+            # Try to convert CloudFront to S3 if needed
+            url = convert_cloudfront_to_s3_url(obj.service_image_url)
+            return validate_and_clean_image_url(url, 'service')
+        return validate_and_clean_image_url(None, 'service')
 
 class ProductSerializer(serializers.ModelSerializer):
     business = serializers.SerializerMethodField()
+    product_image_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Product
         fields = [
-            'id',
-            'business',
-            'name',
-            'description',
-            'price',
-            'price_currency',
-            'product_image_url',
-            'images',
-            'is_active',
-            'in_stock',
-            'created_at'
+            'id', 'business', 'name', 'description', 'price', 'price_currency',
+            'product_image_url', 'images', 'in_stock', 'is_active', 'created_at'
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'business', 'created_at']
     
     def get_business(self, obj):
-        """Return business information for the product"""
-        if hasattr(obj, 'business') and obj.business:
-            # Always return expanded business details since context approach is not working
+        """Return business information"""
+        if obj.business:
             return {
-                'id': obj.business.id,
+                'id': str(obj.business.id),
                 'business_name': obj.business.business_name,
-                'category': {
-                    'id': obj.business.category.id,
-                    'name': obj.business.category.name
-                } if obj.business.category else None,
+                'category': obj.business.category.name if obj.business.category else None,
                 'city': obj.business.city,
-                'county': obj.business.county,
-                'address': obj.business.address,
-                'rating': obj.business.rating,
-                'review_count': obj.business.review_count,
-                'is_verified': obj.business.is_verified,
-                'is_active': obj.business.is_active,
-                'business_image_url': obj.business.business_image_url,
-                'business_logo_url': obj.business.business_logo_url
+                'county': obj.business.county
             }
         return None
+    
+    def get_product_image_url(self, obj):
+        """Get product image URL with fallback"""
+        if obj.product_image_url:
+            # Try to convert CloudFront to S3 if needed
+            url = convert_cloudfront_to_s3_url(obj.product_image_url)
+            return validate_and_clean_image_url(url, 'product')
+        return validate_and_clean_image_url(None, 'product')
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -120,14 +124,16 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class BusinessSerializer(serializers.ModelSerializer):
+    category = CategorySerializer(read_only=True)
+    category_id = serializers.IntegerField(write_only=True, required=True)
+    user = serializers.SerializerMethodField()
+    business_image_url = serializers.SerializerMethodField()
+    business_logo_url = serializers.SerializerMethodField()
     hours = BusinessHourSerializer(many=True, read_only=True)
     services = ServiceSerializer(many=True, read_only=True)
     products = ProductSerializer(many=True, read_only=True)
     reviews = ReviewSerializer(many=True, read_only=True)
-    category = CategorySerializer(read_only=True)
-    category_id = serializers.IntegerField(write_only=True, required=True)
-    user = serializers.SerializerMethodField()
-
+    
     class Meta:
         model = Business
         fields = [
@@ -138,7 +144,8 @@ class BusinessSerializer(serializers.ModelSerializer):
             'instagram_url', 'twitter_url', 'youtube_url', 'created_at', 'updated_at',
             'hours', 'services', 'products', 'reviews'
         ]
-
+        read_only_fields = ['id', 'rating', 'created_at', 'updated_at', 'user']
+    
     def get_user(self, obj):
         """Return user information for the business"""
         if obj.user:
@@ -151,6 +158,22 @@ class BusinessSerializer(serializers.ModelSerializer):
                 'partnership_number': getattr(obj.user, 'partnership_number', None)
             }
         return None
+
+    def get_business_image_url(self, obj):
+        """Get business image URL with fallback"""
+        if obj.business_image_url:
+            # Try to convert CloudFront to S3 if needed
+            url = convert_cloudfront_to_s3_url(obj.business_image_url)
+            return validate_and_clean_image_url(url, 'business')
+        return validate_and_clean_image_url(None, 'business')
+    
+    def get_business_logo_url(self, obj):
+        """Get business logo URL with fallback"""
+        if obj.business_logo_url:
+            # Try to convert CloudFront to S3 if needed
+            url = convert_cloudfront_to_s3_url(obj.business_logo_url)
+            return validate_and_clean_image_url(url, 'logo')
+        return validate_and_clean_image_url(None, 'logo')
 
     def create(self, validated_data):
         try:

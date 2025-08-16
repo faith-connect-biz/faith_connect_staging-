@@ -212,7 +212,7 @@ class BusinessProductListCreateView(generics.ListCreateAPIView):
         serializer.save(business=business)
 
 
-class ProductRetrieveUpdateView(generics.RetrieveUpdateAPIView):
+class ProductRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.filter(is_active=True)
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]  # Allow public access to view products, but require auth for updates
@@ -228,10 +228,22 @@ class ProductRetrieveUpdateView(generics.RetrieveUpdateAPIView):
             raise PermissionDenied("Only the owner can update this product")
         serializer.save()
 
+    def perform_destroy(self, instance):
+        """Ensure the product belongs to the current user's business before deletion"""
+        if instance.business.user != self.request.user:
+            raise PermissionDenied("You can only delete products for your own business")
+        instance.delete()
+
 class ReviewListCreateView(generics.ListCreateAPIView):
     serializer_class = ReviewSerializer
     permission_classes = [AllowAny]  # Allow public access to list reviews, but require auth for creation
     pagination_class = CustomLimitOffsetPagination
+
+    def get_permissions(self):
+        """Allow anyone to view reviews, but require authentication to create"""
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         business_id = self.kwargs.get('business_id')
@@ -250,15 +262,16 @@ class ReviewListCreateView(generics.ListCreateAPIView):
             print(f"Error checking business: {e}")
             return Review.objects.none()
         
-        reviews = Review.objects.filter(business_id=business_id)
+        # Allow business owners to view reviews for their own business
+        if self.request.user.is_authenticated and business.user == self.request.user:
+            # Business owner can see all reviews for their business
+            reviews = Review.objects.filter(business_id=business_id)
+        else:
+            # Public users can only see verified reviews
+            reviews = Review.objects.filter(business_id=business_id, is_verified=True)
+        
         print(f"Found {reviews.count()} reviews for business {business_id}")
         return reviews
-
-    def get_permissions(self):
-        """Allow anyone to view reviews, but require authentication to create"""
-        if self.request.method == 'GET':
-            return [AllowAny()]
-        return [IsAuthenticated()]
 
     def perform_create(self, serializer):
         business_id = self.kwargs.get('business_id')
@@ -576,7 +589,7 @@ def update_service_image(request, service_id):
         if not file_key:
             return Response({'error': 'file_key is required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Generate S3 URL
+        # Generate direct S3 URL (more reliable than CloudFront)
         s3_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{file_key}"
         
         # Update service image
@@ -595,7 +608,8 @@ def update_service_image(request, service_id):
         return Response({
             'service_image_url': service.service_image_url,
             'images': service.images,
-            's3_url': s3_url
+            's3_url': s3_url,
+            'message': 'Service image updated successfully'
         })
         
     except Exception as e:
@@ -670,7 +684,7 @@ def update_product_image(request, product_id):
         if not file_key:
             return Response({'error': 'file_key is required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Generate S3 URL
+        # Generate direct S3 URL (more reliable than CloudFront)
         s3_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{file_key}"
         
         # Update product image
@@ -689,7 +703,8 @@ def update_product_image(request, product_id):
         return Response({
             'product_image_url': product.product_image_url,
             'images': product.images,
-            's3_url': s3_url
+            's3_url': s3_url,
+            'message': 'Product image updated successfully'
         })
         
     except Exception as e:
@@ -838,21 +853,52 @@ class ServiceListAPIView(generics.ListAPIView):
     pagination_class = CustomLimitOffsetPagination
 
 
-class ServiceRetrieveUpdateView(generics.RetrieveUpdateAPIView):
-    """Retrieve and update an individual service"""
+class ServiceListCreateAPIView(generics.ListCreateAPIView):
+    """List and create services"""
+    serializer_class = ServiceSerializer
+    permission_classes = [AllowAny]  # Allow public access to list services, but require auth for creation
+    pagination_class = CustomLimitOffsetPagination
+    
+    def get_queryset(self):
+        return Service.objects.filter(is_active=True).select_related('business', 'business__category')
+    
+    def perform_create(self, serializer):
+        # Check if user is authenticated for creation
+        if not self.request.user.is_authenticated:
+            raise PermissionDenied("Authentication required to create a service.")
+        
+        # For now, we'll require a business_id in the request data
+        # In a real app, you might want to get this from the user's business
+        business_id = self.request.data.get('business_id')
+        if not business_id:
+            raise PermissionDenied("Business ID is required to create a service")
+        
+        try:
+            business = Business.objects.get(id=business_id)
+            # Check if user owns this business
+            if business.user != self.request.user:
+                raise PermissionDenied("You can only create services for your own business")
+        except Business.DoesNotExist:
+            raise PermissionDenied("Business not found")
+        
+        serializer.save(business=business)
+
+
+class ServiceRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+    """Retrieve, update, and delete an individual service"""
     serializer_class = ServiceSerializer
     queryset = Service.objects.all()
     lookup_field = 'id'
 
     def get_permissions(self):
-        """Allow public access for GET, require auth for PUT"""
+        """Allow public access for GET, require auth for PUT/DELETE"""
         if self.request.method == 'GET':
             return [AllowAny()]
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        """For updates, only allow users to modify services for their own business"""
-        if self.request.method == 'PUT':
+        """For updates/deletes, only allow users to modify services for their own business"""
+        if self.request.method in ['PUT', 'DELETE']:
             return Service.objects.filter(business__user=self.request.user)
         return Service.objects.all()
 
@@ -862,6 +908,44 @@ class ServiceRetrieveUpdateView(generics.RetrieveUpdateAPIView):
         if service.business.user != self.request.user:
             raise PermissionDenied("You can only update services for your own business")
         serializer.save()
+
+    def perform_destroy(self, instance):
+        """Ensure the service belongs to the current user's business before deletion"""
+        if instance.business.user != self.request.user:
+            raise PermissionDenied("You can only delete services for your own business")
+        instance.delete()
+
+
+class ProductRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+    """Retrieve, update, and delete an individual product"""
+    serializer_class = ProductSerializer
+    queryset = Product.objects.all()
+    lookup_field = 'id'
+
+    def get_permissions(self):
+        """Allow public access for GET, require auth for PUT/DELETE"""
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get_queryset(self):
+        """For updates/deletes, only allow users to modify products for their own business"""
+        if self.request.method in ['PUT', 'DELETE']:
+            return Product.objects.filter(business__user=self.request.user)
+        return Product.objects.all()
+
+    def perform_update(self, serializer):
+        """Ensure the product belongs to the current user's business"""
+        product = serializer.instance
+        if product.business.user != self.request.user:
+            raise PermissionDenied("You can only update products for your own business")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        """Ensure the product belongs to the current user's business before deletion"""
+        if instance.business.user != self.request.user:
+            raise PermissionDenied("You can only delete products for your own business")
+        instance.delete()
 
 
 class ProductListAPIView(generics.ListAPIView):
@@ -877,6 +961,37 @@ class ProductListAPIView(generics.ListAPIView):
     
     # Add pagination
     pagination_class = CustomLimitOffsetPagination
+
+
+class ProductListCreateAPIView(generics.ListCreateAPIView):
+    """List and create products"""
+    serializer_class = ProductSerializer
+    permission_classes = [AllowAny]  # Allow public access to list products, but require auth for creation
+    pagination_class = CustomLimitOffsetPagination
+    
+    def get_queryset(self):
+        return Product.objects.filter(is_active=True).select_related('business', 'business__category')
+    
+    def perform_create(self, serializer):
+        # Check if user is authenticated for creation
+        if not self.request.user.is_authenticated:
+            raise PermissionDenied("Authentication required to create a product.")
+        
+        # For now, we'll require a business_id in the request data
+        # In a real app, you might want to get this from the user's business
+        business_id = self.request.data.get('business_id')
+        if not business_id:
+            raise PermissionDenied("Business ID is required to create a product")
+        
+        try:
+            business = Business.objects.get(id=business_id)
+            # Check if user owns this business
+            if business.user != self.request.user:
+                raise PermissionDenied("You can only create products for your own business")
+        except Business.DoesNotExist:
+            raise PermissionDenied("Business not found")
+        
+        serializer.save(business=business)
 
 
 class BusinessHourCreateView(generics.CreateAPIView):
@@ -902,6 +1017,24 @@ class PhotoRequestCreateView(generics.CreateAPIView):
         pass
         
         return photo_request
+
+
+class FavoriteCreateView(generics.CreateAPIView):
+    """Create a new favorite"""
+    serializer_class = FavoriteSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class FavoriteDeleteView(generics.DestroyAPIView):
+    """Delete a favorite"""
+    serializer_class = FavoriteSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return Favorite.objects.filter(user=self.request.user)
 
 
 class UserFavoritesView(generics.ListAPIView):
@@ -1198,8 +1331,8 @@ def update_business_profile_image(request, business_id):
         # Get S3 service
         s3_service = S3Service()
         
-        # Generate S3 URL
-        s3_url = f"https://{s3_service.bucket_name}.s3.amazonaws.com/{file_key}"
+        # Generate direct S3 URL (more reliable than CloudFront)
+        s3_url = f"https://{s3_service.bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{file_key}"
         
         # Update business profile image
         business.business_image_url = s3_url
@@ -1207,7 +1340,8 @@ def update_business_profile_image(request, business_id):
         
         return Response({
             'business_image_url': s3_url,
-            's3_url': s3_url
+            's3_url': s3_url,
+            'message': 'Business profile image updated successfully'
         })
         
     except Business.DoesNotExist:
@@ -1292,8 +1426,8 @@ def update_business_logo(request, business_id):
         # Get S3 service
         s3_service = S3Service()
         
-        # Generate S3 URL
-        s3_url = f"https://{s3_service.bucket_name}.s3.amazonaws.com/{file_key}"
+        # Generate direct S3 URL (more reliable than CloudFront)
+        s3_url = f"https://{s3_service.bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{file_key}"
         
         # Update business logo
         business.business_logo_url = s3_url
@@ -1301,7 +1435,8 @@ def update_business_logo(request, business_id):
         
         return Response({
             'business_logo_url': s3_url,
-            's3_url': s3_url
+            's3_url': s3_url,
+            'message': 'Business logo updated successfully'
         })
         
     except Business.DoesNotExist:

@@ -1,24 +1,22 @@
 from django.urls import path
 from .views import (
-    BusinessListCreateAPIView, BusinessDetailAPIView, BusinessUpdateView, 
-    CategoryListAPIView, FavoriteToggleView, UserFavoritesListView,
-    BusinessProductListCreateView, ProductRetrieveUpdateView,
-    ReviewListCreateView, ReviewUpdateDeleteView, BusinessHoursView,
-    BusinessImageUploadView,
-    get_service_image_upload_url, update_service_image,
-    get_product_image_upload_url, update_product_image, UserBusinessView, BusinessServiceListCreateView, BusinessAnalyticsView,
-    ServiceListAPIView, ProductListAPIView, MyBusinessView, ServiceRetrieveUpdateView,
-    PhotoRequestCreateView, PhotoRequestListView, PhotoRequestUpdateView,
-    BusinessLikeToggleView, ReviewLikeToggleView, UserActivityView, UserFavoritesView, UserReviewsView,
-    get_business_profile_image_upload_url, update_business_profile_image,
-    get_business_logo_upload_url, update_business_logo
+    BusinessDetailAPIView, BusinessListCreateAPIView, BusinessUpdateView, 
+    ServiceListCreateAPIView, ProductListCreateAPIView, MyBusinessView, ServiceRetrieveUpdateDeleteView,
+    ProductRetrieveUpdateDeleteView, CategoryListAPIView, FavoriteCreateView, FavoriteDeleteView,
+    ReviewListCreateView, ReviewUpdateDeleteView, BusinessHourCreateView, PhotoRequestCreateView,
+    PhotoRequestListView, PhotoRequestUpdateView, UserFavoritesView, UserReviewsView,
+    BusinessServiceListCreateView, BusinessProductListCreateView, BusinessHoursView, BusinessAnalyticsView,
+    BusinessImageUploadView, FavoriteToggleView, BusinessLikeToggleView, ReviewLikeToggleView,
+    UserActivityView, UserBusinessView, get_service_image_upload_url, update_service_image,
+    get_product_image_upload_url, update_product_image, get_business_profile_image_upload_url, 
+    update_business_profile_image, get_business_logo_upload_url, update_business_logo
 )
 
 urlpatterns = [
     path('', BusinessListCreateAPIView.as_view(), name="business-list-create"),
     path('categories/', CategoryListAPIView.as_view(), name="category-list"),
-    path('services/', ServiceListAPIView.as_view(), name="service-list"),
-    path('products/', ProductListAPIView.as_view(), name="product-list"),
+    path('services/', ServiceListCreateAPIView.as_view(), name="service-list"),
+    path('products/', ProductListCreateAPIView.as_view(), name="product-list"),
     path('my-business/', MyBusinessView.as_view(), name="my-business"),
     path('user/<int:user_id>/', UserBusinessView.as_view(), name="user-businesses"),
     path('<uuid:id>/', BusinessDetailAPIView.as_view(), name="business-detail"),
@@ -26,8 +24,8 @@ urlpatterns = [
     path('<uuid:id>/favorite/', FavoriteToggleView.as_view(), name="favorite-toggle"),
     path('<uuid:business_id>/services/', BusinessServiceListCreateView.as_view(), name="business-service-list-create"),
     path('<uuid:business_id>/products/', BusinessProductListCreateView.as_view(), name="business-product-list-create"),
-    path('services/<int:id>/', ServiceRetrieveUpdateView.as_view(), name="service-detail"),
-    path('products/<int:id>/', ProductRetrieveUpdateView.as_view(), name="product-detail"),
+    path('services/<int:id>/', ServiceRetrieveUpdateDeleteView.as_view(), name="service-detail"),
+    path('products/<int:id>/', ProductRetrieveUpdateDeleteView.as_view(), name="product-detail"),
     path('<uuid:business_id>/reviews/', ReviewListCreateView.as_view(), name="business-reviews"),
     path('<uuid:business_id>/reviews/<int:pk>/', ReviewUpdateDeleteView.as_view(), name="business-review-detail"),
     path('<uuid:business_id>/hours/', BusinessHoursView.as_view(), name="business-hours"),
