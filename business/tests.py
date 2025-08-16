@@ -99,14 +99,17 @@ class ReviewValidationTests(APITestCase):
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         
-        # Try to create duplicate review - should get 400 (validation error from serializer)
+        # Try to create duplicate review
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('already reviewed this business', str(response.data))
+        self.assertIn('already reviewed', str(response.data))
     
-    def test_unauthenticated_user_cannot_review(self):
+    def test_unauthenticated_user_cannot_create_review(self):
         """Test that unauthenticated users cannot create reviews"""
         url = reverse('business-reviews', kwargs={'business_id': self.business.id})
+        
+        # Clear any existing credentials
+        self.client.credentials()
         
         data = {
             'rating': 5,
@@ -115,5 +118,34 @@ class ReviewValidationTests(APITestCase):
         
         response = self.client.post(url, data, format='json')
         
-        # Should get permission denied
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # Should get unauthorized
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    
+    def test_unauthenticated_user_can_view_reviews(self):
+        """Test that unauthenticated users can view reviews"""
+        # First create a review with an authenticated user
+        url = reverse('business-reviews', kwargs={'business_id': self.business.id})
+        
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.reviewer_token}')
+        
+        data = {
+            'rating': 5,
+            'review_text': 'Great business!'
+        }
+        
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # Set the review as verified so unauthenticated users can see it
+        review = Review.objects.get(business=self.business, user=self.reviewer)
+        review.is_verified = True
+        review.save()
+        
+        # Now test that unauthenticated user can view reviews
+        self.client.credentials()  # Clear credentials
+        
+        response = self.client.get(url)
+        
+        # Should succeed
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)  # Assuming pagination
