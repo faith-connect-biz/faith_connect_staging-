@@ -1496,12 +1496,12 @@ class ApiService {
   }
 
   async getService(serviceId: string): Promise<Service> {
-    const response = await this.api.get(`/services/${serviceId}/`);
+    const response = await this.api.get(`/business/services/${serviceId}/`);
     return response.data;
   }
 
   async updateService(serviceId: string, data: Partial<Service>): Promise<Service> {
-    const response = await this.api.put(`/services/${serviceId}/`, data);
+    const response = await this.api.put(`/business/services/${serviceId}/`, data);
     return response.data;
   }
 
@@ -1517,7 +1517,7 @@ class ApiService {
     image_type: string;
   }> {
     try {
-      const response = await this.api.post(`/services/${serviceId}/upload-image/`, {
+      const response = await this.api.post(`/business/services/${serviceId}/upload-image/`, {
         image_type: imageType,
         file_name: fileName,
         content_type: contentType
@@ -1536,7 +1536,7 @@ class ApiService {
     s3_url: string;
   }> {
     try {
-      const response = await this.api.put(`/services/${serviceId}/update-image/`, {
+      const response = await this.api.put(`/business/services/${serviceId}/update-image/`, {
         image_type: imageType,
         file_key: fileKey
       });

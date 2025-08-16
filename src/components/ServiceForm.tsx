@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
 import { useBusiness } from '@/contexts/BusinessContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Upload, X, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
 
 interface Service {
@@ -38,6 +39,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
   onSuccess
 }) => {
   const { deleteService } = useBusiness();
+  const { isAuthenticated } = useAuth();
   const [formData, setFormData] = useState<Service>({
     name: '',
     description: '',
@@ -50,6 +52,10 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+
+  // Show delete button if user is authenticated and service exists
+  // The backend will handle the actual security check
+  const canDeleteService = service?.id && isAuthenticated;
 
   useEffect(() => {
     if (service) {
@@ -183,8 +189,12 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
 
     try {
       if (service?.id) {
-        // Update existing service
-        await apiService.updateService(service.id, formData);
+        // Update existing service - ensure business field is included
+        const updateData = {
+          ...formData,
+          business: businessId // Include business ID to prevent creation of new service
+        };
+        await apiService.updateService(service.id, updateData);
         toast({
           title: "Service Updated",
           description: "Service has been updated successfully.",
@@ -300,7 +310,6 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
                   <SelectItem value="KSh 10,000 - KSh 25,000">KSh 10,000 - KSh 25,000</SelectItem>
                   <SelectItem value="Over KSh 25,000">Over KSh 25,000</SelectItem>
                   <SelectItem value="Contact for quote">Contact for quote</SelectItem>
-                  <SelectItem value="Free">Free</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -383,7 +392,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
               Cancel
             </Button>
             
-            {service?.id && (
+            {service?.id && canDeleteService && (
               <Button
                 type="button"
                 variant="destructive"

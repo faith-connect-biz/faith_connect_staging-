@@ -10,7 +10,8 @@ import {
   User, 
   Loader2,
   Building2,
-  AlertCircle
+  AlertCircle,
+  Home
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
@@ -103,6 +104,9 @@ const Navbar: React.FC = () => {
         
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-8">
+          <Link to="/" className="text-fem-navy hover:text-fem-terracotta transition-colors">
+            Home
+          </Link>
           <Link to="/directory" className="text-fem-navy hover:text-fem-terracotta transition-colors">
             Business Directory
           </Link>
@@ -197,6 +201,13 @@ const Navbar: React.FC = () => {
           <div className="container mx-auto px-4 py-4 space-y-4">
             {/* Mobile Navigation Links */}
             <div className="space-y-3">
+                             <Link 
+                 to="/" 
+                 className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
+                 onClick={closeMenu}
+               >
+                 Home
+               </Link>
               <Link 
                 to="/directory" 
                 className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
