@@ -61,10 +61,10 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
       </div>
 
       <div className="container-modern relative z-10">
-        <div className="section-full flex flex-col justify-center section-padding">
+        <div className="section-full-auto flex flex-col justify-center py-16 lg:py-20">
           
           {/* Header Badge */}
-          <div className="text-center mb-16 scroll-reveal">
+          <div className="text-center mb-8 scroll-reveal">
             <div className="inline-block">
               <div className="px-8 py-4 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
                 <div className="flex items-center gap-3">
@@ -77,13 +77,13 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
           </div>
 
           {/* Main Content Grid */}
-          <div className="grid lg:grid-cols-12 gap-20 items-center mb-32">
+          <div className="grid lg:grid-cols-12 gap-16 items-center mb-16">
             
             {/* Left Content - 8 columns */}
-            <div className="lg:col-span-8 space-y-12">
+            <div className="lg:col-span-8 space-y-8">
               
               {/* Main Headline with Church-focused Typography */}
-              <div className="space-y-8 scroll-reveal">
+              <div className="space-y-6 scroll-reveal">
                 <div className="text-hero leading-none max-w-5xl font-mont">
                    <div className="space-y-4">
                      <div className="text-white/95 font-light tracking-tight">Welcome to</div>
@@ -93,7 +93,7 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
                      <div className="text-white font-medium tracking-tight text-4xl">
                        Business Directory
                      </div>
-                     <div className="text-white/80 font-light text-2xl mt-6">
+                     <div className="text-white/80 font-light text-2xl mt-4">
                        Connecting Faith-Based Commerce
                      </div>
                    </div>
@@ -111,7 +111,7 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
                   {actionButtons || (
                     <>
                       <Link to="/directory" className="group">
-                        <button className="btn-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+                        <button className="btn-modern group-hover:scale-110 transition-transform duration-300 text-lg px-6 py-3">
                           <div className="flex items-center gap-3">
                             <Briefcase className="w-6 h-6" />
                             <span className="font-mont font-semibold tracking-wide">Browse Directory</span>
@@ -122,7 +122,7 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
                       
                       {isAuthenticated && (isBusiness || !isCommunity) && (
                         <Link to="/register-business" className="group">
-                          <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+                          <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-6 py-3">
                             <div className="flex items-center gap-3">
                               <Plus className="w-6 h-6" />
                               <span className="font-mont font-semibold tracking-wide">List Your Business</span>
@@ -136,7 +136,7 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
                 </div>
 
                 {/* Enhanced Trust Indicators */}
-                <div className="flex flex-wrap items-center gap-12 pt-12 scroll-reveal">
+                <div className="flex flex-wrap items-center gap-8 pt-8 scroll-reveal">
                                       <div className="flex items-center gap-4">
                       <div className="flex -space-x-3">
                         {[1,2,3,4,5].map(i => (
@@ -172,10 +172,10 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
           </div>
 
           {/* Modern Search Section */}
-          <div className="max-w-4xl mx-auto scroll-reveal">
-            <div className="rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 p-8 lg:p-10">
-              <div className="text-center mb-8">
-                 <h2 className="text-2xl font-bold text-white mb-4 font-mont tracking-tight">
+          <div className="max-w-4xl mx-auto scroll-reveal mt-8">
+            <div className="rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 p-6 lg:p-8">
+              <div className="text-center mb-6">
+                 <h2 className="text-2xl font-bold text-white mb-3 font-mont tracking-tight">
                    Find Trusted Businesses
                  </h2>
                  <p className="text-gray-300 font-mont leading-relaxed">Connect with faith-based businesses in your community</p>
