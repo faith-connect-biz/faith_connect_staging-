@@ -36,6 +36,7 @@ from .serializers import PhotoRequestSerializer
 from .models import BusinessLike, ReviewLike
 from .serializers import BusinessLikeSerializer, ReviewLikeSerializer
 from core.pagination import CustomLimitOffsetPagination
+from .permissions import CanCreateReviewPermission
 
 
 # Create your views here.
@@ -236,30 +237,19 @@ class ProductRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
 
 class ReviewListCreateView(generics.ListCreateAPIView):
     serializer_class = ReviewSerializer
-    permission_classes = [AllowAny]  # Allow public access to list reviews, but require auth for creation
+    permission_classes = [CanCreateReviewPermission]
     pagination_class = CustomLimitOffsetPagination
-
-    def get_permissions(self):
-        """Allow anyone to view reviews, but require authentication to create"""
-        if self.request.method == 'GET':
-            return [AllowAny()]
-        return [IsAuthenticated()]
 
     def get_queryset(self):
         business_id = self.kwargs.get('business_id')
-        print(f"ReviewListCreateView.get_queryset called with business_id: {business_id}")
-        print(f"Business ID type: {type(business_id)}")
         
         # Check if business exists
         from .models import Business
         try:
             business = Business.objects.get(id=business_id)
-            print(f"Business found: {business.business_name}")
         except Business.DoesNotExist:
-            print(f"Business with ID {business_id} does not exist")
             return Review.objects.none()
         except Exception as e:
-            print(f"Error checking business: {e}")
             return Review.objects.none()
         
         # Allow business owners to view reviews for their own business
@@ -270,7 +260,6 @@ class ReviewListCreateView(generics.ListCreateAPIView):
             # Public users can only see verified reviews
             reviews = Review.objects.filter(business_id=business_id, is_verified=True)
         
-        print(f"Found {reviews.count()} reviews for business {business_id}")
         return reviews
 
     def perform_create(self, serializer):
@@ -281,10 +270,6 @@ class ReviewListCreateView(generics.ListCreateAPIView):
             business = Business.objects.get(id=business_id)
         except Business.DoesNotExist:
             raise PermissionDenied("Business not found.")
-        
-        # Prevent business owners from reviewing their own business
-        if business.user == self.request.user:
-            raise PermissionDenied("Business owners cannot review their own business.")
         
         # Check for existing review (this is now protected by database unique constraint)
         # but we keep the check for better user experience

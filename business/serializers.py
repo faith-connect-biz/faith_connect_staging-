@@ -93,10 +93,6 @@ class ReviewSerializer(serializers.ModelSerializer):
         Custom validation to check for duplicate reviews
         Business owner validation is handled at the view level
         """
-        request = self.context.get('request')
-        if not request or not request.user.is_authenticated:
-            raise serializers.ValidationError("Authentication required to create a review.")
-        
         # Get business_id from the context (passed from the view)
         business_id = self.context.get('business_id')
         if not business_id:
@@ -111,8 +107,10 @@ class ReviewSerializer(serializers.ModelSerializer):
         
         # Check for existing review (this is now protected by database unique constraint)
         # but we keep the check for better user experience
-        if Review.objects.filter(business_id=business_id, user=request.user).exists():
-            raise serializers.ValidationError("You have already reviewed this business.")
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            if Review.objects.filter(business_id=business_id, user=request.user).exists():
+                raise serializers.ValidationError("You have already reviewed this business.")
         
         return data
 
