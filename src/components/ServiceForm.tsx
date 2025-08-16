@@ -12,16 +12,7 @@ import { useBusiness } from '@/contexts/BusinessContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Upload, X, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
 
-interface Service {
-  id?: string;
-  name: string;
-  description?: string;
-  price_range?: string;
-  duration?: string;
-  is_active: boolean;
-  service_image_url?: string;
-  images?: string[];
-}
+import { Service } from '@/services/api';
 
 interface ServiceFormProps {
   isOpen: boolean;
@@ -41,6 +32,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
   const { deleteService } = useBusiness();
   const { isAuthenticated } = useAuth();
   const [formData, setFormData] = useState<Service>({
+    business: businessId,
     name: '',
     description: '',
     price_range: '',
@@ -60,14 +52,8 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
   useEffect(() => {
     if (service) {
       setFormData({
-        id: service.id,
-        name: service.name || '',
-        description: service.description || '',
-        price_range: service.price_range || '',
-        duration: service.duration || '',
-        is_active: service.is_active,
-        service_image_url: service.service_image_url || '',
-        images: service.images || []
+        ...service,
+        business: businessId
       });
       // Set image previews from existing images
       const previews = [];
@@ -76,6 +62,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
       setImagePreviews(previews);
     } else {
       setFormData({
+        business: businessId,
         name: '',
         description: '',
         price_range: '',
@@ -189,12 +176,24 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
 
     try {
       if (service?.id) {
-        // Update existing service - ensure business field is included
+        // Update existing service - only send changed fields, exclude business field
         const updateData = {
-          ...formData,
-          business: businessId // Include business ID to prevent creation of new service
+          name: formData.name,
+          description: formData.description,
+          price_range: formData.price_range,
+          duration: formData.duration,
+          is_active: formData.is_active,
+          service_image_url: formData.service_image_url,
+          images: formData.images
         };
-        await apiService.updateService(service.id, updateData);
+        console.log('Updating service:', { serviceId: service.id, updateData });
+        
+        if (!service.id) {
+          throw new Error('Service ID is required for updates');
+        }
+        
+        const result = await apiService.updateService(service.id.toString(), updateData);
+        console.log('Service update result:', result);
         toast({
           title: "Service Updated",
           description: "Service has been updated successfully.",
@@ -230,7 +229,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
     }
 
     try {
-      await deleteService(service.id.toString());
+      await deleteService(service.id?.toString() || '');
       toast({
         title: "Service Deleted",
         description: "Service has been deleted successfully.",
@@ -257,7 +256,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent 
-        className="sm:max-w-[500px]"
+        className="w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto mx-auto"
         aria-describedby="service-form-description"
       >
         <DialogHeader>
@@ -269,7 +268,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
           {service ? 'Edit existing service details' : 'Add a new service to your business'}
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 px-1">
           <div className="space-y-2">
             <Label htmlFor="name">Service Name *</Label>
             <Input
@@ -292,7 +291,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="price_range">Price Range</Label>
               <Select
@@ -330,23 +329,23 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
             <Label>Service Images (Optional) - Up to 5 images</Label>
             <div className="space-y-3">
               {imagePreviews.length > 0 ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {imagePreviews.map((preview, index) => (
                     <div key={index} className="relative">
                       <img 
                         src={preview} 
                         alt={`Service preview ${index + 1}`} 
-                        className="w-full h-32 object-cover rounded-lg border"
+                        className="w-full h-24 sm:h-32 object-cover rounded-lg border"
                       />
                       <Button
                         type="button"
                         variant="destructive"
                         size="sm"
-                        className="absolute top-2 right-2"
+                        className="absolute top-2 right-2 w-6 h-6 p-0"
                         onClick={() => removeImage(index)}
                         disabled={uploadingImages}
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-3 h-3" />
                       </Button>
                     </div>
                   ))}
@@ -354,9 +353,9 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
               ) : null}
               
               {imagePreviews.length < 5 && (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <Label htmlFor="service-image" className="cursor-pointer text-sm text-gray-600">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
+                  <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 mx-auto mb-2" />
+                  <Label htmlFor="service-image" className="cursor-pointer text-xs sm:text-sm text-gray-600">
                     {uploadingImages ? 'Uploading...' : `Click to upload images or drag and drop (${imagePreviews.length}/5)`}
                   </Label>
                   <Input
@@ -382,7 +381,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
             <Label htmlFor="is_active">Active</Label>
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4">
             <Button
               type="button"
               variant="outline"
