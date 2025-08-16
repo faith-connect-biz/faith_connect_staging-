@@ -616,9 +616,7 @@ const DirectoryPage = () => {
                         
                       <ProductList 
                         filters={{ ...filters, searchTerm }} 
-                        currentPage={currentPage}
                         itemsPerPage={itemsPerPage}
-                        onPageChange={handlePageChange}
                       />
                     </TabsContent>
                   </Tabs>

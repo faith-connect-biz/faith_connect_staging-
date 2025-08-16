@@ -8,7 +8,8 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
-import { Upload, X, Image as ImageIcon, Plus } from 'lucide-react';
+import { useBusiness } from '@/contexts/BusinessContext';
+import { Upload, X, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
 
 interface Product {
   id?: string;
@@ -37,6 +38,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   product,
   onSuccess
 }) => {
+  const { deleteProduct } = useBusiness();
   const [formData, setFormData] = useState<Product>({
     name: '',
     description: '',
@@ -226,6 +228,31 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     }
   };
 
+  const handleDelete = async () => {
+    if (!product?.id) return;
+    
+    if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await deleteProduct(product.id);
+      toast({
+        title: "Product Deleted",
+        description: "Product has been deleted successfully.",
+      });
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete product. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleInputChange = (field: keyof Product, value: string | number | boolean) => {
     setFormData(prev => ({
       ...prev,
@@ -389,6 +416,20 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             >
               Cancel
             </Button>
+            
+            {product?.id && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={isLoading || uploadingImages}
+                className="flex items-center space-x-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete</span>
+              </Button>
+            )}
+            
             <Button
               type="submit"
               disabled={isLoading || uploadingImages}

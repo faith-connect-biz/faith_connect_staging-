@@ -1308,12 +1308,7 @@ class ApiService {
 
   // Delete product
   async deleteProduct(productId: string): Promise<void> {
-    try {
-      await this.api.delete(`/business/products/${productId}/`);
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      throw error;
-    }
+    await this.api.delete(`/business/products/${productId}/`);
   }
 
   // Review Methods
@@ -1511,7 +1506,7 @@ class ApiService {
   }
 
   async deleteService(serviceId: string): Promise<void> {
-    await this.api.delete(`/services/${serviceId}/`);
+    await this.api.delete(`/business/services/${serviceId}/`);
   }
 
   // Service Image Upload using S3 pre-signed URLs

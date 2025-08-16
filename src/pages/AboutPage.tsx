@@ -116,7 +116,7 @@ const AboutPage = () => {
               If you have any questions about Faith Connect Business Directory, please don't hesitate to contact us:
             </p>
             <div className="space-y-2 text-gray-600">
-              <p><span className="font-semibold">Email:</span> info@faithconnect.org</p>
+              <p><span className="font-semibold">Email:</span> support@faithconnect.biz</p>
               <p><span className="font-semibold">Phone:</span> +254 700 000 000</p>
               <p><span className="font-semibold">Location:</span> Faith Connect Headquarters, Nairobi, Kenya</p>
             </div>

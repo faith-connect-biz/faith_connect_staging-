@@ -5,8 +5,8 @@ interface BusinessContextType {
   businesses: Business[];
   categories: Category[];
   featuredBusinesses: Business[];
-  services: any[];
-  products: any[];
+  services: Service[];
+  products: Product[];
   isLoading: boolean;
   isLoadingBusinesses: boolean;
   isLoadingProducts: boolean;
@@ -15,36 +15,15 @@ interface BusinessContextType {
   currentPage: number;
   hasNextPage: boolean;
   hasPreviousPage: boolean;
-  
-  // Actions
-  fetchBusinesses: (params?: {
-    search?: string;
-    category?: number;
-    city?: string;
-    county?: string;
-    rating?: number;
-    is_featured?: boolean;
-    ordering?: string;
-    page?: number;
-    limit?: number;
-    offset?: number;
-  }) => Promise<void>;
-  
+  fetchBusinesses: (params?: { search?: string; category?: number; city?: string; county?: string; rating?: number; is_featured?: boolean; ordering?: string; page?: number; limit?: number; offset?: number }) => Promise<void>;
   fetchCategories: () => Promise<void>;
-  fetchProducts: (params?: {
-    search?: string;
-    category?: string;
-    in_stock?: boolean;
-    price_currency?: string;
-    ordering?: string;
-    page?: number;
-  }) => Promise<void>;
+  fetchProducts: (params?: { search?: string; category?: string; in_stock?: boolean; price_currency?: string; ordering?: string; page?: number }) => Promise<void>;
   createBusiness: (data: BusinessCreateRequest) => Promise<Business>;
   updateBusiness: (id: string, data: BusinessCreateRequest) => Promise<Business>;
   deleteBusiness: (id: string) => Promise<void>;
+  deleteService: (serviceId: string) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<void>;
   toggleFavorite: (businessId: string) => Promise<void>;
-  
-  // Utility
   getBusinessById: (id: string) => Business | undefined;
   getUserBusiness: () => Promise<Business | null>;
   clearError: () => void;
@@ -346,6 +325,36 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     }
   };
 
+  const deleteService = async (serviceId: string): Promise<void> => {
+    try {
+      setError(null);
+      await apiService.deleteService(serviceId);
+      
+      // Remove service from list
+      setServices(prev => prev.filter(service => service.id !== serviceId));
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete service';
+      setError(errorMessage);
+      console.error('Failed to delete service:', err);
+      throw err;
+    }
+  };
+
+  const deleteProduct = async (productId: string): Promise<void> => {
+    try {
+      setError(null);
+      await apiService.deleteProduct(productId);
+      
+      // Remove product from list
+      setProducts(prev => prev.filter(product => product.id !== productId));
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete product';
+      setError(errorMessage);
+      console.error('Failed to delete product:', err);
+      throw err;
+    }
+  };
+
   const getBusinessById = (id: string): Business | undefined => {
     return businesses?.find(business => business.id === id);
   };
@@ -398,6 +407,8 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     createBusiness,
     updateBusiness,
     deleteBusiness,
+    deleteService,
+    deleteProduct,
     toggleFavorite,
     getBusinessById,
     getUserBusiness,

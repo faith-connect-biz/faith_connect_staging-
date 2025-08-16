@@ -8,10 +8,11 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
-import { Upload, X, Image as ImageIcon, Plus } from 'lucide-react';
+import { useBusiness } from '@/contexts/BusinessContext';
+import { Upload, X, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
 
 interface Service {
-  id?: number;
+  id?: string;
   name: string;
   description?: string;
   price_range?: string;
@@ -36,6 +37,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
   service,
   onSuccess
 }) => {
+  const { deleteService } = useBusiness();
   const [formData, setFormData] = useState<Service>({
     name: '',
     description: '',
@@ -177,37 +179,22 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Service name is required",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setIsLoading(true);
-    try {
-      // Prepare the data to send, including images
-      const serviceData = {
-        ...formData,
-        images: imagePreviews // Send all image previews as the images array
-      };
 
+    try {
       if (service?.id) {
         // Update existing service
-        await apiService.updateService(service.id.toString(), serviceData);
+        await apiService.updateService(service.id, formData);
         toast({
-          title: "Success",
-          description: "Service updated successfully!",
+          title: "Service Updated",
+          description: "Service has been updated successfully.",
         });
       } else {
         // Create new service
-        await apiService.createService(businessId, serviceData);
+        await apiService.createService(businessId, formData);
         toast({
-          title: "Success",
-          description: "Service created successfully!",
+          title: "Service Created",
+          description: "Service has been created successfully.",
         });
       }
       
@@ -222,6 +209,31 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!service?.id) return;
+    
+    if (!confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await deleteService(service.id.toString());
+      toast({
+        title: "Service Deleted",
+        description: "Service has been deleted successfully.",
+      });
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error('Error deleting service:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete service. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -370,6 +382,20 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
             >
               Cancel
             </Button>
+            
+            {service?.id && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={isLoading || uploadingImages}
+                className="flex items-center space-x-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete</span>
+              </Button>
+            )}
+            
             <Button
               type="submit"
               disabled={isLoading || uploadingImages}
