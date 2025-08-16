@@ -80,11 +80,11 @@ const BusinessRegistrationPage = () => {
     zipCode: '',
     businessType: 'both' as 'products' | 'services' | 'both',
     hours: {
-      monday: { open: '', close: '', closed: false },
-      tuesday: { open: '', close: '', closed: false },
-      wednesday: { open: '', close: '', closed: false },
-      thursday: { open: '', close: '', closed: false },
-      friday: { open: '', close: '', closed: false },
+      monday: { open: '08:00', close: '17:00', closed: false },
+      tuesday: { open: '08:00', close: '17:00', closed: false },
+      wednesday: { open: '08:00', close: '17:00', closed: false },
+      thursday: { open: '08:00', close: '17:00', closed: false },
+      friday: { open: '08:00', close: '17:00', closed: false },
       saturday: { open: '', close: '', closed: false },
       sunday: { open: '', close: '', closed: false }
     },
@@ -565,15 +565,15 @@ const BusinessRegistrationPage = () => {
       errors.push("Please enter a valid email address");
     }
 
-    // Website validation (if provided)
+    // Website validation (if provided) - removed https:// requirement
     if (formData.website.trim()) {
-      const websiteRegex = /^https?:\/\/.+\..+/;
-      if (!websiteRegex.test(formData.website.trim())) {
-        errors.push("Please enter a valid website URL (e.g., https://www.example.com)");
+      // Allow any non-empty string for website URLs
+      if (formData.website.trim().length < 3) {
+        errors.push("Please enter a valid website URL or domain");
       }
     }
 
-    // Social media URL validation (if provided)
+    // Social media URL validation (if provided) - removed https:// requirement
     const socialMediaFields = [
       { field: 'facebook_url', name: 'Facebook' },
       { field: 'instagram_url', name: 'Instagram' },
@@ -584,9 +584,9 @@ const BusinessRegistrationPage = () => {
     socialMediaFields.forEach(({ field, name }) => {
       const url = formData[field as keyof typeof formData] as string;
       if (url.trim()) {
-        const urlRegex = /^https?:\/\/.+\..+/;
-        if (!urlRegex.test(url.trim())) {
-          errors.push(`Please enter a valid ${name} URL`);
+        // Allow any non-empty string for social media URLs
+        if (url.trim().length < 3) {
+          errors.push(`Please enter a valid ${name} username or URL`);
         }
       }
     });
@@ -1153,7 +1153,7 @@ const BusinessRegistrationPage = () => {
             id="website"
             value={formData.website}
             onChange={(e) => handleInputChange("website", e.target.value)}
-            placeholder="https://www.yourbusiness.com"
+                          placeholder="www.yourbusiness.com or yourbusiness.com"
             className="mt-1"
           />
         </div>
@@ -1169,7 +1169,7 @@ const BusinessRegistrationPage = () => {
               id="facebook_url"
               value={formData.facebook_url}
               onChange={(e) => handleInputChange("facebook_url", e.target.value)}
-              placeholder="https://facebook.com/yourbusiness"
+              placeholder="facebook.com/yourbusiness or @username"
               className="mt-1"
             />
           </div>
@@ -1179,7 +1179,7 @@ const BusinessRegistrationPage = () => {
               id="instagram_url"
               value={formData.instagram_url}
               onChange={(e) => handleInputChange("instagram_url", e.target.value)}
-              placeholder="https://instagram.com/yourbusiness"
+              placeholder="instagram.com/yourbusiness or @username"
               className="mt-1"
             />
           </div>
@@ -1189,7 +1189,7 @@ const BusinessRegistrationPage = () => {
               id="twitter_url"
               value={formData.twitter_url}
               onChange={(e) => handleInputChange("twitter_url", e.target.value)}
-              placeholder="https://twitter.com/yourbusiness"
+              placeholder="twitter.com/yourbusiness or @username"
               className="mt-1"
             />
           </div>
@@ -1199,7 +1199,7 @@ const BusinessRegistrationPage = () => {
               id="youtube_url"
               value={formData.youtube_url}
               onChange={(e) => handleInputChange("youtube_url", e.target.value)}
-              placeholder="https://youtube.com/yourbusiness"
+              placeholder="youtube.com/yourbusiness or @username"
               className="mt-1"
             />
           </div>

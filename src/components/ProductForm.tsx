@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
 import { useBusiness } from '@/contexts/BusinessContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Upload, X, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
 
 interface Product {
@@ -39,6 +40,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   onSuccess
 }) => {
   const { deleteProduct } = useBusiness();
+  const { isAuthenticated } = useAuth();
   const [formData, setFormData] = useState<Product>({
     name: '',
     description: '',
@@ -52,6 +54,10 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+
+  // Show delete button if user is authenticated and product exists
+  // The backend will handle the actual security check
+  const canDeleteProduct = product?.id && isAuthenticated;
 
   useEffect(() => {
     if (product) {
@@ -417,7 +423,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
               Cancel
             </Button>
             
-            {product?.id && (
+            {product?.id && canDeleteProduct && (
               <Button
                 type="button"
                 variant="destructive"

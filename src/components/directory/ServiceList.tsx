@@ -200,7 +200,7 @@ export const ServiceList = ({ filters, currentPage = 1, itemsPerPage = 15, onPag
 
               {/* Service Details */}
               <div className="space-y-2 mb-3">
-                {service.price_range && (
+                {service.price_range && service.price_range !== 'Free' && (
                   <div className="flex items-center text-sm text-gray-600">
                     <DollarSign className="w-4 h-4 mr-1" />
                     {service.price_range}

@@ -893,11 +893,11 @@ const BusinessDetailPage = () => {
                 </CardHeader>
                 <CardContent className="p-6">
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-4 bg-gray-100/50 backdrop-blur-sm">
-                      <TabsTrigger value="overview">Overview</TabsTrigger>
-                      <TabsTrigger value="services">Services ({services.length}/20)</TabsTrigger>
-                      <TabsTrigger value="products">Products ({business.products ? business.products.length : 0}/20)</TabsTrigger>
-                      <TabsTrigger value="reviews">Reviews</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-gray-100/50 backdrop-blur-sm">
+                      <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+                      <TabsTrigger value="services" className="text-xs sm:text-sm">Services ({services.length}/20)</TabsTrigger>
+                      <TabsTrigger value="products" className="text-xs sm:text-sm">Products ({business.products ? business.products.length : 0}/20)</TabsTrigger>
+                      <TabsTrigger value="reviews" className="text-xs sm:text-sm">Reviews</TabsTrigger>
                     </TabsList>
                     
                     <TabsContent value="overview" className="mt-6">
@@ -1175,7 +1175,7 @@ const BusinessDetailPage = () => {
                                     {service.description || 'No description available'}
                                   </p>
                                   <div className="space-y-2">
-                                    {service.price_range && (
+                                    {service.price_range && service.price_range !== 'Free' && (
                                       <div className="flex items-center gap-2 text-xs md:text-sm">
                                         <span className="text-gray-500">Price:</span>
                                         <span className="font-semibold text-fem-terracotta bg-gradient-to-r from-fem-terracotta to-fem-gold bg-clip-text text-transparent">{service.price_range}</span>
@@ -1891,7 +1891,7 @@ const BusinessDetailPage = () => {
                 {/* Enhanced Status Section */}
                 <div className="flex items-center justify-between">
                   <div className="text-lg font-bold text-fem-terracotta bg-gradient-to-r from-fem-terracotta to-fem-gold bg-clip-text text-transparent">
-                    {selectedServiceDetail.price_range}
+                    {selectedServiceDetail.price_range !== 'Free' ? selectedServiceDetail.price_range : 'Contact for pricing'}
                   </div>
                   
                   {/* Status Badge */}

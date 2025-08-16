@@ -920,7 +920,7 @@ export const BusinessManagementPage: React.FC = () => {
                             <div className="space-y-1 text-sm text-gray-500 mt-2">
                               <div className="flex items-center space-x-2">
                                 <Tag className="h-4 w-4" />
-                                <span>{service.price_range}</span>
+                                <span>{service.price_range !== 'Free' ? service.price_range : 'Contact for pricing'}</span>
                               </div>
                               <div className="flex items-center space-x-2">
                                 <Clock className="h-4 w-4" />
