@@ -9,7 +9,8 @@ from .views import (
     BusinessImageUploadView, FavoriteToggleView, BusinessLikeToggleView, ReviewLikeToggleView,
     UserActivityView, UserBusinessView, get_service_image_upload_url, update_service_image,
     get_product_image_upload_url, update_product_image, get_business_profile_image_upload_url, 
-    update_business_profile_image, get_business_logo_upload_url, update_business_logo
+    update_business_profile_image, get_business_logo_upload_url, update_business_logo,
+    ServiceReviewListCreateView, ServiceReviewUpdateDeleteView, ProductReviewListCreateView, ProductReviewUpdateDeleteView
 )
 
 urlpatterns = [
@@ -28,6 +29,10 @@ urlpatterns = [
     path('products/<int:id>/', ProductRetrieveUpdateDeleteView.as_view(), name="product-detail"),
     path('<uuid:business_id>/reviews/', ReviewListCreateView.as_view(), name="business-reviews"),
     path('<uuid:business_id>/reviews/<int:pk>/', ReviewUpdateDeleteView.as_view(), name="business-review-detail"),
+    path('services/<int:service_id>/reviews/', ServiceReviewListCreateView.as_view(), name="service-reviews"),
+    path('services/<int:service_id>/reviews/<int:pk>/', ServiceReviewUpdateDeleteView.as_view(), name="service-review-detail"),
+    path('products/<int:product_id>/reviews/', ProductReviewListCreateView.as_view(), name="product-reviews"),
+    path('products/<int:product_id>/reviews/<int:pk>/', ProductReviewUpdateDeleteView.as_view(), name="product-review-detail"),
     path('<uuid:business_id>/hours/', BusinessHoursView.as_view(), name="business-hours"),
     path('<uuid:business_id>/analytics/', BusinessAnalyticsView.as_view(), name="business-analytics"),
     path('<uuid:business_id>/upload-image/', BusinessImageUploadView.as_view(), name="business-image-upload"),

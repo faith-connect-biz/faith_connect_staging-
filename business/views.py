@@ -5,38 +5,35 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from .models import Business, Category, Favorite, Product, Review, BusinessHour
-from .serializers import BusinessSerializer, CategorySerializer, FavoriteSerializer, ProductSerializer, ReviewSerializer, BusinessHourSerializer
-from user_auth.utils import success_response, error_response
-from user_auth.models import User
-from django.db import transaction
-from django.utils import timezone
-from datetime import datetime, time
-import json
-from utils.s3_service import S3Service
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
 from django.shortcuts import get_object_or_404
-from .models import Business, Service, Product, Category
-from .serializers import BusinessSerializer, ServiceSerializer, ProductSerializer, CategorySerializer
+from django.db import transaction, models
+from django.utils import timezone
+from django.http import Http404
+from datetime import datetime, timedelta
+import json
+import os
+import uuid
 import boto3
 from botocore.exceptions import ClientError
-import os
 from django.conf import settings
-import uuid
-from datetime import datetime, timedelta
-from django.http import Http404
-from django.db import models
-from rest_framework.decorators import permission_classes as drf_permission_classes
-from .models import PhotoRequest
-from .serializers import PhotoRequestSerializer
-from .models import BusinessLike, ReviewLike
-from .serializers import BusinessLikeSerializer, ReviewLikeSerializer
+
+# Local imports
+from .models import (
+    Business, Category, Favorite, Product, Review, BusinessHour,
+    Service, PhotoRequest, BusinessLike, ReviewLike, ServiceReview, ProductReview
+)
+from .serializers import (
+    BusinessSerializer, CategorySerializer, FavoriteSerializer, 
+    ProductSerializer, ReviewSerializer, BusinessHourSerializer,
+    ServiceSerializer, PhotoRequestSerializer, BusinessLikeSerializer, 
+    ReviewLikeSerializer, ServiceReviewSerializer, ProductReviewSerializer
+)
+from user_auth.utils import success_response, error_response
+from user_auth.models import User
+from utils.s3_service import S3Service
 from core.pagination import CustomLimitOffsetPagination
-from .permissions import CanCreateReviewPermission
+from .permissions import CanCreateReviewPermission, CanCreateServiceReviewPermission, CanCreateProductReviewPermission
 
 
 # Create your views here.
@@ -244,21 +241,17 @@ class ReviewListCreateView(generics.ListCreateAPIView):
         business_id = self.kwargs.get('business_id')
         
         # Check if business exists
-        from .models import Business
         try:
             business = Business.objects.get(id=business_id)
         except Business.DoesNotExist:
+            # Return empty queryset but don't raise error for GET requests
             return Review.objects.none()
         except Exception as e:
+            # Log any other errors but don't crash
             return Review.objects.none()
         
-        # Allow business owners to view reviews for their own business
-        if self.request.user.is_authenticated and business.user == self.request.user:
-            # Business owner can see all reviews for their business
-            reviews = Review.objects.filter(business_id=business_id)
-        else:
-            # Public users can only see verified reviews
-            reviews = Review.objects.filter(business_id=business_id, is_verified=True)
+        # All users can see all reviews for the business
+        reviews = Review.objects.filter(business_id=business_id)
         
         return reviews
 
@@ -306,6 +299,160 @@ class ReviewUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
         if instance.user != self.request.user:
             raise PermissionDenied("You can only delete your own review.")
         instance.delete()
+    
+    def get_serializer_context(self):
+        """Add business_id to serializer context for validation"""
+        context = super().get_serializer_context()
+        context['business_id'] = self.kwargs.get('business_id')
+        return context
+
+
+class ServiceReviewListCreateView(generics.ListCreateAPIView):
+    serializer_class = ServiceReviewSerializer
+    permission_classes = [CanCreateServiceReviewPermission]
+    pagination_class = CustomLimitOffsetPagination
+
+    def get_queryset(self):
+        service_id = self.kwargs.get('service_id')
+        
+        # Check if service exists
+        try:
+            service = Service.objects.get(id=service_id)
+        except Service.DoesNotExist:
+            # Return empty queryset but don't raise error for GET requests
+            return ServiceReview.objects.none()
+        except Exception as e:
+            # Log any other errors but don't crash
+            return ServiceReview.objects.none()
+        
+        # All users can see all reviews for the service
+        reviews = ServiceReview.objects.filter(service_id=service_id)
+        
+        return reviews
+
+    def perform_create(self, serializer):
+        service_id = self.kwargs.get('service_id')
+        
+        # Get the service to check ownership
+        try:
+            service = Service.objects.get(id=service_id)
+        except Service.DoesNotExist:
+            raise PermissionDenied("Service not found.")
+        
+        # Check for existing review
+        if ServiceReview.objects.filter(service_id=service_id, user=self.request.user).exists():
+            raise PermissionDenied("You've already reviewed this service.")
+        
+        # Save the review
+        serializer.save(
+            service_id=service_id,
+            user=self.request.user
+        )
+    
+    def get_serializer_context(self):
+        """Add service_id to serializer context for validation"""
+        context = super().get_serializer_context()
+        context['service_id'] = self.kwargs.get('service_id')
+        return context
+
+
+class ServiceReviewUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = ServiceReviewSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ServiceReview.objects.filter(user=self.request.user, service_id=self.kwargs.get('service_id'))
+
+    def perform_update(self, serializer):
+        review = self.get_object()
+        if review.user != self.request.user:
+            raise PermissionDenied("You can only update your own review.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.user != self.request.user:
+            raise PermissionDenied("You can only delete your own review.")
+        instance.delete()
+    
+    def get_serializer_context(self):
+        """Add service_id to serializer context for validation"""
+        context = super().get_serializer_context()
+        context['service_id'] = self.kwargs.get('service_id')
+        return context
+
+
+class ProductReviewListCreateView(generics.ListCreateAPIView):
+    serializer_class = ProductReviewSerializer
+    permission_classes = [CanCreateProductReviewPermission]
+    pagination_class = CustomLimitOffsetPagination
+
+    def get_queryset(self):
+        product_id = self.kwargs.get('product_id')
+        
+        # Check if product exists
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            # Return empty queryset but don't raise error for GET requests
+            return ProductReview.objects.none()
+        except Exception as e:
+            # Log any other errors but don't crash
+            return ProductReview.objects.none()
+        
+        # All users can see all reviews for the product
+        reviews = ProductReview.objects.filter(product_id=product_id)
+        
+        return reviews
+
+    def perform_create(self, serializer):
+        product_id = self.kwargs.get('product_id')
+        
+        # Get the product to check ownership
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            raise PermissionDenied("Product not found.")
+        
+        # Check for existing review
+        if ProductReview.objects.filter(product_id=product_id, user=self.request.user).exists():
+            raise PermissionDenied("You've already reviewed this product.")
+        
+        # Save the review
+        serializer.save(
+            product_id=product_id,
+            user=self.request.user
+        )
+    
+    def get_serializer_context(self):
+        """Add product_id to serializer context for validation"""
+        context = super().get_serializer_context()
+        context['product_id'] = self.kwargs.get('product_id')
+        return context
+
+
+class ProductReviewUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = ProductReviewSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ProductReview.objects.filter(user=self.request.user, product_id=self.kwargs.get('product_id'))
+
+    def perform_update(self, serializer):
+        review = self.get_object()
+        if review.user != self.request.user:
+            raise PermissionDenied("You can only update your own review.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.user != self.request.user:
+            raise PermissionDenied("You can only delete your own review.")
+        instance.delete()
+    
+    def get_serializer_context(self):
+        """Add product_id to serializer context for validation"""
+        context = super().get_serializer_context()
+        context['product_id'] = self.kwargs.get('product_id')
+        return context
 
 
 class BusinessHoursView(APIView):

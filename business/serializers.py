@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
     Business, Category, Favorite, Product, Review, BusinessHour, 
-    PhotoRequest, BusinessLike, ReviewLike, Service
+    PhotoRequest, BusinessLike, ReviewLike, Service, ServiceReview, ProductReview
 )
 from .utils import validate_and_clean_image_url, convert_cloudfront_to_s3_url
 
@@ -109,8 +109,94 @@ class ReviewSerializer(serializers.ModelSerializer):
         # but we keep the check for better user experience
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            if Review.objects.filter(business_id=business_id, user=request.user).exists():
+            # For updates, exclude the current instance
+            instance = self.instance
+            existing_reviews = Review.objects.filter(business_id=business_id, user=request.user)
+            if instance:
+                existing_reviews = existing_reviews.exclude(pk=instance.pk)
+            
+            if existing_reviews.exists():
                 raise serializers.ValidationError("You have already reviewed this business.")
+        
+        return data
+
+
+class ServiceReviewSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = ServiceReview
+        fields = ['id', 'user', 'rating', 'review_text', 'is_verified', 'created_at', 'updated_at']
+        read_only_fields = ['is_verified', 'created_at', 'updated_at']
+    
+    def validate(self, data):
+        """
+        Custom validation to check for duplicate reviews
+        Business owner validation is handled at the view level
+        """
+        # Get service_id from the context (passed from the view)
+        service_id = self.context.get('service_id')
+        if not service_id:
+            raise serializers.ValidationError("Service ID is required.")
+        
+        # Check if service exists
+        try:
+            from .models import Service
+            service = Service.objects.get(id=service_id)
+        except Service.DoesNotExist:
+            raise serializers.ValidationError("Service not found.")
+        
+        # Check for existing review
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            # For updates, exclude the current instance
+            instance = self.instance
+            existing_reviews = ServiceReview.objects.filter(service_id=service_id, user=request.user)
+            if instance:
+                existing_reviews = existing_reviews.exclude(pk=instance.pk)
+            
+            if existing_reviews.exists():
+                raise serializers.ValidationError("You have already reviewed this service.")
+        
+        return data
+
+
+class ProductReviewSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = ProductReview
+        fields = ['id', 'user', 'rating', 'review_text', 'is_verified', 'created_at', 'updated_at']
+        read_only_fields = ['is_verified', 'created_at', 'updated_at']
+    
+    def validate(self, data):
+        """
+        Custom validation to check for duplicate reviews
+        Business owner validation is handled at the view level
+        """
+        # Get product_id from the context (passed from the view)
+        product_id = self.context.get('product_id')
+        if not product_id:
+            raise serializers.ValidationError("Product ID is required.")
+        
+        # Check if product exists
+        try:
+            from .models import Product
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            raise serializers.ValidationError("Product not found.")
+        
+        # Check for existing review
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            # For updates, exclude the current instance
+            instance = self.instance
+            existing_reviews = ProductReview.objects.filter(product_id=product_id, user=request.user)
+            if instance:
+                existing_reviews = existing_reviews.exclude(pk=instance.pk)
+            
+            if existing_reviews.exists():
+                raise serializers.ValidationError("You have already reviewed this product.")
         
         return data
 

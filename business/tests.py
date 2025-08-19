@@ -50,7 +50,7 @@ class ReviewValidationTests(APITestCase):
         self.business_owner_token = str(RefreshToken.for_user(self.business_owner).access_token)
         self.reviewer_token = str(RefreshToken.for_user(self.reviewer).access_token)
     
-    def test_business_owner_cannot_review_own_business(self):
+    def     (self):
         """Test that business owners cannot review their own business"""
         url = reverse('business-reviews', kwargs={'business_id': self.business.id})
         

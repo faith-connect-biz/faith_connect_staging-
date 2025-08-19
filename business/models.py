@@ -125,6 +125,40 @@ class Review(models.Model):
         return f"{self.user.first_name} {self.user.last_name} - {self.business.business_name}"
 
 
+class ServiceReview(models.Model):
+    service = models.ForeignKey('Service', on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='service_reviews')
+    rating = models.IntegerField(choices=[(i, i) for i in range(1, 6)])
+    review_text = models.TextField(blank=True, null=True)
+    is_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('service', 'user')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.first_name} {self.user.last_name} - {self.service.name}"
+
+
+class ProductReview(models.Model):
+    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='product_reviews')
+    rating = models.IntegerField(choices=[(i, i) for i in range(1, 6)])
+    review_text = models.TextField(blank=True, null=True)
+    is_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('product', 'user')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.first_name} {self.user.last_name} - {self.product.name}"
+
+
 class PhotoRequest(models.Model):
     """Model to handle professional photo requests from users"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
