@@ -1,6 +1,10 @@
 import os
 import logging
-from .ndovu_sms import send_otp_sms, send_welcome_sms, send_password_reset_sms
+from .ndovu_sms import (
+    send_otp_sms as ndovu_send_otp_sms,
+    send_welcome_sms as ndovu_send_welcome_sms,
+    send_password_reset_sms as ndovu_send_password_reset_sms,
+)
 from .zeptomail import send_email_verification_code as send_zeptomail_verification, send_welcome_email as send_zeptomail_welcome
 
 logger = logging.getLogger(__name__)
@@ -44,6 +48,7 @@ def send_otp_sms(phone_number: str, otp: str):
     Returns:
         Tuple of (success: bool, response: dict)
     """
+    # Delegate to the common sender which handles simulation and logging
     return send_sms(phone_number, otp)
 
 
@@ -63,7 +68,8 @@ def send_sms(phone_number: str, otp: str):
         print(f"📱 Simulated: OTP {otp} sent to {phone_number}")
         return True, {"simulated": True, "status_desc": "Simulated SMS for local development"}
     
-    success, response = send_otp_sms(phone_number, otp)
+    # Call gateway implementation (aliased) to avoid name clash/recursion
+    success, response = ndovu_send_otp_sms(phone_number, otp)
 
     if success:
         logger.info(f"[SMS SUCCESS] OTP {otp} sent to {phone_number}")
@@ -92,7 +98,7 @@ def send_welcome_message(phone_number: str, user_name: str):
         print(f"📱 Simulated: Welcome message sent to {phone_number} for {user_name}")
         return True, {"simulated": True, "status_desc": "Simulated welcome SMS for local development"}
     
-    success, response = send_welcome_sms(phone_number, user_name)
+    success, response = ndovu_send_welcome_sms(phone_number, user_name)
 
     if success:
         logger.info(f"[SMS SUCCESS] Welcome message sent to {phone_number}")
@@ -121,7 +127,7 @@ def send_password_reset_message(phone_number: str, reset_code: str):
         print(f"📱 Simulated: Password reset message sent to {phone_number} with code {reset_code}")
         return True, {"simulated": True, "status_desc": "Simulated password reset SMS for local development"}
     
-    success, response = send_password_reset_sms(phone_number, reset_code)
+    success, response = ndovu_send_password_reset_sms(phone_number, reset_code)
 
     if success:
         logger.info(f"[SMS SUCCESS] Password reset message sent to {phone_number}")
