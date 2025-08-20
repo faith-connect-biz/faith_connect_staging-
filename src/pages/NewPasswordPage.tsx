@@ -43,7 +43,7 @@ const NewPasswordPage: React.FC = () => {
         description: "Please complete the password reset process first.",
         variant: "destructive"
       });
-      navigate('/forgot-password');
+      navigate(-1);
       return;
     }
     setResetToken(token);
@@ -88,13 +88,11 @@ const NewPasswordPage: React.FC = () => {
         
         toast({
           title: "Password Reset Successful!",
-          description: "Your password has been updated. You can now sign in with your new password.",
+          description: "Your password has been updated. Please sign in with your new password.",
         });
-        
-        // Redirect to login after a short delay
-        setTimeout(() => {
-          navigate('/');
-        }, 3000);
+        // Open login modal on home after redirect
+        localStorage.setItem('open_login_modal', 'true');
+        navigate('/');
         
       } else {
         throw new Error(response.message || 'Failed to reset password');

@@ -29,7 +29,7 @@ const PasswordResetOTPPage: React.FC = () => {
         description: "Please request a password reset first.",
         variant: "destructive"
       });
-      navigate('/forgot-password');
+      navigate(-1);
       return;
     }
 
@@ -107,7 +107,7 @@ const PasswordResetOTPPage: React.FC = () => {
   };
 
   const handleBack = () => {
-    navigate('/forgot-password');
+    navigate(-1);
   };
 
   if (!userEmail || !resetToken) {
@@ -119,14 +119,14 @@ const PasswordResetOTPPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#faf9f8] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Back Button */}
         <div className="mb-6">
           <Button
             variant="ghost"
             onClick={handleBack}
-            className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
+            className="flex items-center space-x-2 text-fem-navy hover:text-fem-terracotta"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Back to Password Reset</span>
@@ -135,8 +135,8 @@ const PasswordResetOTPPage: React.FC = () => {
 
         {/* Header Icon */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
-            <Lock className="h-8 w-8 text-red-600" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-fem-gray rounded-full mb-4">
+            <Lock className="h-8 w-8 text-fem-terracotta" />
           </div>
         </div>
 
@@ -157,11 +157,11 @@ const PasswordResetOTPPage: React.FC = () => {
 
         {/* Additional Help */}
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-fem-darkgray">
             Didn't receive the code? Check your spam folder or{' '}
             <button
               onClick={() => navigate('/contact-support')}
-              className="text-red-600 hover:text-red-800 underline"
+              className="text-fem-terracotta hover:text-fem-terracotta/80 underline"
             >
               contact support
             </button>
@@ -169,8 +169,8 @@ const PasswordResetOTPPage: React.FC = () => {
         </div>
 
         {/* Security Note */}
-        <div className="mt-4 p-3 bg-blue-50 rounded-md">
-          <p className="text-xs text-blue-700 text-center">
+        <div className="mt-4 p-3 bg-fem-gray rounded-md">
+          <p className="text-xs text-fem-navy text-center">
             🔒 This code expires in 15 minutes for security reasons
           </p>
         </div>

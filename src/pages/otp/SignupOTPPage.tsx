@@ -131,14 +131,14 @@ const SignupOTPPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#faf9f8] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Back Button */}
         <div className="mb-6">
           <Button
             variant="ghost"
             onClick={handleBack}
-            className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
+            className="flex items-center space-x-2 text-fem-navy hover:text-fem-terracotta"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Back to Signup</span>
@@ -162,11 +162,11 @@ const SignupOTPPage: React.FC = () => {
 
         {/* Additional Help */}
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-fem-darkgray">
             Having trouble? Check your spam folder or{' '}
             <button
               onClick={() => navigate('/contact-support')}
-              className="text-blue-600 hover:text-blue-800 underline"
+              className="text-fem-terracotta hover:text-fem-terracotta/80 underline"
             >
               contact support
             </button>

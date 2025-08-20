@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
@@ -57,6 +58,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [activeTab, setActiveTab] = useState('login');
   const [isLoading, setIsLoading] = useState(false);
   const [signupStep, setSignupStep] = useState<'form' | 'otp'>('form');
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotMethod, setForgotMethod] = useState<'email' | 'phone'>('phone');
+  const [forgotIdentifier, setForgotIdentifier] = useState('');
+  const [forgotStep, setForgotStep] = useState<'request' | 'verify'>('request');
+  const [resetOtp, setResetOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [signupData, setSignupData] = useState({
     email: '',
     phone: '',
@@ -528,22 +536,101 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   console.log('AuthModal state:', { signupStep, activeTab, isOpen });
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md border border-fem-terracotta/10 max-h-[90vh] flex flex-col">
+        <div className="flex justify-between items-center p-6 border-b bg-[#faf9f8]">
+          <h2 className="text-xl font-semibold text-fem-navy">
             {signupStep === 'otp' ? 'Verify Your Account' : 'Welcome to FaithConnect'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-fem-navy/50 hover:text-fem-terracotta"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="relative overflow-hidden">
-          {/* OTP Verification Step - Only show when signupStep === 'otp' */}
+        <div className="relative flex-1 overflow-y-auto">
+          {forgotOpen ? (
+            <div className="p-6 space-y-4">
+              {forgotStep==='request' && (
+                <>
+                  <h3 className="text-lg font-semibold text-fem-navy">Reset your password</h3>
+                  <p className="text-sm text-fem-darkgray">Enter your email or phone to receive a reset code.</p>
+                  <div className="flex items-center space-x-2 bg-fem-gray p-1 rounded-md">
+                    <button type="button" onClick={() => setForgotMethod('email')} className={`px-3 py-1.5 rounded-md text-sm ${forgotMethod==='email'?'bg-white text-fem-terracotta shadow':'text-fem-navy'}`}>Email</button>
+                    <button type="button" onClick={() => setForgotMethod('phone')} className={`px-3 py-1.5 rounded-md text-sm ${forgotMethod==='phone'?'bg-white text-fem-terracotta shadow':'text-fem-navy'}`}>Phone</button>
+                  </div>
+                  <div>
+                    <Label htmlFor="forgot-identifier">{forgotMethod==='email'?'Email address':'Phone number'}</Label>
+                    <Input id="forgot-identifier" type={forgotMethod==='email'?'email':'tel'} placeholder={forgotMethod==='email'?'john@email.com':'+2547...'} value={forgotIdentifier} onChange={(e)=>setForgotIdentifier(e.target.value)} className="mt-1 focus:ring-fem-terracotta focus:border-fem-terracotta" />
+                  </div>
+                  <div className="space-y-2">
+                    <Button disabled={isLoading || !forgotIdentifier} onClick={async ()=>{
+                      setIsLoading(true);
+                      try{
+                        const res = await apiService.requestPasswordReset(forgotIdentifier, forgotMethod);
+                        if(res.success){
+                          if(forgotMethod==='email') localStorage.setItem('reset_email', forgotIdentifier); else localStorage.setItem('reset_phone', forgotIdentifier);
+                          if(res.token) localStorage.setItem('reset_token', res.token);
+                          toast({title:'Code sent!', description:`We sent a reset code to your ${forgotMethod}.`});
+                          setForgotStep('verify');
+                        } else {
+                          toast({title:'Failed', description:res.message || 'Unable to send reset code', variant:'destructive'});
+                        }
+                      } catch(err:any){
+                        toast({title:'Error', description: err.message || 'Unable to send reset code', variant:'destructive'});
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }} className="w-full bg-fem-terracotta hover:bg-fem-terracotta/90 text-white">{isLoading?'Sending...':'Send Reset Code'}</Button>
+                    <Button variant="outline" onClick={()=>setForgotOpen(false)} className="w-full border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white">Back</Button>
+                  </div>
+                </>
+              )}
+
+              {forgotStep==='verify' && (
+                <>
+                  <h3 className="text-lg font-semibold text-fem-navy">Enter code and new password</h3>
+                  <div>
+                    <Label htmlFor="otp-code">6-digit code</Label>
+                    <Input id="otp-code" inputMode="numeric" maxLength={6} value={resetOtp} onChange={(e)=>setResetOtp(e.target.value.replace(/\D/g,''))} className="mt-1 focus:ring-fem-terracotta focus:border-fem-terracotta" />
+                  </div>
+                  <div>
+                    <Label htmlFor="new-pass">New password</Label>
+                    <Input id="new-pass" type="password" value={newPassword} onChange={(e)=>setNewPassword(e.target.value)} className="mt-1 focus:ring-fem-terracotta focus:border-fem-terracotta" />
+                  </div>
+                  <div>
+                    <Label htmlFor="confirm-pass">Confirm new password</Label>
+                    <Input id="confirm-pass" type="password" value={confirmNewPassword} onChange={(e)=>setConfirmNewPassword(e.target.value)} className="mt-1 focus:ring-fem-terracotta focus:border-fem-terracotta" />
+                  </div>
+                  <div className="space-y-2">
+                    <Button disabled={isLoading || resetOtp.length!==6 || !newPassword || newPassword!==confirmNewPassword} onClick={async ()=>{
+                      setIsLoading(true);
+                      try{
+                        const res = await apiService.resetPasswordWithOTP(forgotIdentifier, resetOtp, newPassword);
+                        if(res.success){
+                          toast({title:'Password updated', description:'Please login with your new password.'});
+                          // switch to login
+                          setActiveTab('login');
+                          setForgotOpen(false);
+                        } else {
+                          toast({title:'Failed', description:res.message || 'Could not update password', variant:'destructive'});
+                        }
+                      } catch(err:any){
+                        toast({title:'Error', description: err.message || 'Could not update password', variant:'destructive'});
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }} className="w-full bg-fem-terracotta hover:bg-fem-terracotta/90 text-white">{isLoading?'Updating...':'Set New Password'}</Button>
+                    <Button variant="outline" onClick={()=>setForgotStep('request')} className="w-full border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white">Back</Button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* OTP Verification Step - Only show when signupStep === 'otp' */}
           {signupStep === 'otp' && (
             <div className="p-6 space-y-6">
               {/* OTP Input Component - This will handle all the display */}
@@ -574,9 +661,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           {signupStep === 'form' && (
             <div className="p-6">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 bg-fem-gray text-fem-navy rounded-md">
+                  <TabsTrigger value="login" className="data-[state=active]:bg-white data-[state=active]:text-fem-terracotta hover:text-fem-terracotta">Login</TabsTrigger>
+            <TabsTrigger value="signup" className="data-[state=active]:bg-white data-[state=active]:text-fem-terracotta hover:text-fem-terracotta">Sign Up</TabsTrigger>
           </TabsList>
 
                 <TabsContent value="login" className="space-y-4">
@@ -596,10 +683,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         <Switch
                           checked={usePhone}
                           onCheckedChange={handleToggleChange}
-                          className="data-[state=checked]:bg-blue-600"
+                          className="data-[state=checked]:bg-fem-terracotta"
                           disabled={true}
                         />
-                        <span className={`text-xs ${usePhone ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
+                        <span className={`text-xs ${usePhone ? 'text-fem-terracotta font-medium' : 'text-gray-500'}`}>
                           Phone
                         </span>
                       </div>
@@ -617,6 +704,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                           type="tel"
                           placeholder="Enter your phone number"
                           required
+                          className="focus:ring-fem-terracotta focus:border-fem-terracotta"
                         />
                       </div>
                     ) : (
@@ -642,10 +730,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         type="password"
                         placeholder="Enter your password"
                         required
+                        className="focus:ring-fem-terracotta focus:border-fem-terracotta"
                       />
                     </div>
                     
-                    <Button type="submit" className="w-full" disabled={isLoading}>
+                    <Button type="submit" className="w-full bg-fem-terracotta hover:bg-fem-terracotta/90 text-white" disabled={isLoading}>
                       {isLoading ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -659,16 +748,17 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   
                   {/* Forgot Password Link */}
                   <div className="text-center">
-                  <button
+                    <button
                       onClick={() => {
-                        onClose();
-                        navigate('/forgot-password');
+                        setForgotOpen(true);
+                        setForgotMethod('phone');
+                        setForgotIdentifier('');
                       }}
-                      className="text-sm text-blue-600 hover:text-blue-800 underline"
+                      className="text-sm text-fem-terracotta hover:text-fem-terracotta/80 underline"
                     >
                       Forgot Password?
-                  </button>
-                </div>
+                    </button>
+                  </div>
           </TabsContent>
 
                 <TabsContent value="signup" className="space-y-4">
@@ -725,10 +815,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                           <Switch
                             checked={usePhone}
                             onCheckedChange={handleToggleChange}
-                            className="data-[state=checked]:bg-blue-600"
+                            className="data-[state=checked]:bg-fem-terracotta"
                             disabled={true}
                           />
-                          <span className={`text-xs ${usePhone ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
+                          <span className={`text-xs ${usePhone ? 'text-fem-terracotta font-medium' : 'text-gray-500'}`}>
                             Phone (Default)
                           </span>
                         </div>
@@ -744,7 +834,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             value={signupData.phone}
                             onChange={(e) => setSignupData({...signupData, phone: e.target.value})}
                             placeholder="Enter your phone number"
-                            className="text-sm"
+                            className="text-sm focus:ring-fem-terracotta focus:border-fem-terracotta"
                             required
                           />
                           <p className="text-xs text-gray-500 mt-1">
@@ -782,6 +872,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                           onChange={(e) => setSignupData({...signupData, password: e.target.value})}
                           placeholder="Password"
                           required
+                          className="focus:ring-fem-terracotta focus:border-fem-terracotta"
                         />
                         {/* Password Strength Indicator */}
                         {signupData.password && (
@@ -823,6 +914,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                           onChange={(e) => setSignupData({...signupData, confirmPassword: e.target.value})}
                           placeholder="Confirm"
                           required
+                          className="focus:ring-fem-terracotta focus:border-fem-terracotta"
                         />
                         {/* Password Match Indicator */}
                         {signupData.confirmPassword && (
@@ -845,19 +937,21 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     {/* User Type */}
                     <div>
                       <Label htmlFor="userType">User Type</Label>
-                      <select
-                        id="userType"
+                      <Select
                         value={signupData.userType}
-                        onChange={(e) => setSignupData({...signupData, userType: e.target.value})}
-                        className="w-full p-2 border border-gray-300 rounded-md"
-                        required
+                        onValueChange={(val) => setSignupData({ ...signupData, userType: val })}
                       >
-                        <option value="community">Community Member</option>
-                        <option value="business">Business Owner</option>
-                      </select>
+                        <SelectTrigger className="mt-1 focus:ring-fem-terracotta focus:border-fem-terracotta">
+                          <SelectValue placeholder="Select user type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="community">Community Member</SelectItem>
+                          <SelectItem value="business">Business Owner</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
-                    <Button type="submit" className="w-full" disabled={isLoading}>
+                    <Button type="submit" className="w-full bg-fem-terracotta hover:bg-fem-terracotta/90 text-white" disabled={isLoading}>
                       {isLoading ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -871,6 +965,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </TabsContent>
         </Tabs>
             </div>
+          )}
+            </>
           )}
         </div>
       </div>

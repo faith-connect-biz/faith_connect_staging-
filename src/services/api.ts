@@ -315,7 +315,7 @@ class ApiService {
         const publicEndpoints = [
           'register',
           'verify-registration-otp',
-          'resend-registration-otp',
+          'resend-otp',
           'login',
           'logout',
           'refresh-token',
@@ -449,7 +449,7 @@ class ApiService {
     message: string; 
     otp_sent_to?: string; 
   }> {
-    const response = await this.api.post('/resend-registration-otp', {
+    const response = await this.api.post('/resend-otp', {
       user_id: userId
     });
     return response.data;
@@ -461,7 +461,7 @@ class ApiService {
     message: string; 
     otp_sent_to?: string; 
   }> {
-    const response = await this.api.post('/resend-registration-otp', {
+    const response = await this.api.post('/resend-otp', {
       registration_token: registrationToken
     });
     return response.data;
@@ -598,6 +598,21 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('Error resetting password:', error);
+      throw error;
+    }
+  }
+
+  // Reset password with identifier + OTP (server supports this contract)
+  async resetPasswordWithOTP(identifier: string, otp: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await this.api.post('/reset-password', {
+        identifier,
+        otp,
+        new_password: newPassword,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error resetting password with OTP:', error);
       throw error;
     }
   }
