@@ -10,7 +10,8 @@ from .views import (
     UserActivityView, UserBusinessView, get_service_image_upload_url, update_service_image,
     get_product_image_upload_url, update_product_image, get_business_profile_image_upload_url, 
     update_business_profile_image, get_business_logo_upload_url, update_business_logo,
-    ServiceReviewListCreateView, ServiceReviewUpdateDeleteView, ProductReviewListCreateView, ProductReviewUpdateDeleteView
+    ServiceReviewListCreateView, ServiceReviewUpdateDeleteView, ProductReviewListCreateView, ProductReviewUpdateDeleteView,
+    UserLikedReviewsView
 )
 
 urlpatterns = [
@@ -64,4 +65,5 @@ urlpatterns = [
     path('user-activity/', UserActivityView.as_view(), name="user-activity"),
     path('favorites/', UserFavoritesView.as_view(), name="user-favorites"),
     path('user-reviews/', UserReviewsView.as_view(), name="user-reviews"),
+    path('user-liked-reviews/', UserLikedReviewsView.as_view(), name="user-liked-reviews"),
 ]

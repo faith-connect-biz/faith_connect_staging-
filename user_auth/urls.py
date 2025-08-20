@@ -9,7 +9,7 @@ from .views import (
 )
 
 urlpatterns = [
-    path('resend-registration-otp', ResendRegistrationOTPView.as_view(), name='resend_registration_otp'),
+    # path('resend-registration-otp', ResendRegistrationOTPView.as_view(), name='resend_registration_otp'),
     path('resend-otp', ResendOTPView.as_view(), name='resend_otp'),
     path('signup', SignupView.as_view(), name='signup'),
     path('register', RegisterAPIView.as_view(), name='register'),

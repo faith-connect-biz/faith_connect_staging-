@@ -1582,3 +1582,25 @@ def update_business_logo(request, business_id):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+
+class UserLikedReviewsView(generics.ListAPIView):
+    """Get list of review IDs that the current user has liked"""
+    permission_classes = [IsAuthenticated]
+    
+    def list(self, request, *args, **kwargs):
+        user = request.user
+        
+        try:
+            # Get all review IDs that the user has liked
+            liked_review_ids = ReviewLike.objects.filter(user=user).values_list('review_id', flat=True)
+            
+            return Response({
+                'liked_review_ids': list(liked_review_ids)
+            })
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+

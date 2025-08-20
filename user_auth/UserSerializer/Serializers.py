@@ -150,17 +150,23 @@ class LoginSerializer(serializers.Serializer):
 
 
 class ForgotPasswordOTPSerializer(serializers.Serializer):
-    phone_number = serializers.CharField()
+    identifier = serializers.CharField()
 
     @staticmethod
-    def validate_phone_number(value):
-        if not User.objects.filter(phone=value).exists():
-            raise serializers.ValidationError("User with this phone number does not exist.")
+    def validate_identifier(value):
+        # Determine identifier type
+        is_email = '@' in value
+        if is_email:
+            if not User.objects.filter(email=value).exists():
+                raise serializers.ValidationError("User with this email does not exist.")
+        else:
+            if not User.objects.filter(phone=value).exists():
+                raise serializers.ValidationError("User with this phone number does not exist.")
         return value
 
 
 class ResetPasswordWithOTPSerializer(serializers.Serializer):
-    phone_number = serializers.CharField()
+    identifier = serializers.CharField()
     otp = serializers.CharField()
     new_password = serializers.CharField(min_length=6)
 

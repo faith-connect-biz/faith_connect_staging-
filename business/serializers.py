@@ -82,11 +82,24 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class ReviewSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
+    like_count = serializers.SerializerMethodField()
+    is_liked_by_user = serializers.SerializerMethodField()
 
     class Meta:
         model = Review
-        fields = ['id', 'user', 'rating', 'review_text', 'is_verified', 'created_at', 'updated_at']
-        read_only_fields = ['is_verified', 'created_at', 'updated_at']
+        fields = ['id', 'user', 'rating', 'review_text', 'is_verified', 'created_at', 'updated_at', 'like_count', 'is_liked_by_user']
+        read_only_fields = ['is_verified', 'created_at', 'updated_at', 'like_count', 'is_liked_by_user']
+    
+    def get_like_count(self, obj):
+        """Get the total number of likes for this review"""
+        return obj.likes.count()
+    
+    def get_is_liked_by_user(self, obj):
+        """Check if the current user has liked this review"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.likes.filter(user=request.user).exists()
+        return False
     
     def validate(self, data):
         """
