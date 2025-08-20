@@ -1,14 +1,19 @@
 # authapp/urls.py
 
 from django.urls import path, include
-from .views import RegisterAPIView, LoginView, LogoutAPIView, CustomTokenRefreshView, ForgotPasswordOTPView, \
-    ResetPasswordWithOTPView, SendEmailVerificationView, SendPhoneOTPView, ConfirmEmailVerificationView, \
-    ConfirmPhoneOTPView, VerifyRegistrationOTPView, ResendRegistrationOTPView
+from .views import (
+    RegisterAPIView, LoginView, LogoutAPIView, CustomTokenRefreshView,
+    ForgotPasswordOTPView, ResetPasswordWithOTPView, SendEmailVerificationView,
+    SendPhoneOTPView, ConfirmEmailVerificationView, ConfirmPhoneOTPView,
+    VerifyRegistrationOTPView, ResendRegistrationOTPView, SignupView, ResendOTPView
+)
 
 urlpatterns = [
+    path('resend-registration-otp', ResendRegistrationOTPView.as_view(), name='resend_registration_otp'),
+    path('resend-otp', ResendOTPView.as_view(), name='resend_otp'),
+    path('signup', SignupView.as_view(), name='signup'),
     path('register', RegisterAPIView.as_view(), name='register'),
     path('verify-registration-otp', VerifyRegistrationOTPView.as_view(), name='verify_registration_otp'),
-    path('resend-registration-otp', ResendRegistrationOTPView.as_view(), name='resend_registration_otp'),
     path('login', LoginView.as_view(), name='login'),
     path('logout', LogoutAPIView.as_view(), name='logout'),
     path('refresh-token', CustomTokenRefreshView.as_view(), name='custom_token_refresh'),
