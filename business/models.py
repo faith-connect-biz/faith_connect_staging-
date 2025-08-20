@@ -230,6 +230,7 @@ class Product(models.Model):
 
 class BusinessLike(models.Model):
     """Model to handle business likes"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='business_likes')
     business = models.ForeignKey('Business', on_delete=models.CASCADE, related_name='likes')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -250,6 +251,7 @@ class BusinessLike(models.Model):
 
 class ReviewLike(models.Model):
     """Model to handle review likes"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='review_likes')
     review = models.ForeignKey('Review', on_delete=models.CASCADE, related_name='likes')
     created_at = models.DateTimeField(auto_now_add=True)

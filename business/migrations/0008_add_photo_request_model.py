@@ -36,10 +36,11 @@ class Migration(migrations.Migration):
             model_name='review',
             name='rating_between_1_and_5',
         ),
+        # Keep BusinessLike.id as UUID (do not convert to bigint)
         migrations.AlterField(
             model_name='businesslike',
             name='id',
-            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+            field=models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True),
         ),
         migrations.AlterField(
             model_name='review',
@@ -51,10 +52,11 @@ class Migration(migrations.Migration):
             name='user',
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='business_reviews', to=settings.AUTH_USER_MODEL),
         ),
+        # Keep ReviewLike.id as UUID (do not convert to bigint)
         migrations.AlterField(
             model_name='reviewlike',
             name='id',
-            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+            field=models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True),
         ),
         migrations.AddField(
             model_name='photorequest',

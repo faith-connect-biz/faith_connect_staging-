@@ -5,7 +5,7 @@ from .zeptomail import send_email_verification_code as send_zeptomail_verificati
 
 logger = logging.getLogger(__name__)
 
-SIMULATE_VERIFICATION = True  # Set to True for local development - simulates email/SMS
+SIMULATE_VERIFICATION = False  # Set to True for local development - simulates email/SMS
 
 # Debug: Print the current simulation mode
 print(f"🔧 DEBUG: SIMULATE_VERIFICATION = {SIMULATE_VERIFICATION}")
