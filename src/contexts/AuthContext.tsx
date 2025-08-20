@@ -146,24 +146,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (data: LoginRequest) => {
     try {
       setIsLoading(true);
-      const response = await apiService.login(data);
+      const response: any = await apiService.login(data);
       console.log('AuthContext: Login response:', response);
-      console.log('AuthContext: User data from login:', response.user);
-      console.log('AuthContext: User type from login:', response.user.user_type);
-      
-      apiService.setAuthTokens(response.tokens);
-      setUser(response.user);
-      setUserType(response.user.user_type);
-      setIsBusiness(response.user.user_type === 'business');
-      setIsCommunity(response.user.user_type === 'community');
-      
-      console.log('AuthContext: After setting states - isBusiness:', response.user.user_type === 'business');
-      console.log('AuthContext: After setting states - isCommunity:', response.user.user_type === 'community');
-      
-      // Force a re-render by updating the state
-      setTimeout(() => {
-        setUser({ ...response.user });
-      }, 100);
+
+      // Normalize response to { tokens, user }
+      let tokens: AuthTokens | null = null;
+      let currentUser: User | null = null;
+
+      if (response?.tokens && response?.user) {
+        tokens = response.tokens as AuthTokens;
+        currentUser = response.user as User;
+      } else {
+        const access = response?.access || response?.access_token;
+        const refresh = response?.refresh || response?.refresh_token;
+        if (access && refresh) {
+          tokens = { access, refresh } as AuthTokens;
+          apiService.setAuthTokens(tokens);
+          // Fetch full user details
+          currentUser = await apiService.getCurrentUser();
+        }
+      }
+
+      if (!tokens || !currentUser) {
+        throw new Error('Invalid login response');
+      }
+
+      apiService.setAuthTokens(tokens);
+      setUser(currentUser);
+      setUserType(currentUser.user_type);
+      setIsBusiness(currentUser.user_type === 'business');
+      setIsCommunity(currentUser.user_type === 'community');
+
+      console.log('AuthContext: After setting states - isBusiness:', currentUser.user_type === 'business');
+      console.log('AuthContext: After setting states - isCommunity:', currentUser.user_type === 'community');
     } catch (error) {
       console.error('Login failed:', error);
       throw error;

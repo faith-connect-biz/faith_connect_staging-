@@ -91,6 +91,15 @@ const Navbar: React.FC = () => {
     setIsAuthModalOpen(false);
   };
 
+  // Auto-open login modal when instructed (e.g., after password reset)
+  useEffect(() => {
+    const shouldOpen = localStorage.getItem('open_login_modal');
+    if (shouldOpen) {
+      setIsAuthModalOpen(true);
+      localStorage.removeItem('open_login_modal');
+    }
+  }, []);
+
   return (
          <nav className="bg-[#faf9f8] shadow-sm py-4 relative">
       <div className="container mx-auto px-4 flex justify-between items-center">

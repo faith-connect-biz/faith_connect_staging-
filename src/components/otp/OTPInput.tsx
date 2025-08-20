@@ -179,10 +179,10 @@ export const OTPInput: React.FC<OTPInputProps> = ({
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">{getTitle()}</CardTitle>
-        <CardDescription className="text-muted-foreground">
+    <Card className="w-full max-w-md mx-auto border border-fem-terracotta/10 shadow-lg">
+      <CardHeader className="text-center bg-[#faf9f8]">
+        <CardTitle className="text-2xl font-bold text-fem-navy">{getTitle()}</CardTitle>
+        <CardDescription className="text-fem-darkgray">
           {getDescription()}
         </CardDescription>
       </CardHeader>
@@ -222,7 +222,7 @@ export const OTPInput: React.FC<OTPInputProps> = ({
                 onChange={(e) => handleOtpChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 onPaste={index === 0 ? handlePaste : undefined}
-                className="w-12 h-12 text-center text-lg font-semibold"
+                className="w-12 h-12 text-center text-lg font-semibold border-gray-300 focus:ring-2 focus:ring-fem-terracotta focus:border-fem-terracotta"
                 disabled={isLoading || isMaxAttemptsReached}
               />
             ))}
@@ -252,7 +252,7 @@ export const OTPInput: React.FC<OTPInputProps> = ({
           <Button
             onClick={handleVerify}
             disabled={!isOtpComplete || isLoading || isMaxAttemptsReached}
-            className="w-full"
+            className="w-full bg-fem-terracotta hover:bg-fem-terracotta/90 text-white"
           >
             {isLoading ? (
               <>
@@ -269,7 +269,7 @@ export const OTPInput: React.FC<OTPInputProps> = ({
               variant="outline"
               onClick={onBack}
               disabled={isLoading}
-              className="w-full"
+              className="w-full border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
             >
               Back
             </Button>
@@ -278,14 +278,14 @@ export const OTPInput: React.FC<OTPInputProps> = ({
 
         {/* Resend Section */}
         <div className="text-center">
-          <p className="text-sm text-muted-foreground mb-2">
+          <p className="text-sm text-fem-darkgray mb-2">
             Didn't receive the code?
           </p>
             <Button
             variant="link"
               onClick={handleResend}
             disabled={!canResend}
-            className="p-0 h-auto text-sm"
+            className="p-0 h-auto text-sm text-fem-terracotta hover:text-fem-terracotta/80"
           >
             {isResending ? (
               <>
