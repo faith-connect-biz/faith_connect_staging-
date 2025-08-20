@@ -30,11 +30,11 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework.response import Response
 
-from utils.zeptomail import send_email_verification_code, send_welcome_email
-from utils.communication import send_sms, send_otp_sms, send_welcome_message
+from utils.communication import send_email_verification_code, send_welcome_email, send_sms, send_otp_sms, send_welcome_message
 from .UserSerializer.Serializers import RegisterSerializer, LoginSerializer, ForgotPasswordOTPSerializer, \
     ResetPasswordWithOTPSerializer, UserRegistrationSerializer
 from .utils import success_response, error_response
+from .serializers import SignupSerializer
 
 # Helper functions
 def generate_otp():
@@ -217,54 +217,14 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        try:
-            serializer = LoginSerializer(data=request.data)
-            if serializer.is_valid():
-                # The serializer returns tokens and user data directly
-                validated_data = serializer.validated_data
-                
-                logger.info(f"Login successful for partnership: {validated_data.get('partnership_number')}")
-                
-                return success_response("Login successful", {
-                    "tokens": {
-                        "access": validated_data.get('access'),
-                        "refresh": validated_data.get('refresh'),
-                    },
-                    "user": {
-                        "partnership_number": validated_data.get('partnership_number'),
-                        "user_type": validated_data.get('user_type'),
-                        "email": validated_data.get('email'),
-                        "phone": validated_data.get('phone'),
-                        "is_active": validated_data.get('is_active'),
-                    }
-                })
-            else:
-                # Handle field validation errors
-                return error_response("Login failed", serializer.errors)
-                
-        except serializers.ValidationError as e:
-            # Handle validation errors from the serializer's validate() method
-            if hasattr(e, 'detail'):
-                # If it's a ValidationError with detail
-                if isinstance(e.detail, list):
-                    message = e.detail[0] if e.detail else "Login failed"
-                elif isinstance(e.detail, dict):
-                    message = "Login failed"
-                    errors = e.detail
-                else:
-                    message = str(e.detail)
-                    errors = {"non_field_errors": [str(e.detail)]}
-            else:
-                # If it's a simple ValidationError
-                message = str(e)
-                errors = {"non_field_errors": [str(e)]}
-            
-            return error_response(message, errors)
-            
-        except Exception as e:
-            # Handle any other unexpected errors
-            logger.error(f"Login error: {str(e)}")
-            return error_response("Login failed", {"non_field_errors": ["An unexpected error occurred. Please try again."]})
+        serializer = LoginSerializer(data=request.data)
+        if not serializer.is_valid():
+            return error_response("Login failed", serializer.errors)
+
+        validated_data = serializer.validated_data
+        logger.info(f"Login successful for user: {validated_data.get('email') or validated_data.get('phone')}")
+
+        return success_response("Login successful", validated_data)
 
 
 class LogoutAPIView(APIView):
@@ -418,6 +378,9 @@ class SendEmailVerificationView(APIView):
         )
         
         if success:
+            # Log for development testing
+            logger.debug(f"🔧 DEV TESTING - Email Token: {token} sent to {email}")
+            print(f"🔧 DEV TESTING - Email Token: {token} sent to {email}")
             return success_response("Verification token sent to email")
         else:
             logger.error(f"[EMAIL VERIFICATION FAILED] - Email: {email}, Response: {response}")
@@ -441,6 +404,9 @@ class SendPhoneOTPView(APIView):
         user.save()
         success, response = send_sms(phone, otp)
         if success:
+            # Log for development testing
+            logger.debug(f"🔧 DEV TESTING - Phone OTP: {otp} sent to {phone}")
+            print(f"🔧 DEV TESTING - Phone OTP: {otp} sent to {phone}")
             return success_response(message="OTP sent successfully.")
         else:
             logger.error(f"[Validate  Phone  SMS FAILED] - Phone: {phone}, Response: {response}")
@@ -503,7 +469,7 @@ class ConfirmPhoneOTPView(APIView):
             
             # Send welcome SMS
             try:
-                send_welcome_sms(phone, f"{user.first_name} {user.last_name}")
+                send_welcome_message(phone, f"{user.first_name} {user.last_name}")
                 logger.info(f"Welcome SMS sent to {phone} after verification")
             except Exception as e:
                 logger.warning(f"Failed to send welcome SMS: {str(e)}")
@@ -542,6 +508,9 @@ class VerifyRegistrationOTPView(APIView):
             
             # Verify OTP
             if str(otp) != str(user.otp):
+                # Log for development testing
+                logger.debug(f"🔧 DEV TESTING - OTP Verification Failed: Expected {user.otp}, Got {otp}")
+                print(f"🔧 DEV TESTING - OTP Verification Failed: Expected {user.otp}, Got {otp}")
                 return Response({
                     'success': False,
                     'message': 'Invalid OTP. Please check and try again.'
@@ -550,6 +519,10 @@ class VerifyRegistrationOTPView(APIView):
             # OTP is valid, activate the user
             try:
                 with transaction.atomic():
+                    # Log for development testing
+                    logger.debug(f"🔧 DEV TESTING - OTP Verification Success: {otp} for user {user.id}")
+                    print(f"🔧 DEV TESTING - OTP Verification Success: {otp} for user {user.id}")
+                    
                     # Activate user account
                     user.is_active = True
                     user.is_verified = True
@@ -610,6 +583,88 @@ class VerifyRegistrationOTPView(APIView):
             return Response({
                 'success': False,
                 'message': f'OTP verification failed: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ResendOTPView(APIView):
+    """
+    Resend OTP using email or phone
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        try:
+            email = request.data.get('email')
+            phone = request.data.get('phone')
+            
+            if not email and not phone:
+                return Response({
+                    'success': False,
+                    'message': 'Email or phone is required.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Find user by email or phone
+            try:
+                if email:
+                    user = User.objects.get(email=email, is_active=False)
+                    contact_method = 'email'
+                    contact_value = email
+                else:
+                    user = User.objects.get(phone=phone, is_active=False)
+                    contact_method = 'phone'
+                    contact_value = phone
+            except User.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'message': 'User not found or already verified.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Generate new OTP
+            new_otp = generate_otp()
+            
+            # Update user's OTP based on contact method
+            if contact_method == 'email':
+                user.email_token = new_otp
+            else:
+                user.otp = new_otp
+            
+            user.save()
+            
+            logger.info(f"New OTP generated for user {user.id}: {new_otp}")
+            
+            # Send new OTP
+            try:
+                if contact_method == 'email':
+                    send_verification_email(contact_value, new_otp)
+                    # Log for development testing
+                    logger.debug(f"🔧 DEV TESTING - Resend Email Token: {new_otp} sent to {contact_value}")
+                    print(f"🔧 DEV TESTING - Resend Email Token: {new_otp} sent to {contact_value}")
+                    message = 'New verification token sent to your email.'
+                else:
+                    send_verification_sms(contact_value, new_otp)
+                    # Log for development testing
+                    logger.debug(f"🔧 DEV TESTING - Resend Phone OTP: {new_otp} sent to {contact_value}")
+                    print(f"🔧 DEV TESTING - Resend Phone OTP: {new_otp} sent to {contact_value}")
+                    message = 'New OTP sent to your phone.'
+                
+                return Response({
+                    'success': True,
+                    'message': message,
+                    'otp_sent_to': contact_method
+                }, status=status.HTTP_200_OK)
+                
+            except Exception as e:
+                logger.error(f"Failed to send {contact_method} OTP to {contact_value}: {str(e)}")
+                return Response({
+                    'success': False,
+                    'message': f'Failed to send {contact_method} OTP: {str(e)}'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+        except Exception as e:
+            logger.error(f"Failed to resend OTP: {str(e)}")
+            return Response({
+                'success': False,
+                'message': f'Failed to resend OTP: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -692,4 +747,100 @@ class ResendRegistrationOTPView(APIView):
             return Response({
                 'success': False,
                 'message': f'Failed to resend OTP: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class SignupView(APIView):
+    """
+    User signup view with required fields and OTP generation
+    Uses SignupSerializer for validation
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        try:
+            serializer = SignupSerializer(data=request.data)
+            if serializer.is_valid():
+                # Extract validated data
+                first_name = serializer.validated_data['firstname']
+                last_name = serializer.validated_data['lastname']
+                partnership_number = serializer.validated_data['partnership_number']
+                user_type = serializer.validated_data['userType']
+                password = serializer.validated_data['password']
+                is_email = serializer.validated_data['isEmail']
+                email = serializer.validated_data.get('email')
+                phone = serializer.validated_data.get('phone')
+                
+                # Create user
+                user = User.objects.create(
+                    first_name=first_name,
+                    last_name=last_name,
+                    partnership_number=partnership_number,
+                    email=email,
+                    phone=phone,
+                    user_type=user_type.lower(),  # Convert to lowercase for DB
+                    password=make_password(password),
+                    is_active=False,
+                    is_verified=False,
+                    email_verified=False,
+                    phone_verified=False
+                )
+                
+                # Generate 6-digit token
+                token = generate_otp()
+                
+                # Store token based on contact method
+                if is_email:
+                    user.email_token = token
+                else:
+                    user.otp = token
+                
+                user.save()
+                
+                logger.info(f"User created with ID: {user.id}, Token: {token}")
+                
+                # Send token via email or phone
+                try:
+                    if is_email:
+                        send_verification_email(email, token)
+                        message = f"Account created! Please check your email for verification token."
+                        token_sent_to = "email"
+                        # Log for development testing
+                        logger.debug(f"🔧 DEV TESTING - Email Token: {token} sent to {email}")
+                        print(f"🔧 DEV TESTING - Email Token: {token} sent to {email}")
+                    else:
+                        send_verification_sms(phone, token)
+                        message = f"Account created! Please check your phone for verification token."
+                        token_sent_to = "phone"
+                        # Log for development testing
+                        logger.debug(f"🔧 DEV TESTING - Phone Token: {token} sent to {phone}")
+                        print(f"🔧 DEV TESTING - Phone Token: {token} sent to {phone}")
+                    
+                    return Response({
+                        'success': True,
+                        'message': message,
+                        'user_id': user.id,
+                        'requires_verification': True,
+                        'token_sent_to': token_sent_to
+                    }, status=status.HTTP_201_CREATED)
+                    
+                except Exception as e:
+                    # If token sending fails, delete the user and return error
+                    user.delete()
+                    logger.error(f"Failed to send verification token: {str(e)}")
+                    return Response({
+                        'success': False,
+                        'message': f'Failed to send verification token: {str(e)}'
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            else:
+                return Response({
+                    'success': False,
+                    'message': 'Validation failed.',
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            logger.error(f"Signup failed: {str(e)}")
+            return Response({
+                'success': False,
+                'message': f'Signup failed: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

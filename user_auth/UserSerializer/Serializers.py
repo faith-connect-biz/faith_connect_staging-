@@ -101,62 +101,52 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    partnership_number = serializers.CharField(required=False)
-    identifier = serializers.CharField(required=False)  # email or phone
-    auth_method = serializers.ChoiceField(choices=['email', 'phone'], required=False)
+    identifier = serializers.CharField(required=True)  # email or phone
+    auth_method = serializers.ChoiceField(choices=['email', 'phone'], required=True)
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        partnership_number = data.get('partnership_number')
         identifier = data.get('identifier')
         auth_method = data.get('auth_method')
         password = data.get('password')
 
-        # Support both old and new login methods
-        if partnership_number:
-            # Traditional login with partnership number
-            user = authenticate(partnership_number=partnership_number, password=password)
-        elif identifier and auth_method:
-            # New login with email/phone
-            if auth_method == 'email':
-                try:
-                    user = User.objects.get(email=identifier)
-                except User.DoesNotExist:
-                    raise serializers.ValidationError("User with this email does not exist")
-            else:  # phone
-                try:
-                    user = User.objects.get(phone=identifier)
-                except User.DoesNotExist:
-                    raise serializers.ValidationError("User with this phone number does not exist")
-            
-            # Verify password
-            if not user.check_password(password):
-                raise serializers.ValidationError("Invalid password")
-        else:
-            raise serializers.ValidationError("Either partnership_number or identifier with auth_method must be provided")
+        user = None
+        lookup_field = 'email' if auth_method == 'email' else 'phone'
 
-        if not user:
+        try:
+            user_obj = User.objects.get(**{lookup_field: identifier})
+        except User.DoesNotExist:
             raise serializers.ValidationError("Invalid credentials")
 
-        # Check if user account is active
-        if not user.is_active:
-            raise serializers.ValidationError("Your account is not yet active. Please verify your contact information first.")
+        # Verify password
+        if not user_obj.check_password(password):
+            raise serializers.ValidationError("Invalid credentials")
 
-        # Check if user has verified their contact information
+        user = user_obj
+
+        # Check account status
+        if not user.is_active:
+            raise serializers.ValidationError(
+                "Your account is not yet active. Please verify your contact information first."
+            )
+
         if not user.is_verified:
-            raise serializers.ValidationError("Please verify your contact information before logging in.")
+            raise serializers.ValidationError(
+                "Please verify your contact information before logging in."
+            )
 
         token = RefreshToken.for_user(user)
 
         return {
             "access": str(token.access_token),
             "refresh": str(token),
-            "partnership_number": user.partnership_number,
+            "user_id": user.id,
             "user_type": user.user_type,
             "email": user.email,
             "phone": user.phone,
             "is_active": user.is_active,
         }
+
 
 
 class ForgotPasswordOTPSerializer(serializers.Serializer):

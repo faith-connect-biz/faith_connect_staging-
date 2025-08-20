@@ -77,10 +77,10 @@ def get_optimized_image_url(original_url, image_type='profile', size='medium'):
     
     return original_url
 
-def validate_and_clean_image_url(url):
+def validate_and_clean_image_url(url, image_type='profile'):
     """Validate and clean image URL, return fallback if invalid"""
     if not url:
-        return get_image_fallback_url()
+        return get_image_fallback_url(image_type)
     
     # Clean the URL
     url = url.strip()
@@ -95,4 +95,4 @@ def validate_and_clean_image_url(url):
         return s3_url
     
     # Return fallback if all else fails
-    return get_image_fallback_url()
+    return get_image_fallback_url(image_type)
