@@ -30,7 +30,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework.response import Response
 
-from utils.communication import send_email_verification_code, send_welcome_email, send_sms, send_otp_sms, send_welcome_message
+from utils.communication import send_email_verification_code, send_welcome_email, send_sms, send_otp_sms, send_welcome_message, send_password_reset_message
 from .UserSerializer.Serializers import RegisterSerializer, LoginSerializer, ForgotPasswordOTPSerializer, \
     ResetPasswordWithOTPSerializer, UserRegistrationSerializer
 from .utils import success_response, error_response
@@ -307,7 +307,7 @@ class ForgotPasswordOTPView(APIView):
 
                     logger.info(f"[FORGOT PASSWORD SUCCESS] - Phone: {identifier}, User: {user.id}")
 
-                    success, response = send_email_verification_code(identifier, otp)
+                    success, response = send_password_reset_message(identifier, otp)
 
                     if success:
                         return success_response(message="OTP sent successfully to your phone.")
