@@ -1,0 +1,25 @@
+[33mcommit 90b00b83607d03674b6c062ff3bdbbe9e1a8dea5[m
+Merge: 4f2691c f39e53e
+Author: Immanuel Mwendia Maina <imaina671@gmail.com>
+Date:   Tue Aug 12 12:57:21 2025 +0300
+
+    Remove Business Tags section from business registration form - Remove entire Business Tags section with orange/amber styling - Remove availableTags array and tags field from form data - Remove unused Tag icon import - Clean up form structure for better user experience
+
+ README.md                                    |  29 [32m+[m[31m-[m
+ src/components/debug/ApiTester.tsx           |  91 [31m-----[m
+ src/components/debug/DataDebugger.tsx        |  87 [31m----[m
+ src/components/directory/BusinessFilters.tsx |   2 [32m+[m[31m-[m
+ src/components/directory/ProductList.tsx     | 278 [31m-------------[m
+ src/components/directory/ServiceList.tsx     | 278 [31m-------------[m
+ src/components/home/BusinessCategories.tsx   |  65 [32m+[m[31m--[m
+ src/components/home/Testimonials.tsx         |  57 [32m++[m[31m-[m
+ src/contexts/AuthContext.tsx                 |  14 [31m-[m
+ src/contexts/BusinessContext.tsx             | 122 [32m+++++[m[31m-[m
+ src/index.css                                | 574 [32m+++++++++++++++++++++++++++[m
+ src/pages/BusinessRegistrationPage.tsx       |  33 [32m+[m[31m-[m
+ src/pages/DirectoryPage.tsx                  | 378 [32m+++++++[m[31m-----------[m
+ src/pages/Index.tsx                          | 345 [32m+++++++++++++[m[31m---[m
+ src/pages/SignInPage.tsx                     |  67 [32m+[m[31m---[m
+ src/services/api.ts                          |   4 [32m+[m[31m-[m
+ src/utils/animation.ts                       | 398 [32m+++++++++++++++[m[31m----[m
+ 17 files changed, 1522 insertions(+), 1300 deletions(-)
