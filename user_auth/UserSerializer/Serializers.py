@@ -175,21 +175,23 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     """
     Serializer for the new two-step registration process
     """
+    # Map camelCase frontend fields to snake_case model fields
+    firstName = serializers.CharField(source='first_name', required=True)
+    lastName = serializers.CharField(source='last_name', required=True)
+    userType = serializers.CharField(source='user_type', required=True)
+    partnershipNumber = serializers.CharField(source='partnership_number', required=True)
+
     class Meta:
         model = User
         fields = [
-            'first_name', 'last_name', 'partnership_number', 'user_type',
+            'firstName', 'lastName', 'userType', 'partnershipNumber',
             'email', 'phone', 'password'
         ]
         extra_kwargs = {
             'password': {'write_only': True, 'min_length': 6},
-            'first_name': {'required': True},
-            'last_name': {'required': True},
-            'partnership_number': {'required': True},
-            'user_type': {'required': True},
         }
 
-    def validate_partnership_number(self, value):
+    def validate_partnershipNumber(self, value):
         if not value:
             raise serializers.ValidationError("Partnership number is required.")
         return value
@@ -256,3 +258,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Password must be at least 6 characters long.")
 
         return data
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        user = User.objects.create_user(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user
