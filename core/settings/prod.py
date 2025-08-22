@@ -28,24 +28,50 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
+MIDDLEWARE.insert(2, 'core.middleware.RequestLoggingMiddleware')
+
 # Logging configuration for production
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+        'simple': {
+            '()': 'core.log_filters.KenyaTimeFormatter',
+            'format': '[{asctime}] {levelname} {name} cid={correlation_id} user={user_id} {http_method} {http_path} - {message}',
             'style': '{',
         },
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+            'formatter': 'simple',
+            'filters': ['request_context'],
         },
+    },
+    'filters': {
+        'request_context': {
+            '()': 'core.log_filters.RequestContextFilter',
+        }
     },
     'root': {
         'handlers': ['console'],
         'level': 'INFO',
+    },
+    'loggers': {
+        'request': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'CRITICAL',
+            'propagate': False,
+        },
+        'django.server': {
+            'handlers': ['console'],
+            'level': 'CRITICAL',
+            'propagate': False,
+        },
     },
 }

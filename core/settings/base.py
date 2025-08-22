@@ -98,6 +98,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'core.middleware.RequestLoggingMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -149,6 +150,7 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'core.pagination.CustomLimitOffsetPagination',
     'PAGE_SIZE': 15,  # Changed from 20 to 15 to match frontend default
+    'EXCEPTION_HANDLER': 'core.views.custom_exception_handler',
 }
 
 
@@ -177,7 +179,8 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'simple': {
-            'format': '[{asctime}] {levelname} {message}',
+            '()': 'core.log_filters.KenyaTimeFormatter',
+            'format': '[{asctime}] {levelname} {name} cid={correlation_id} user={user_id} {http_method} {http_path} - {message}',
             'style': '{',
         },
     },
@@ -185,13 +188,39 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
+            'filters': ['request_context'],
         },
     },
+    'filters': {
+        'request_context': {
+            '()': 'core.log_filters.RequestContextFilter',
+        }
+    },
     'loggers': {
-        'authapp': {
+        'request': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'INFO',
+            'propagate': False,
         },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'CRITICAL',
+            'propagate': False,
+        },
+        'django.server': {
+            'handlers': ['console'],
+            'level': 'CRITICAL',
+            'propagate': False,
+        },
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
     },
 }
 

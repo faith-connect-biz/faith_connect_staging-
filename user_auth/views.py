@@ -117,6 +117,9 @@ class RegisterAPIView(APIView):
     
     def post(self, request):
         try:
+            safe_data = mask_sensitive_data(request.data)
+            logger.info(f"[REGISTER ATTEMPT] - payload={safe_data}")
+
             serializer = UserRegistrationSerializer(data=request.data)
             if serializer.is_valid():
                 user_data = serializer.validated_data
@@ -153,7 +156,7 @@ class RegisterAPIView(APIView):
                         user.otp = otp
                         user.save()
                         
-                        logger.info(f"User created with ID: {user.id}, OTP: {otp}")
+                        logger.info(f"[REGISTER CREATED] user_id={user.id}")
                         
                         # Send OTP based on contact method
                         if email:
@@ -169,6 +172,7 @@ class RegisterAPIView(APIView):
                             except Exception as e:
                                 # If email fails, delete the user and return error
                                 user.delete()
+                                logger.error(f"[REGISTER OTP EMAIL FAILED] user_id={user.id} error={str(e)}")
                                 return Response({
                                     'success': False,
                                     'message': f'Failed to send OTP: {str(e)}'
@@ -187,19 +191,21 @@ class RegisterAPIView(APIView):
                             except Exception as e:
                                 # If SMS fails, delete the user and return error
                                 user.delete()
+                                logger.error(f"[REGISTER OTP SMS FAILED] user_id={user.id} error={str(e)}")
                                 return Response({
                                     'success': False,
                                     'message': f'Failed to send OTP: {str(e)}'
                                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
                 except Exception as e:
-                    logger.error(f"Failed to create user: {str(e)}")
+                    logger.exception(f"[REGISTER CREATE FAILED] error={str(e)}")
                     return Response({
                         'success': False,
                         'message': f'Failed to create account: {str(e)}'
                     }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             else:
+                logger.warning(f"[REGISTER VALIDATION ERROR] errors={serializer.errors}")
                 return Response({
                     'success': False,
                     'message': 'Invalid data provided.',
@@ -207,6 +213,7 @@ class RegisterAPIView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
                 
         except Exception as e:
+            logger.exception(f"[REGISTER UNHANDLED ERROR] error={str(e)}")
             return Response({
                 'success': False,
                 'message': f'Registration failed: {str(e)}'

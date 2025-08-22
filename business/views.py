@@ -1,4 +1,5 @@
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
+import logging
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, filters
 from rest_framework import status
@@ -36,6 +37,8 @@ from core.pagination import CustomLimitOffsetPagination
 from .permissions import CanCreateReviewPermission, CanCreateServiceReviewPermission, CanCreateProductReviewPermission
 
 
+logger = logging.getLogger('business')
+
 # Create your views here.
 
 
@@ -67,6 +70,7 @@ class BusinessListCreateAPIView(generics.ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         # Check if user is authenticated for creation
         if not request.user.is_authenticated:
+            logger.warning(f"[BUSINESS CREATE DENIED] unauthenticated user")
             return error_response(
                 "Authentication required to create a business.",
                 status_code=status.HTTP_401_UNAUTHORIZED
@@ -74,6 +78,7 @@ class BusinessListCreateAPIView(generics.ListCreateAPIView):
         
         user = request.user
         if user.user_type != 'business':
+            logger.warning(f"[BUSINESS CREATE DENIED] user_id={user.id} type={user.user_type}")
             return error_response(
                 "Only business users can create a business.",
                 status_code=status.HTTP_403_FORBIDDEN
@@ -86,7 +91,7 @@ class BusinessListCreateAPIView(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         business = serializer.save(user=user)
-
+        logger.info(f"[BUSINESS CREATED] user_id={user.id} business_id={business.id}")
         return success_response("Business created successfully",
                                 BusinessSerializer(business, context=self.get_serializer_context()).data)
 
@@ -105,8 +110,10 @@ class BusinessUpdateView(generics.UpdateAPIView):
         """Ensure the business belongs to the current user"""
         business = serializer.instance
         if business.user != self.request.user:
+            logger.warning(f"[BUSINESS UPDATE DENIED] user_id={self.request.user.id} business_id={business.id}")
             raise PermissionDenied("You can only update your own business")
         serializer.save()
+        logger.info(f"[BUSINESS UPDATED] user_id={self.request.user.id} business_id={business.id}")
 
 class CategoryListAPIView(generics.ListAPIView):
     queryset = Category.objects.all().order_by('name')
@@ -154,6 +161,7 @@ class UserFavoritesListView(generics.ListAPIView):
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
+        logger.info(f"[FAVORITES LIST] user_id={request.user.id} count={len(serializer.data)}")
         return success_response("Fetched favorites successfully", serializer.data)
 
 
@@ -165,12 +173,14 @@ class FavoriteToggleView(APIView):
         try:
             business = Business.objects.get(id=id)
         except ObjectDoesNotExist:
+            logger.warning(f"[FAVORITE ADD FAILED] user_id={user.id} business_id={id} not_found")
             return error_response("Business not found", status_code=status.HTTP_404_NOT_FOUND)
 
         favorite, created = Favorite.objects.get_or_create(user=user, business=business)
         if not created:
+            logger.info(f"[FAVORITE EXISTS] user_id={user.id} business_id={business.id}")
             return error_response("Business already favorited")
-
+        logger.info(f"[FAVORITE ADDED] user_id={user.id} business_id={business.id}")
         return success_response("Business favorited successfully", status_code=status.HTTP_201_CREATED)
 
     def delete(self, request, id):
@@ -178,8 +188,10 @@ class FavoriteToggleView(APIView):
         try:
             favorite = Favorite.objects.get(user=user, business__id=id)
             favorite.delete()
+            logger.info(f"[FAVORITE REMOVED] user_id={user.id} business_id={id}")
             return success_response("Favorite removed successfully", status_code=status.HTTP_204_NO_CONTENT)
         except ObjectDoesNotExist:
+            logger.warning(f"[FAVORITE REMOVE FAILED] user_id={user.id} business_id={id} not_found")
             return error_response("Favorite not found", status_code=status.HTTP_404_NOT_FOUND)
 
 # List and Create products
@@ -207,7 +219,8 @@ class BusinessProductListCreateView(generics.ListCreateAPIView):
         except ObjectDoesNotExist:
             raise PermissionDenied("Business not found")
 
-        serializer.save(business=business)
+        product = serializer.save(business=business)
+        logger.info(f"[PRODUCT CREATED] user_id={self.request.user.id} business_id={business_id} product_id={product.id}")
 
 
 class ProductRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
@@ -223,14 +236,18 @@ class ProductRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
         
         product = self.get_object()
         if product.business.user != self.request.user:
+            logger.warning(f"[PRODUCT UPDATE DENIED] user_id={self.request.user.id} product_id={product.id}")
             raise PermissionDenied("Only the owner can update this product")
         serializer.save()
+        logger.info(f"[PRODUCT UPDATED] user_id={self.request.user.id} product_id={product.id}")
 
     def perform_destroy(self, instance):
         """Ensure the product belongs to the current user's business before deletion"""
         if instance.business.user != self.request.user:
+            logger.warning(f"[PRODUCT DELETE DENIED] user_id={self.request.user.id} product_id={instance.id}")
             raise PermissionDenied("You can only delete products for your own business")
         instance.delete()
+        logger.info(f"[PRODUCT DELETED] user_id={self.request.user.id} product_id={instance.id}")
 
 class ReviewListCreateView(generics.ListCreateAPIView):
     serializer_class = ReviewSerializer

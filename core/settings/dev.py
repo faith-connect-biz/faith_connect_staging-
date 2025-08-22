@@ -47,3 +47,6 @@ CORS_ALLOWED_ORIGINS = [
 
 # Print emails to console instead of sending
 print("🔧 Local Development Mode: Emails will be printed to console, SMS disabled")
+
+# Ensure request logging middleware is enabled in dev too (already in base)
+# Add any dev-specific logging tweaks if needed
