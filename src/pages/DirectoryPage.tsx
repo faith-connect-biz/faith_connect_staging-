@@ -42,13 +42,15 @@ import { useNavigate } from "react-router-dom";
 import { useBusiness } from "@/contexts/BusinessContext";
 
 const DirectoryPage = () => {
-  const { businesses, categories, services, products, isLoading, fetchBusinesses, fetchProducts, totalCount } = useBusiness();
+  const { businesses, categories, services, products, isLoading, fetchBusinesses, fetchServices, fetchProducts, totalCount, totalProductsCount, totalServicesCount } = useBusiness();
   
-  // Debug logging
-  console.log('DirectoryPage - businesses:', businesses);
-  console.log('DirectoryPage - services:', services);
-  console.log('DirectoryPage - products:', products);
-  console.log('DirectoryPage - isLoading:', isLoading);
+  // Debug logging - reduce spam
+  // console.log('DirectoryPage - businesses:', businesses);
+  // console.log('DirectoryPage - services:', services);
+  // console.log('DirectoryPage - products:', products);
+  // console.log('DirectoryPage - isLoading:', isLoading);
+  // console.log('DirectoryPage - totalProductsCount:', totalProductsCount);
+  // console.log('DirectoryPage - totalServicesCount:', totalServicesCount);
   
   // Debug rating calculation
   if (businesses && businesses.length > 0) {
@@ -103,13 +105,31 @@ const DirectoryPage = () => {
     }
   }, [currentPage, itemsPerPage, filters, categories, fetchBusinesses]);
 
+  // Fetch businesses when businesses tab is active
+  useEffect(() => {
+    if (activeTab === "businesses" && fetchBusinesses && businesses.length === 0) {
+      // console.log('DirectoryPage - calling fetchBusinesses for businesses tab');
+      fetchBusinesses({ page: 1, limit: 15 });
+    }
+  }, [activeTab, fetchBusinesses, businesses.length]);
+
   // Fetch products when products tab is active
   useEffect(() => {
-    if (activeTab === "products" && fetchProducts) {
-      console.log('DirectoryPage - calling fetchProducts for products tab');
-      fetchProducts();
+    if (activeTab === "products" && fetchProducts && products.length === 0) {
+      // console.log('DirectoryPage - calling fetchProducts for products tab');
+      // Ensure we fetch with proper pagination parameters
+      fetchProducts({ page: 1, limit: 15 });
     }
-  }, [activeTab, fetchProducts]);
+  }, [activeTab, fetchProducts, products.length]);
+
+  // Fetch services when services tab is active
+  useEffect(() => {
+    if (activeTab === "services" && fetchServices && services.length === 0) {
+      // console.log('DirectoryPage - calling fetchServices for services tab');
+      // Ensure we fetch with proper pagination parameters
+      fetchServices({ page: 1, limit: 15 });
+    }
+  }, [activeTab, fetchServices, services.length]);
 
   // Pagination functions
   const handlePageChange = (page: number) => {
@@ -189,29 +209,27 @@ const DirectoryPage = () => {
   };
 
   // Calculate statistics
-  const stats = {
-    totalServices: Array.isArray(services) ? services.length : 0,
-    totalProducts: Array.isArray(products) ? products.length : 0,
-    verifiedBusinesses: Array.isArray(businesses) ? businesses.filter(b => b.is_verified).length : 0,
-    averageRating: (() => {
-      if (!Array.isArray(businesses) || businesses.length === 0) return "0.0";
-      
-      // Calculate average rating from businesses with ratings > 0
-      const businessesWithRatings = businesses.filter(b => 
-        b.rating && Number(b.rating) > 0 && !isNaN(Number(b.rating))
-      );
-      
-      if (businessesWithRatings.length === 0) return "0.0";
-      
-      const totalRating = businessesWithRatings.reduce((sum, b) => {
-        const rating = Number(b.rating);
-        return sum + (isNaN(rating) ? 0 : rating);
-      }, 0);
-      
-      return (totalRating / businessesWithRatings.length).toFixed(1);
-    })(),
-    totalReviews: Array.isArray(businesses) ? businesses.reduce((sum, b) => sum + (b.review_count || 0), 0) : 0
-  };
+  const verifiedBusinesses = Array.isArray(businesses) ? businesses.filter(b => b.is_verified).length : 0;
+  
+  const averageRating = (() => {
+    if (!Array.isArray(businesses) || businesses.length === 0) return "0.0";
+    
+    // Calculate average rating from businesses with ratings > 0
+    const businessesWithRatings = businesses.filter(b => 
+      b.rating && Number(b.rating) > 0 && !isNaN(Number(b.rating))
+    );
+    
+    if (businessesWithRatings.length === 0) return "0.0";
+    
+    const totalRating = businessesWithRatings.reduce((sum, b) => {
+      const rating = Number(b.rating);
+      return sum + (isNaN(rating) ? 0 : rating);
+    }, 0);
+    
+    return (totalRating / businessesWithRatings.length).toFixed(1);
+  })();
+  
+  const totalReviews = Array.isArray(businesses) ? businesses.reduce((sum, b) => sum + (b.review_count || 0), 0) : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex flex-col">
@@ -243,7 +261,7 @@ const DirectoryPage = () => {
               <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center mx-auto mb-2">
                 <Settings className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div className="text-lg sm:text-2xl font-bold text-fem-navy">{stats.totalServices || 0}</div>
+              <div className="text-lg sm:text-2xl font-bold text-fem-navy">{totalServicesCount || 0}</div>
               <div className="text-xs sm:text-sm text-gray-600">Total Services</div>
             </div>
             
@@ -251,7 +269,7 @@ const DirectoryPage = () => {
               <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-navy to-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-2">
                 <Package className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div className="text-lg sm:text-2xl font-bold text-fem-navy">{stats.totalProducts || 0}</div>
+              <div className="text-lg sm:text-2xl font-bold text-fem-navy">{totalProductsCount || 0}</div>
               <div className="text-xs sm:text-sm text-gray-600">Total Products</div>
             </div>
             
@@ -259,7 +277,7 @@ const DirectoryPage = () => {
               <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-gold to-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-2">
                 <Star className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div className="text-lg sm:text-2xl font-bold text-fem-navy">{stats.averageRating}</div>
+              <div className="text-lg sm:text-2xl font-bold text-fem-navy">{averageRating}</div>
               <div className="text-xs sm:text-sm text-gray-600">Avg Rating</div>
             </div>
             
@@ -267,7 +285,7 @@ const DirectoryPage = () => {
               <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-terracotta to-fem-navy rounded-full flex items-center justify-center mx-auto mb-2">
                 <MessageSquare className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div className="text-lg sm:text-2xl font-bold text-fem-navy">{stats.totalReviews}</div>
+              <div className="text-lg sm:text-2xl font-bold text-fem-navy">{totalReviews}</div>
               <div className="text-xs sm:text-sm text-gray-600">Reviews</div>
             </div>
           </div>
@@ -473,12 +491,12 @@ const DirectoryPage = () => {
                         <p className="text-gray-600 text-sm sm:text-base">Discover trusted service providers in our community</p>
                           </div>
                           
-                      <ServiceList 
-                        filters={{ ...filters, searchTerm }} 
-                        currentPage={currentPage}
-                        itemsPerPage={itemsPerPage}
-                        onPageChange={handlePageChange}
-                      />
+                      {activeTab === "services" && (
+                        <ServiceList 
+                          filters={filters} 
+                          itemsPerPage={15}
+                        />
+                      )}
                     </TabsContent>
 
                     <TabsContent value="businesses" className="mt-4 sm:mt-6">

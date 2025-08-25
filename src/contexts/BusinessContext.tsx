@@ -12,12 +12,15 @@ interface BusinessContextType {
   isLoadingProducts: boolean;
   error: string | null;
   totalCount: number;
+  totalProductsCount: number;
+  totalServicesCount: number;
   currentPage: number;
   hasNextPage: boolean;
   hasPreviousPage: boolean;
   fetchBusinesses: (params?: { search?: string; category?: number; city?: string; county?: string; rating?: number; is_featured?: boolean; ordering?: string; page?: number; limit?: number; offset?: number }) => Promise<void>;
   fetchCategories: () => Promise<void>;
-  fetchProducts: (params?: { search?: string; category?: string; in_stock?: boolean; price_currency?: string; ordering?: string; page?: number }) => Promise<void>;
+  fetchServices: (params?: { search?: string; category?: string; price_range?: string; duration?: string; ordering?: string; page?: number; limit?: number; offset?: number }) => Promise<void>;
+  fetchProducts: (params?: { search?: string; category?: string; in_stock?: boolean; price_currency?: string; ordering?: string; page?: number; limit?: number; offset?: number }) => Promise<void>;
   createBusiness: (data: BusinessCreateRequest) => Promise<Business>;
   updateBusiness: (id: string, data: BusinessCreateRequest) => Promise<Business>;
   deleteBusiness: (id: string) => Promise<void>;
@@ -36,16 +39,25 @@ interface BusinessProviderProps {
 }
 
 export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) => {
-  console.log('BusinessProvider: Initializing...');
-  const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
+  // Remove initialization log to reduce console spam
+  // console.log('BusinessProvider: Initializing...');
   const [products, setProducts] = useState<Product[]>([]);
+  const [productsCache, setProductsCache] = useState<Record<number, Product[]>>({});
+  const productsAbortRef = React.useRef<AbortController | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [servicesCache, setServicesCache] = useState<Record<number, Service[]>>({});
+  const servicesAbortRef = React.useRef<AbortController | null>(null);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [businessesCache, setBusinessesCache] = useState<Record<number, Business[]>>({});
+  const businessesAbortRef = React.useRef<AbortController | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingBusinesses, setIsLoadingBusinesses] = useState(false);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [totalProductsCount, setTotalProductsCount] = useState(0);
+  const [totalServicesCount, setTotalServicesCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [hasPreviousPage, setHasPreviousPage] = useState(false);
@@ -57,53 +69,35 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     ) : [], [businesses]
   );
 
-  // Computed services and products from businesses
-  const computedServices = useMemo(() => 
-    Array.isArray(businesses) ? businesses.flatMap(business => {
-      console.log(`Processing business ${business.id}:`, business);
-      console.log(`Business services:`, business.services);
-      return business.services?.map((service, index) => ({
-        ...service,
-        id: `${business.id}-service-${index}`, // Generate unique ID
-        business: {
-          id: business.id,
-          business_name: business.business_name,
-          category: business.category,
-          city: business.city,
-          county: business.county,
-          rating: business.rating,
-          is_verified: business.is_verified,
-          is_active: business.is_active
-        }
-      })) || [];
-    }) : [], [businesses]
-  );
+  // Remove the computed services/products logic that causes infinite loops
+  // Instead, we'll manage these directly in the fetch functions
+  
+  // useEffect(() => {
+  //   if (Array.isArray(businesses)) {
+  //     const totalServices = businesses.reduce((sum, business) => {
+  //       return sum + (business.services?.length || 0);
+  //     }, 0);
+  //     setTotalServicesCount(totalServices);
+  //   } else {
+  //     setTotalServicesCount(0);
+  //   }
+  // }, [businesses]);
 
-  // Use fetched products instead of computed ones
-  // const computedProducts = useMemo(() => 
-  //   Array.isArray(businesses) ? businesses.flatMap(business => {
-  //     console.log(`Processing business ${business.id} products:`, business.products);
-  //     return business.products?.map((product, index) => ({
-  //       ...product,
-  //       id: `${business.id}-product-${index}`, // Generate unique ID
-  //       business: {
-  //       id: business.id,
-  //       business_name: business.business_name,
-  //       category: business.category,
-  //       city: business.city,
-  //       county: business.county,
-  //       rating: business.rating,
-  //       is_verified: business.is_verified,
-  //       is_active: business.is_active
-  //     }
-  //   })) || [];
-  // }) : [], [businesses]
-  // );
+  // useEffect(() => {
+  //   if (Array.isArray(businesses)) {
+  //     const totalProducts = businesses.reduce((sum, business) => {
+  //       return sum + (business.products?.length || 0);
+  //     }, 0);
+  //     setTotalProductsCount(totalProducts);
+  //   } else {
+  //     setTotalProductsCount(0);
+  //   }
+  // }, [businesses]);
 
-  // Debug logging
-  console.log('BusinessContext - businesses:', businesses);
-  console.log('BusinessContext - computedServices:', computedServices);
-  console.log('BusinessContext - computedProducts:', products); // Changed from computedProducts to products
+  // Remove debug logging that causes spam
+  // console.log('BusinessContext - businesses:', businesses);
+  // console.log('BusinessContext - computedServices:', services);
+  // console.log('BusinessContext - computedProducts:', products);
 
   const fetchBusinesses = useCallback(async (params?: {
     search?: string;
@@ -122,16 +116,32 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       setIsLoadingBusinesses(true);
       setError(null);
       
+      const page = params?.page || 1;
+      const limit = params?.limit || 15;
+      
+      // Serve from cache immediately to avoid blank UI
+      if (businessesCache[page]) {
+        setBusinesses(businessesCache[page]);
+        setCurrentPage(page);
+        setIsLoadingBusinesses(true); // show subtle loader while refreshing
+      }
+      
+      // Cancel any in-flight request
+      if (businessesAbortRef.current) {
+        businessesAbortRef.current.abort();
+      }
+      const controller = new AbortController();
+      businessesAbortRef.current = controller;
+      
       // Calculate offset if page and limit are provided
       let apiParams = { ...params };
-      if (params?.page && params?.limit) {
-        apiParams.offset = (params.page - 1) * params.limit;
-        apiParams.limit = params.limit;
-      }
+      apiParams.offset = (page - 1) * limit;
+      apiParams.limit = limit;
       
       console.log('fetchBusinesses - API params being sent:', apiParams);
       const response = await apiService.getBusinesses(apiParams);
-      console.log('fetchBusinesses - API response:', response);
+      // Remove excessive debug logging
+      // console.log('fetchBusinesses - API response:', response);
       
       // Ensure businesses is always an array
       if (response && response.results && Array.isArray(response.results)) {
@@ -139,9 +149,23 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
         console.log('fetchBusinesses - Setting businesses to:', response.results);
         setBusinesses(response.results);
         setTotalCount(response.count || 0);
-        setCurrentPage(params?.page || 1);
+        setCurrentPage(page);
         setHasNextPage(!!response.next);
         setHasPreviousPage(!!response.previous);
+
+        // Cache current page
+        setBusinessesCache(prev => ({ ...prev, [page]: response.results }));
+
+        // Background prefetch next page if available
+        const hasNext = !!response.next;
+        if (hasNext && !businessesCache[page + 1]) {
+          const nextParams: any = { ...apiParams, page: page + 1, offset: (page + 1 - 1) * limit, limit };
+          apiService.getBusinesses(nextParams).then((nextRes) => {
+            if (nextRes && Array.isArray(nextRes.results)) {
+              setBusinessesCache(prev => ({ ...prev, [page + 1]: nextRes.results }));
+            }
+          }).catch(() => {});
+        }
       } else if (Array.isArray(response)) {
         console.log('fetchBusinesses - Using direct response array:', response);
         setBusinesses(response);
@@ -170,7 +194,7 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     } finally {
       setIsLoadingBusinesses(false);
     }
-  }, []);
+  }, []); // Remove businessesCache dependency to prevent infinite loops
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -205,27 +229,72 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     price_currency?: string;
     ordering?: string;
     page?: number;
+    limit?: number;
+    offset?: number;
   }) => {
     try {
-      setIsLoadingProducts(true);
+      const page = params?.page || 1;
+      const limit = params?.limit || 15;
+
+      // Serve from cache immediately to avoid blank UI
+      if (productsCache[page]) {
+        setProducts(productsCache[page]);
+        setCurrentPage(page);
+        setIsLoading(true); // show subtle loader while refreshing
+      } else {
+        setIsLoading(true);
+      }
       setError(null);
-      const response = await apiService.getAllProducts(params);
+
+      // Cancel any in-flight request
+      if (productsAbortRef.current) {
+        productsAbortRef.current.abort();
+      }
+      const controller = new AbortController();
+      productsAbortRef.current = controller;
+      
+      // Always calculate offset when page and limit are provided (including defaults)
+      let apiParams = { ...params } as any;
+      apiParams.offset = (page - 1) * limit;
+      apiParams.limit = limit;
+      
+      const response = await apiService.getAllProducts(apiParams);
+      // Remove excessive debug logging
+      // console.log('fetchProducts - API response:', response);
+      // console.log('fetchProducts - response.count:', response?.count);
+      // console.log('fetchProducts - response.results length:', response?.results?.length);
+      
       if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
         setProducts(response.results);
-        setTotalCount(response.count || 0);
-        setCurrentPage(params?.page || 1);
+        setTotalProductsCount(response.count || 0);
+        console.log('fetchProducts - Setting totalProductsCount to:', response.count || 0);
+        setCurrentPage(page);
         setHasNextPage(!!response.next);
         setHasPreviousPage(!!response.previous);
+
+        // Cache current page
+        setProductsCache(prev => ({ ...prev, [page]: response.results }));
+
+        // Background prefetch next page if available
+        const hasNext = !!response.next;
+        if (hasNext && !productsCache[page + 1]) {
+          const nextParams: any = { ...apiParams, page: page + 1, offset: (page + 1 - 1) * limit, limit };
+          apiService.getAllProducts(nextParams).then((nextRes) => {
+            if (nextRes && Array.isArray(nextRes.results)) {
+              setProductsCache(prev => ({ ...prev, [page + 1]: nextRes.results }));
+            }
+          }).catch(() => {});
+        }
       } else if (Array.isArray(response)) {
         setProducts(response);
-        setTotalCount(response.length);
+        setTotalProductsCount(response.length);
         setCurrentPage(1);
         setHasNextPage(false);
         setHasPreviousPage(false);
       } else {
         console.error('Products API returned unexpected response format:', response);
-        setProducts([]);
-        setTotalCount(0);
+        // keep previous page data to avoid blank
+        setTotalProductsCount(0);
         setCurrentPage(1);
         setHasNextPage(false);
         setHasPreviousPage(false);
@@ -235,15 +304,107 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products';
       setError(errorMessage);
       console.error('Failed to fetch products:', err);
-      setProducts([]);
-      setTotalCount(0);
+      // keep previous page data on error
+      setTotalProductsCount(0);
       setCurrentPage(1);
       setHasNextPage(false);
       setHasPreviousPage(false);
     } finally {
-      setIsLoadingProducts(false);
+      setIsLoading(false);
     }
-  }, []);
+  }, []); // Remove productsCache dependency to prevent infinite loops
+
+  const fetchServices = useCallback(async (params?: {
+    search?: string;
+    category?: string;
+    price_range?: string;
+    duration?: string;
+    ordering?: string;
+    page?: number;
+    limit?: number;
+    offset?: number;
+  }) => {
+    try {
+      const page = params?.page || 1;
+      const limit = params?.limit || 15;
+
+      // Serve from cache immediately to avoid blank UI
+      if (servicesCache[page]) {
+        setServices(servicesCache[page]);
+        setCurrentPage(page);
+        setIsLoading(true); // show subtle loader while refreshing
+      } else {
+        setIsLoading(true);
+      }
+      setError(null);
+
+      // Cancel any in-flight request
+      if (servicesAbortRef.current) {
+        servicesAbortRef.current.abort();
+      }
+      const controller = new AbortController();
+      servicesAbortRef.current = controller;
+      
+      // Always calculate offset when page and limit are provided (including defaults)
+      let apiParams = { ...params } as any;
+      apiParams.offset = (page - 1) * limit;
+      apiParams.limit = limit;
+      
+      const response = await apiService.getAllServices(apiParams);
+      // Remove excessive debug logging
+      // console.log('fetchServices - API response:', response);
+      // console.log('fetchServices - response.count:', response?.count);
+      // console.log('fetchServices - response.results length:', response?.results?.length);
+      
+      if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
+        setServices(response.results);
+        setTotalServicesCount(response.count || 0);
+        console.log('fetchServices - Setting totalServicesCount to:', response.count || 0);
+        setCurrentPage(page);
+        setHasNextPage(!!response.next);
+        setHasPreviousPage(!!response.previous);
+
+        // Cache current page
+        setServicesCache(prev => ({ ...prev, [page]: response.results }));
+
+        // Background prefetch next page if available
+        const hasNext = !!response.next;
+        if (hasNext && !servicesCache[page + 1]) {
+          const nextParams: any = { ...apiParams, page: page + 1, offset: (page + 1 - 1) * limit, limit };
+          apiService.getAllServices(nextParams).then((nextRes) => {
+            if (nextRes && Array.isArray(nextRes.results)) {
+              setServicesCache(prev => ({ ...prev, [page + 1]: nextRes.results }));
+            }
+          }).catch(() => {});
+        }
+      } else if (Array.isArray(response)) {
+        setServices(response);
+        setTotalServicesCount(response.length);
+        setCurrentPage(1);
+        setHasNextPage(false);
+        setHasPreviousPage(false);
+      } else {
+        console.error('Services API returned unexpected response format:', response);
+        // keep previous page data to avoid blank
+        setTotalServicesCount(0);
+        setCurrentPage(1);
+        setHasNextPage(false);
+        setHasPreviousPage(false);
+        setError('Services API returned invalid format');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch services';
+      setError(errorMessage);
+      console.error('Failed to fetch services:', err);
+      // keep previous page data on error
+      setTotalServicesCount(0);
+      setCurrentPage(1);
+      setHasNextPage(false);
+      setHasPreviousPage(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []); // Remove servicesCache dependency to prevent infinite loops
 
 
   const createBusiness = async (data: BusinessCreateRequest): Promise<Business> => {
@@ -383,26 +544,45 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     fetchBusinesses({ page: 1, limit: 15 });
     console.log('BusinessContext: Calling fetchCategories');
     fetchCategories();
-    console.log('BusinessContext: Calling fetchProducts');
-    fetchProducts();
+    // Product pages are fetched on-demand by the products view to prevent duplicate requests
   }, []); // Empty dependency array - only run once on mount
 
-  const value: BusinessContextType = {
+  // Fetch products on mount to populate totalProductsCount
+  useEffect(() => {
+    // Only fetch if we don't have products yet
+    if (products.length === 0 && totalProductsCount === 0) {
+      fetchProducts({ page: 1, limit: 15 });
+    }
+  }, []); // Empty dependency array - only run once on mount
+
+  // Fetch services on mount to populate totalServicesCount
+  useEffect(() => {
+    // Only fetch if we don't have services yet
+    if (services.length === 0 && totalServicesCount === 0) {
+      fetchServices({ page: 1, limit: 15 });
+    }
+  }, []); // Empty dependency array - only run once on mount
+
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
     businesses,
     categories,
     featuredBusinesses,
-    services: computedServices,
-    products: products, // Changed from computedProducts to products
+    services,
+    products,
     isLoading,
     isLoadingBusinesses,
     isLoadingProducts,
     error,
     totalCount,
+    totalProductsCount,
+    totalServicesCount,
     currentPage,
     hasNextPage,
     hasPreviousPage,
     fetchBusinesses,
     fetchCategories,
+    fetchServices,
     fetchProducts,
     createBusiness,
     updateBusiness,
@@ -413,9 +593,42 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     getBusinessById,
     getUserBusiness,
     clearError,
-  };
+  }), [
+    businesses,
+    categories,
+    featuredBusinesses,
+    services,
+    products,
+    isLoading,
+    isLoadingBusinesses,
+    isLoadingProducts,
+    error,
+    totalCount,
+    totalProductsCount,
+    totalServicesCount,
+    currentPage,
+    hasNextPage,
+    hasPreviousPage,
+    fetchBusinesses,
+    fetchCategories,
+    fetchServices,
+    fetchProducts,
+    createBusiness,
+    updateBusiness,
+    deleteBusiness,
+    deleteService,
+    deleteProduct,
+    toggleFavorite,
+    getBusinessById,
+    getUserBusiness,
+    clearError,
+  ]);
 
-  return <BusinessContext.Provider value={value}>{children}</BusinessContext.Provider>;
+  return (
+    <BusinessContext.Provider value={contextValue}>
+      {children}
+    </BusinessContext.Provider>
+  );
 };
 
 export const useBusiness = (): BusinessContextType => {
