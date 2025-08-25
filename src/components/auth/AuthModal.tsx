@@ -226,8 +226,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setIsLoading(true);
     try {
       const response = await register({
-        ...signupData,
-        auth_method: usePhone ? 'phone' : 'email'
+        first_name: signupData.firstName,
+        last_name: signupData.lastName,
+        partnership_number: signupData.partnershipNumber,
+        user_type: signupData.userType as 'community' | 'business',
+        email: usePhone ? undefined : signupData.email || undefined,
+        phone: usePhone ? signupData.phone : undefined,
+        password: signupData.password
       });
       
       if (response.success) {
@@ -236,24 +241,25 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           description: "Please verify your account with the code we sent.",
         });
         setSignupStep('otp');
-        } else {
-        handleError(response.message || 'Registration failed', 'signup');
+      } else {
+        // Pass axios error directly so handler can extract data.errors
+        handleError(response, 'signup');
       }
     } catch (error: any) {
+      // Pass axios error directly so handler can extract data.errors
       handleError(error, 'signup');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleVerifyOTP = async (otp: string) => {
+  const handleVerifyOTP = async (otp: string): Promise<boolean> => {
     setIsLoading(true);
     try {
       const response = await apiService.verifyOTP({
         otp,
         phone: signupData.phone,
-        email: undefined, // Email temporarily disabled
-        auth_method: 'phone' // Force phone since email is disabled
+        email: undefined
       });
 
       if (response.success) {
@@ -262,12 +268,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           description: "Your account has been successfully created and verified.",
         });
       onClose();
-        navigate('/welcome');
+        // Removed redirect to '/welcome' per requirement
+        return true;
       } else {
         handleError(response.message || 'OTP verification failed', 'otp-verification');
+        return false;
       }
     } catch (error: any) {
       handleError(error, 'otp-verification');
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -275,10 +284,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const handleResendOTP = async () => {
     try {
-      const response = await apiService.resendOTP({
+      const response = await apiService.sendOTP({
         phone: signupData.phone,
-        email: undefined, // Email temporarily disabled
-        auth_method: 'phone' // Force phone since email is disabled
+        email: undefined
       });
       
       if (response.success) {

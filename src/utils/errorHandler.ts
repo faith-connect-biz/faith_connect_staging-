@@ -50,6 +50,17 @@ export class ErrorHandler {
     // Common HTTP status codes
     switch (status) {
       case 400:
+        // If backend returned field errors, show only the field message without a title
+        {
+          const fieldMessage = this.extractFieldErrorMessage(data?.errors);
+          if (fieldMessage) {
+            return {
+              title: '',
+              message: fieldMessage,
+              suggestion: 'Please check your information and try again.'
+            };
+          }
+        }
         return {
           title: "Invalid Request",
           message: this.getBadRequestMessage(data, context),
@@ -278,8 +289,24 @@ export class ErrorHandler {
    * Get context-specific messages
    */
   private static getBadRequestMessage(data: any, context?: string): string {
+    // 1) Prefer field-level errors from DRF
+    const fieldMessage = this.extractFieldErrorMessage(data?.errors);
+    if (fieldMessage) {
+      return fieldMessage;
+    }
+
+    // 2) Then use top-level message if it's not a generic placeholder
     if (data?.message) {
-      return this.cleanErrorMessage(data.message);
+      const cleaned = this.cleanErrorMessage(data.message);
+      const genericPlaceholders = [
+        'Invalid data provided.',
+        'Validation error.',
+        'Bad request.'
+      ];
+      if (!genericPlaceholders.includes(cleaned)) {
+        return cleaned;
+      }
+      // If generic, continue to context-specific fallback below
     }
 
     switch (context) {
@@ -342,6 +369,12 @@ export class ErrorHandler {
       }
     }
 
+    // Also try extracting from object-based errors
+    const fieldMessage = this.extractFieldErrorMessage(data?.errors);
+    if (fieldMessage) {
+      return fieldMessage;
+    }
+
     return "Please check the information you entered and try again.";
   }
 
@@ -369,6 +402,34 @@ export class ErrorHandler {
     cleaned = cleaned.replace(/\s*in\s+.*$/g, '');
 
     return cleaned.trim();
+  }
+
+  /**
+   * Attempt to extract first field error message from a typical DRF errors object
+   */
+  private static extractFieldErrorMessage(errors: any): string | null {
+    if (!errors) return null;
+
+    // If errors is an object like { field: ["msg1", "msg2"], other: ["msg"] }
+    if (typeof errors === 'object' && !Array.isArray(errors)) {
+      const firstKey = Object.keys(errors)[0];
+      if (firstKey) {
+        const val = errors[firstKey];
+        if (Array.isArray(val) && val.length > 0) {
+          return this.cleanErrorMessage(String(val[0]));
+        }
+        if (typeof val === 'string') {
+          return this.cleanErrorMessage(val);
+        }
+      }
+    }
+
+    // If errors is already a string
+    if (typeof errors === 'string') {
+      return this.cleanErrorMessage(errors);
+    }
+
+    return null;
   }
 
   /**

@@ -223,14 +223,14 @@ export interface BusinessCreateRequest {
 export interface OTPRequest {
   email?: string;
   phone?: string;
-  purpose: 'registration' | 'password_reset' | 'email_verification' | 'phone_verification';
+  purpose?: 'registration' | 'password_reset' | 'email_verification' | 'phone_verification';
 }
 
 export interface OTPVerificationRequest {
   email?: string;
   phone?: string;
   otp: string;
-  purpose: 'registration' | 'password_reset' | 'email_verification' | 'phone_verification';
+  purpose?: 'registration' | 'password_reset' | 'email_verification' | 'phone_verification';
 }
 
 export interface PhotoRequest {
@@ -530,12 +530,12 @@ class ApiService {
     return response.data;
   }
 
-  async sendOTP(data: OTPRequest): Promise<{ message: string }> {
+  async sendOTP(data: OTPRequest): Promise<{ success: boolean; message: string }> {
     const response = await this.api.post('/verify-phone', data);
     return response.data;
   }
 
-  async verifyOTP(data: OTPVerificationRequest): Promise<{ message: string }> {
+  async verifyOTP(data: OTPVerificationRequest): Promise<{ success: boolean; message: string }> {
     const response = await this.api.post('/verify-phone-confirm', data);
     return response.data;
   }
@@ -1041,18 +1041,28 @@ class ApiService {
     search?: string;
     category?: string;
     price_range?: string;
+    duration?: string;
     ordering?: string;
     page?: number;
+    limit?: number;
+    offset?: number;
   }): Promise<{ results: Service[]; count: number; next?: string; previous?: string }> {
     try {
       const queryParams = new URLSearchParams();
       if (params?.search) queryParams.append('search', params.search);
       if (params?.category) queryParams.append('business__category', params.category);
       if (params?.price_range) queryParams.append('price_range', params.price_range);
+      if (params?.duration) queryParams.append('duration', params.duration);
       if (params?.ordering) queryParams.append('ordering', params.ordering);
       if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.offset) queryParams.append('offset', params.offset.toString());
 
-      const response = await this.api.get(`/services/${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
+      const response = await this.api.get(`/business/services/${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
+      console.log('API getAllServices - Raw response:', response);
+      console.log('API getAllServices - Response data:', response.data);
+      console.log('API getAllServices - Response data type:', typeof response.data);
+      console.log('API getAllServices - Response data keys:', Object.keys(response.data || {}));
       return response.data;
     } catch (error) {
       console.error('Error fetching all services:', error);
@@ -1068,6 +1078,8 @@ class ApiService {
     price_currency?: string;
     ordering?: string;
     page?: number;
+    limit?: number;
+    offset?: number;
   }): Promise<{ results: Product[]; count: number; next?: string; previous?: string }> {
     try {
       const queryParams = new URLSearchParams();
@@ -1077,8 +1089,14 @@ class ApiService {
       if (params?.price_currency) queryParams.append('price_currency', params.price_currency);
       if (params?.ordering) queryParams.append('ordering', params.ordering);
       if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.offset) queryParams.append('offset', params.offset.toString());
 
       const response = await this.api.get(`/business/products/${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
+      console.log('API getAllProducts - Raw response:', response);
+      console.log('API getAllProducts - Response data:', response.data);
+      console.log('API getAllProducts - Response data type:', typeof response.data);
+      console.log('API getAllProducts - Response data keys:', Object.keys(response.data || {}));
       return response.data;
     } catch (error) {
       console.error('Error fetching all products:', error);

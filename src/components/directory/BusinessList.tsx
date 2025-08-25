@@ -46,36 +46,60 @@ interface BusinessListProps {
 
 export const BusinessList = ({ filters, currentPage = 1, itemsPerPage = 15, onPageChange, totalCount }: BusinessListProps) => {
   const navigate = useNavigate();
-  const { businesses, isLoadingBusinesses } = useBusiness();
+  const { businesses, isLoadingBusinesses, fetchBusinesses, totalCount: contextTotalCount } = useBusiness();
   const { user } = useAuth();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(currentPage);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
-  // Debug logging
-  console.log('BusinessList - businesses received:', businesses);
-  console.log('BusinessList - isLoadingBusinesses:', isLoadingBusinesses);
-  console.log('BusinessList - filters:', filters);
-  console.log('BusinessList - totalCount:', totalCount);
+  // Debug logging - reduce spam
+  // console.log('BusinessList - businesses received:', businesses);
+  // console.log('BusinessList - isLoadingBusinesses:', isLoadingBusinesses);
+  // console.log('BusinessList - filters:', filters);
+  // console.log('BusinessList - contextTotalCount:', contextTotalCount);
+  // console.log('BusinessList - totalCount prop:', totalCount);
 
-  // Load user favorites on component mount
+  // Use context total count if available, otherwise use prop
+  const effectiveTotalCount = contextTotalCount || totalCount || 0;
+
+  // Update total items and pages when businesses change
   useEffect(() => {
-    const loadUserFavorites = async () => {
-      if (user) {
-        try {
-          const userFavorites = await apiService.getUserFavorites();
-          const favoriteIds = userFavorites.map(fav => fav.business);
-          setFavorites(favoriteIds);
-        } catch (error) {
-          console.error('Error loading user favorites:', error);
-        }
-      }
-    };
+    // console.log('BusinessList - effectiveTotalCount:', effectiveTotalCount);
+    // console.log('BusinessList - businesses.length:', businesses?.length);
+    setTotalItems(effectiveTotalCount);
+    setTotalPages(Math.ceil(effectiveTotalCount / itemsPerPage) || 1);
+    // console.log('BusinessList - Setting totalItems to:', effectiveTotalCount);
+    // console.log('BusinessList - Setting totalPages to:', Math.ceil(effectiveTotalCount / itemsPerPage) || 1);
+  }, [effectiveTotalCount, itemsPerPage, businesses]);
 
-    loadUserFavorites();
-  }, [user]);
+  // Fetch businesses when page or filters change
+  useEffect(() => {
+    const params: any = { page, limit: itemsPerPage };
+    // Map filters to API params
+    if (filters?.category && filters.category !== 'all') params.category = filters.category;
+    if (filters?.county && filters.county !== 'all') params.county = filters.county;
+    if (filters?.rating && filters.rating[1] < 5) params.rating = filters.rating[1];
+    if (filters?.verifiedOnly) params.is_featured = filters.verifiedOnly;
+    if (filters?.searchTerm) params.search = filters.searchTerm;
+    
+    // console.log('BusinessList - calling fetchBusinesses with params:', params);
+    fetchBusinesses(params);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, itemsPerPage, filters.searchTerm, filters.category, filters.county, filters.rating, filters.verifiedOnly]);
+
+  // Handle page change
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    if (onPageChange) {
+      onPageChange(newPage);
+    }
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // GSAP Scroll Animations
   useEffect(() => {
@@ -120,44 +144,6 @@ export const BusinessList = ({ filters, currentPage = 1, itemsPerPage = 15, onPa
   
   // Use all businesses received from API (they're already paginated)
   const paginatedBusinesses = filteredBusinesses;
-
-  const toggleFavorite = async (businessId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to add favorites",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      await apiService.toggleFavorite(businessId);
-      
-      // Update local state
-      setFavorites(prev => 
-        prev.includes(businessId) 
-          ? prev.filter(id => id !== businessId)
-          : [...prev, businessId]
-      );
-
-      toast({
-        title: favorites.includes(businessId) ? "Removed from favorites" : "Added to favorites",
-        description: favorites.includes(businessId) 
-          ? "Business removed from your favorites" 
-          : "Business added to your favorites",
-      });
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update favorites. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
 
   const handleBusinessClick = (business: Business) => {
     // Navigate to the business page when business is clicked
@@ -207,28 +193,21 @@ export const BusinessList = ({ filters, currentPage = 1, itemsPerPage = 15, onPa
             {/* Action Buttons */}
             <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               {/* Like Button - Only show if user doesn't own the business */}
-              {user && business.user?.id !== Number(user.id) && (
+              {user && business.user?.id && String(business.user.id) !== String(user.id) && (
                 <LikeButton
-                  id={business.id}
-                  type="business"
-                  initialLiked={false}
-                  likeCount={0}
-                  onLikeChange={() => {}}
-                  disabled={false}
+                  itemId={business.id}
+                  itemType="business"
+                  itemName={business.business_name}
+                  businessName={business.business_name}
+                  businessId={business.id}
+                  description={business.description}
+                  rating={business.rating}
+                  reviewCount={business.review_count}
+                  isActive={business.is_active}
+                  size="sm"
+                  className="bg-white/80 hover:bg-white"
                 />
               )}
-              
-              {/* Favorite Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="bg-white/80 hover:bg-white"
-                onClick={(e) => toggleFavorite(business.id, e)}
-              >
-                <Heart 
-                  className={`w-4 h-4 ${favorites.includes(business.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} 
-                />
-              </Button>
             </div>
           </div>
 
@@ -358,7 +337,7 @@ export const BusinessList = ({ filters, currentPage = 1, itemsPerPage = 15, onPa
         </div>
         
         <div className="text-sm text-gray-500">
-          {totalCount || filteredBusinesses.length} business{(totalCount || filteredBusinesses.length) !== 1 ? 'es' : ''} found
+          Showing {((page - 1) * itemsPerPage) + 1}-{Math.min(page * itemsPerPage, totalItems)} of {totalItems} businesses
         </div>
       </div>
 
@@ -368,21 +347,23 @@ export const BusinessList = ({ filters, currentPage = 1, itemsPerPage = 15, onPa
         : "space-y-4"
       }>
         <AnimatePresence>
-          {paginatedBusinesses.map((business) => (
+          {businesses.map((business) => (
             <BusinessCard key={business.id} business={business} />
           ))}
         </AnimatePresence>
       </div>
       
       {/* Pagination */}
-      {totalCount && totalCount > itemsPerPage && onPageChange && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={Math.ceil(totalCount / itemsPerPage)}
-          onPageChange={onPageChange}
-          totalItems={totalCount}
-          itemsPerPage={itemsPerPage}
-        />
+      {totalPages > 1 && (
+        <div className="flex justify-center">
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+          />
+        </div>
       )}
     </div>
   );

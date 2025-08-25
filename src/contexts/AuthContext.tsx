@@ -217,12 +217,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       
       return response;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration failed:', error);
-      return {
-        success: false,
-        message: 'Registration failed. Please try again.'
-      };
+      // If backend provided a response, propagate it for UI parsing
+      if (error?.response?.data) {
+        throw error; // Let the caller handle via error handler to extract field errors
+      }
+      // Fallback generic error
+      throw error;
     }
   };
 
