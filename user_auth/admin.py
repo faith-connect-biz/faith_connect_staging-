@@ -95,7 +95,8 @@ class UserAdmin(BaseUserAdmin):
 
     actions = [
         'verify_users', 'unverify_users', 'activate_users', 'deactivate_users',
-        'send_welcome_email', 'export_user_data', 'delete_inactive_users'
+        'send_welcome_email', 'export_user_data', 'delete_inactive_users',
+        'clean_invalid_business_uuids'
     ]
 
     def full_name(self, obj):
@@ -199,6 +200,23 @@ class UserAdmin(BaseUserAdmin):
             messages.SUCCESS
         )
     delete_inactive_users.short_description = "Delete inactive users (30+ days old)"
+
+    def clean_invalid_business_uuids(self, request, queryset):
+        from django.core import management
+        try:
+            management.call_command('clean_invalid_uuids', stdout=None, stderr=None)
+            self.message_user(
+                request,
+                'Invalid UUID rows in business tables have been cleaned.',
+                messages.SUCCESS
+            )
+        except Exception as e:
+            self.message_user(
+                request,
+                f'Cleanup failed: {e}',
+                messages.ERROR
+            )
+    clean_invalid_business_uuids.short_description = "Clean invalid UUID rows in business tables"
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)

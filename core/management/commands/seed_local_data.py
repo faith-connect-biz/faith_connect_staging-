@@ -31,6 +31,29 @@ class Command(BaseCommand):
             help='Number of sample businesses to create (default: 20)'
         )
         parser.add_argument(
+            '--services-per-business',
+            type=int,
+            default=3,
+            help='Number of services per business (default: 3)'
+        )
+        parser.add_argument(
+            '--products-per-business',
+            type=int,
+            default=3,
+            help='Number of products per business (default: 3)'
+        )
+        parser.add_argument(
+            '--reviews-per-business',
+            type=int,
+            default=10,
+            help='Number of reviews per business (default: 10)'
+        )
+        parser.add_argument(
+            '--create-superuser',
+            action='store_true',
+            help='Also ensure a local admin superuser exists'
+        )
+        parser.add_argument(
             '--categories-only',
             action='store_true',
             help='Only seed categories'
@@ -45,7 +68,11 @@ class Command(BaseCommand):
         clear_data = options['clear']
         num_users = options['users']
         num_businesses = options['businesses']
+        services_per_business = options['services_per_business']
+        products_per_business = options['products_per_business']
+        reviews_per_business = options['reviews_per_business']
         categories_only = options['categories_only']
+        create_super = options['create_superuser']
         
         if clear_data:
             self.stdout.write('🗑️  Clearing existing data...')
@@ -62,6 +89,10 @@ class Command(BaseCommand):
         # Seed users
         self.stdout.write(f'👥 Creating {num_users} sample users...')
         users = self.seed_users(num_users)
+
+        # Ensure a local superuser if requested
+        if create_super:
+            self.ensure_superuser()
         
         # Seed businesses
         self.stdout.write(f'🏢 Creating {num_businesses} sample businesses...')
@@ -69,7 +100,7 @@ class Command(BaseCommand):
         
         # Seed services and products
         self.stdout.write('🛍️  Creating sample services and products...')
-        self.seed_services_and_products(businesses)
+        self.seed_services_and_products(businesses, services_per_business, products_per_business)
         
         # Seed business hours
         self.stdout.write('🕐 Creating sample business hours...')
@@ -77,7 +108,7 @@ class Command(BaseCommand):
         
         # Seed reviews
         self.stdout.write('⭐ Creating sample reviews...')
-        self.seed_reviews(businesses, users)
+        self.seed_reviews(businesses, users, reviews_per_business)
         
         # Seed favorites
         self.stdout.write('❤️  Creating sample favorites...')
@@ -85,6 +116,30 @@ class Command(BaseCommand):
         
         self.stdout.write(self.style.SUCCESS('\n🎉 Local data seeding completed successfully!'))
         self.stdout.write(f'📊 Created: {len(users)} users, {len(businesses)} businesses')
+
+    def ensure_superuser(self):
+        """Create a deterministic local superuser if one does not exist."""
+        from django.db.models import Q
+        if User.objects.filter(is_superuser=True).exists():
+            self.stdout.write('🛡️  Superuser already exists - skipping')
+            return
+        admin_email = 'admin@example.com'
+        admin_phone = '+254700000000'
+        su = User.objects.create_superuser(
+            partnership_number='ADMIN001',
+            password='Admin1234!',
+            first_name='Admin',
+            last_name='User',
+            email=admin_email,
+            phone=admin_phone,
+            user_type='business',
+            is_active=True
+        )
+        su.is_verified = True
+        su.email_verified = True
+        su.phone_verified = True
+        su.save()
+        self.stdout.write(self.style.SUCCESS('✅ Superuser created: admin@example.com / Admin1234!'))
 
     def clear_all_data(self):
         """Clear all existing data"""
@@ -169,7 +224,8 @@ class Command(BaseCommand):
         ]
         
         for i in range(num_businesses):
-            user = random.choice(users)
+            # Link businesses one-to-one with the first N users when possible
+            user = users[i] if i < len(users) else random.choice(users)
             category = random.choice(categories)
             business_name = business_names[i % len(business_names)]
             
@@ -191,8 +247,8 @@ class Command(BaseCommand):
                 longitude=Decimal('36.8219') + Decimal(str(random.uniform(-0.01, 0.01))),
                 rating=Decimal(str(random.uniform(3.0, 5.0))).quantize(Decimal('0.1')),
                 review_count=random.randint(0, 50),
-                is_verified=random.choice([True, False]),
-                is_featured=random.choice([True, False]),
+                is_verified=random.choice([True, False, True]),
+                is_featured=random.choice([True, False, False, True]),
                 is_active=True
             )
             businesses.append(business)
@@ -200,7 +256,7 @@ class Command(BaseCommand):
         self.stdout.write(f'✅ Created {len(businesses)} businesses')
         return businesses
 
-    def seed_services_and_products(self, businesses):
+    def seed_services_and_products(self, businesses, services_per_business:int, products_per_business:int):
         """Create sample services and products"""
         services_data = [
             ("Consultation", "Professional consultation services", "KSh 500 - 2000", "1 hour"),
@@ -220,7 +276,8 @@ class Command(BaseCommand):
         
         for business in businesses:
             # Create services
-            for name, description, price_range, duration in random.sample(services_data, random.randint(1, 3)):
+            chosen_services = random.choices(services_data, k=max(1, services_per_business))
+            for name, description, price_range, duration in chosen_services:
                 Service.objects.create(
                     business=business,
                     name=f"{name} - {business.business_name}",
@@ -231,7 +288,8 @@ class Command(BaseCommand):
                 )
             
             # Create products
-            for name, description, price in random.sample(products_data, random.randint(1, 3)):
+            chosen_products = random.choices(products_data, k=max(1, products_per_business))
+            for name, description, price in chosen_products:
                 Product.objects.create(
                     business=business,
                     name=f"{name} - {business.business_name}",
@@ -266,19 +324,18 @@ class Command(BaseCommand):
         
         self.stdout.write('✅ Created business hours')
 
-    def seed_reviews(self, businesses, users):
-        """Create sample reviews"""
+    def seed_reviews(self, businesses, users, reviews_per_business:int):
+        """Create sample reviews ensuring (business, user) uniqueness."""
         for business in businesses:
-            num_reviews = random.randint(0, 10)
-            reviewers = random.sample(users, min(num_reviews, len(users)))
-            
+            k = min(max(1, reviews_per_business), len(users))
+            reviewers = random.sample(users, k=k)
             for reviewer in reviewers:
                 Review.objects.create(
                     business=business,
                     user=reviewer,
-                    rating=random.randint(1, 5),
+                    rating=random.randint(3, 5),
                     review_text=f"Great service from {business.business_name}! Highly recommended.",
-                    is_verified=random.choice([True, False])
+                    is_verified=random.choice([True, True, False])
                 )
         
         self.stdout.write('✅ Created reviews')

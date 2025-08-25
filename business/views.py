@@ -53,16 +53,22 @@ class BusinessDetailAPIView(generics.RetrieveAPIView):
 
 class BusinessListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = BusinessSerializer
-    permission_classes = [AllowAny]  # Allow public access to list businesses, but require auth for creation
+    permission_classes = [IsAuthenticated]  # Require authentication for both list and create
     queryset = Business.objects.filter(is_active=True).select_related('category', 'user').order_by('-created_at')
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category', 'city', 'county', 'is_featured']
+    filterset_fields = ['category', 'city', 'county']
     search_fields = ['business_name', 'description', 'city']
     ordering_fields = ['created_at', 'rating']
     
     # Add pagination
     pagination_class = CustomLimitOffsetPagination
+
+    def get_permissions(self):
+        """Allow public access to list businesses, but require auth for creation"""
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
 
     def get_serializer_context(self):
         return {"request": self.request}
@@ -160,9 +166,14 @@ class UserFavoritesListView(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            logger.info(f"[FAVORITES LIST] user_id={request.user.id} count={len(serializer.data)}")
+            return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True)
         logger.info(f"[FAVORITES LIST] user_id={request.user.id} count={len(serializer.data)}")
-        return success_response("Fetched favorites successfully", serializer.data)
+        return Response(serializer.data)
 
 
 class FavoriteToggleView(APIView):
@@ -197,12 +208,18 @@ class FavoriteToggleView(APIView):
 # List and Create products
 class BusinessProductListCreateView(generics.ListCreateAPIView):
     serializer_class = ProductSerializer
-    permission_classes = [AllowAny]  # Allow public access to list products, but require auth for creation
+    permission_classes = [IsAuthenticated]  # Require authentication for both list and create
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['name', 'description']
     ordering_fields = ['price', 'created_at']
     filterset_fields = ['in_stock', 'price_currency']
     pagination_class = CustomLimitOffsetPagination
+
+    def get_permissions(self):
+        """Allow public access to list products, but require auth for creation"""
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         business_id = self.kwargs.get('business_id')
@@ -920,8 +937,14 @@ class MyBusinessView(generics.RetrieveAPIView):
 class BusinessServiceListCreateView(generics.ListCreateAPIView):
     """List and create services for a business"""
     serializer_class = ServiceSerializer
-    permission_classes = [AllowAny]  # Allow public access to list services, but require auth for creation
+    permission_classes = [IsAuthenticated]  # Require authentication for both list and create
     pagination_class = CustomLimitOffsetPagination
+    
+    def get_permissions(self):
+        """Allow public access to list services, but require auth for creation"""
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
     
     def get_queryset(self):
         business_id = self.kwargs.get('business_id')
@@ -1005,8 +1028,14 @@ class ServiceListAPIView(generics.ListAPIView):
 class ServiceListCreateAPIView(generics.ListCreateAPIView):
     """List and create services"""
     serializer_class = ServiceSerializer
-    permission_classes = [AllowAny]  # Allow public access to list services, but require auth for creation
+    permission_classes = [IsAuthenticated]  # Require authentication for both list and create
     pagination_class = CustomLimitOffsetPagination
+    
+    def get_permissions(self):
+        """Allow public access to list services, but require auth for creation"""
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
     
     def get_queryset(self):
         return Service.objects.filter(is_active=True).select_related('business', 'business__category')
@@ -1115,8 +1144,14 @@ class ProductListAPIView(generics.ListAPIView):
 class ProductListCreateAPIView(generics.ListCreateAPIView):
     """List and create products"""
     serializer_class = ProductSerializer
-    permission_classes = [AllowAny]  # Allow public access to list products, but require auth for creation
+    permission_classes = [IsAuthenticated]  # Require authentication for both list and create
     pagination_class = CustomLimitOffsetPagination
+    
+    def get_permissions(self):
+        """Allow public access to list products, but require auth for creation"""
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
     
     def get_queryset(self):
         return Product.objects.filter(is_active=True).select_related('business', 'business__category')
