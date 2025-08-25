@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 import re
+from .utils import normalize_phone
 
 User = get_user_model()
 
@@ -44,34 +45,14 @@ class SignupSerializer(serializers.Serializer):
             raise serializers.ValidationError("Phone is required when isEmail is false.")
         
         if value:
-            # Check if phone number already exists
-            if User.objects.filter(phone=value).exists():
+            try:
+                normalized = normalize_phone(value)
+            except ValueError as e:
+                raise serializers.ValidationError(str(e))
+
+            # Uniqueness check against normalized value
+            if User.objects.filter(phone=normalized).exists():
                 raise serializers.ValidationError("User with this phone number already exists.")
-            
-            # Validate Kenyan phone number format
-            # Remove any spaces or special characters
-            clean_phone = re.sub(r'[\s\-\(\)]', '', value)
-            
-            # Check if it starts with +254 or 254
-            if not (clean_phone.startswith('+254') or clean_phone.startswith('254')):
-                raise serializers.ValidationError("Phone number must be a Kenyan number starting with +254 or 254.")
-            
-            # Validate length (should be 12 digits for +254 or 11 digits for 254)
-            if clean_phone.startswith('+254'):
-                if len(clean_phone) != 13:  # +254 + 9 digits
-                    raise serializers.ValidationError("Invalid phone number length. Should be +254 followed by 9 digits.")
-            else:  # starts with 254
-                if len(clean_phone) != 12:  # 254 + 9 digits
-                    raise serializers.ValidationError("Invalid phone number length. Should be 254 followed by 9 digits.")
-            
-            # Validate that the remaining digits are numeric
-            remaining_digits = clean_phone[4:] if clean_phone.startswith('+254') else clean_phone[3:]
-            if not remaining_digits.isdigit():
-                raise serializers.ValidationError("Phone number should contain only digits after the country code.")
-            
-            # Validate that the remaining digits are 9 digits
-            if len(remaining_digits) != 9:
-                raise serializers.ValidationError("Phone number should have exactly 9 digits after the country code.")
         
         return value
     
@@ -101,4 +82,12 @@ class SignupSerializer(serializers.Serializer):
                     'phone': 'Phone is required when isEmail is false.'
                 })
         
+        # Normalize phone into canonical format for downstream creation
+        phone = attrs.get('phone')
+        is_email = attrs.get('isEmail')
+        if phone and not is_email:
+            try:
+                attrs['phone'] = normalize_phone(phone)
+            except ValueError as e:
+                raise serializers.ValidationError({'phone': str(e)})
         return attrs
