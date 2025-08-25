@@ -34,7 +34,7 @@ export const ProductList: React.FC<ProductListProps> = ({
   filters, 
   itemsPerPage = 15 
 }) => {
-  const { products, businesses, isLoadingProducts } = useBusiness();
+  const { products, businesses, isLoadingProducts, fetchProducts, totalProductsCount } = useBusiness();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -44,70 +44,46 @@ export const ProductList: React.FC<ProductListProps> = ({
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [currentShareData, setCurrentShareData] = useState<ShareData | null>(null);
 
-  // Calculate pagination
+  // Calculate paging window from API pagination
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
 
-  // Filter products based on filters - show all products for now
-  const filteredProducts = Array.isArray(products) ? products.filter(product => {
-    // If businesses are not yet loaded, show all products
-    if (!Array.isArray(businesses) || businesses.length === 0) {
-      console.log('ProductList - businesses not loaded yet, showing all products');
-      return true;
-    }
-
-    // Handle both business as ID string and business as object
-    let business;
-    if (typeof product.business === 'string') {
-      // Business is an ID string, find it in the businesses array
-      business = businesses.find(b => b.id === product.business);
-      if (!business) {
-        console.log('ProductList - business not found for ID:', product.business, 'but showing product anyway');
-        // Don't filter out products whose business is not found - show them all
-        return true;
-      }
-    } else {
-      business = product.business;
-    }
-
-    // If we have business info, apply filters
-    if (business && typeof business === 'object') {
-      // Filter by search term
-      if (filters.searchTerm && 
-          !product.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) &&
-          !product.description?.toLowerCase().includes(filters.searchTerm.toLowerCase()) &&
-          !business.business_name?.toLowerCase().includes(filters.searchTerm.toLowerCase())) return false;
-      
-      // Filter by category
-      if (filters.category && filters.category !== "all" && business.category?.name !== filters.category) return false;
-      
-      // Filter by county
-      if (filters.county && filters.county !== "all" && business.county !== filters.county) return false;
-      
-      // Filter by rating
-      if (business.rating < filters.rating[0] || business.rating > filters.rating[1]) return false;
-      
-      // Filter by verified only
-      if (filters.verifiedOnly && !business.is_verified) return false;
-      
-      // Filter by in stock
-      if (filters.inStock && !product.in_stock) return false;
-    }
-    
-    // Show all products by default
-    return true;
-  }) : [];
+  // We rely on server-side pagination; products already represent the current page
+  const filteredProducts = Array.isArray(products) ? products : [];
 
   // Update total items and pages when filtered products change
   useEffect(() => {
-    setTotalItems(filteredProducts.length);
-    setTotalPages(Math.ceil(filteredProducts.length / itemsPerPage));
-    // Reset to first page when filters change
-    setCurrentPage(1);
-  }, [filteredProducts, itemsPerPage]);
+    console.log('ProductList - totalProductsCount:', totalProductsCount);
+    console.log('ProductList - filteredProducts.length:', filteredProducts.length);
+    setTotalItems(totalProductsCount || filteredProducts.length);
+    setTotalPages(Math.ceil((totalProductsCount || filteredProducts.length) / itemsPerPage) || 1);
+    console.log('ProductList - Setting totalItems to:', totalProductsCount || filteredProducts.length);
+  }, [filteredProducts, itemsPerPage, totalProductsCount]);
 
-  // Get paginated products
-  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+  // Separate effect to ensure totalProductsCount updates are handled
+  useEffect(() => {
+    console.log('ProductList - totalProductsCount changed to:', totalProductsCount);
+    if (totalProductsCount > 0) {
+      setTotalItems(totalProductsCount);
+      setTotalPages(Math.ceil(totalProductsCount / itemsPerPage));
+      console.log('ProductList - Updated totalItems to:', totalProductsCount);
+      console.log('ProductList - Updated totalPages to:', Math.ceil(totalProductsCount / itemsPerPage));
+    }
+  }, [totalProductsCount, itemsPerPage]);
+
+  // Fetch from API when page, page size, or filters change
+  useEffect(() => {
+    const params: any = { page: currentPage, limit: itemsPerPage };
+    // Map a subset of filters to API params if available
+    if (filters?.inStock !== undefined) params.in_stock = filters.inStock;
+    if (filters?.category && filters.category !== 'all') params.category = filters.category;
+    if (filters?.searchTerm) params.search = filters.searchTerm;
+    fetchProducts(params);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, itemsPerPage, filters.searchTerm, filters.category, filters.inStock]);
+
+  // Products are already paginated by server
+  const paginatedProducts = filteredProducts;
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);

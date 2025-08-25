@@ -144,9 +144,12 @@ const Navbar: React.FC = () => {
           <Link to="/contact" className="text-fem-navy hover:text-fem-terracotta transition-colors">
             Contact
           </Link>
-          <Link to="/favorites" className="text-fem-navy hover:text-fem-terracotta transition-colors">
-            Favorites
-          </Link>
+          {/* Favorites - Only when authenticated */}
+          {isAuthenticated && (
+            <Link to="/favorites" className="text-fem-navy hover:text-fem-terracotta transition-colors">
+              Favorites
+            </Link>
+          )}
         </div>
         
         {/* Desktop Actions */}
@@ -271,13 +274,15 @@ const Navbar: React.FC = () => {
               >
                 Contact
               </Link>
-              <Link 
-                to="/favorites" 
-                className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
-                onClick={closeMenu}
-              >
-                Favorites
-              </Link>
+              {isAuthenticated && (
+                <Link 
+                  to="/favorites" 
+                  className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
+                  onClick={closeMenu}
+                >
+                  Favorites
+                </Link>
+              )}
 
             </div>
 
