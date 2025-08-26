@@ -539,7 +539,7 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
     console.log('BusinessContext: Calling fetchCategories');
     fetchCategories();
     // Product pages are fetched on-demand by the products view to prevent duplicate requests
-  }, []); // Empty dependency array - only run once on mount
+  }, [fetchBusinesses, fetchCategories]); // Add function dependencies
 
   // Fetch products on mount to populate totalProductsCount
   useEffect(() => {

@@ -46,7 +46,7 @@ const categoryIcons: { [key: string]: any } = {
 const DefaultIcon = Building2;
 
 export const BusinessCategories = () => {
-  const { categories, businesses, isLoading } = useBusiness();
+  const { categories, businesses, isLoading, isLoadingBusinesses } = useBusiness();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const handleOpenAuthModal = () => {
@@ -55,20 +55,22 @@ export const BusinessCategories = () => {
 
   // Calculate business count for each category
   const getCategoryStats = () => {
-    // console.log('BusinessCategories Debug:', { 
-    //   isLoading, 
-    //   categoriesLength: categories?.length, 
-    //   businessesLength: businesses?.length,
-    //   categories: categories,
-    //   businesses: businesses?.map(b => ({ id: b.id, name: b.business_name, category: b.category }))
-    // });
+    console.log('BusinessCategories Debug:', { 
+      isLoading, 
+      isLoadingBusinesses,
+      categoriesLength: categories?.length, 
+      businessesLength: businesses?.length,
+      categories: categories,
+      businesses: businesses?.map(b => ({ id: b.id, name: b.business_name, category: b.category }))
+    });
 
-    if (isLoading) {
+    // Check if either businesses or categories are still loading
+    if (isLoading || isLoadingBusinesses) {
       return [];
     }
 
     if (!Array.isArray(categories) || !categories.length) {
-      // console.log('No categories available');
+      console.log('No categories available');
       return [];
     }
 
@@ -130,7 +132,7 @@ export const BusinessCategories = () => {
 
   const categoryStats = getCategoryStats();
 
-  if (isLoading) {
+  if (isLoading || isLoadingBusinesses) {
     return (
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
