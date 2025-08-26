@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/services/api';
 import { Hero } from '@/components/home/Hero';
 import { BusinessCategories } from '@/components/home/BusinessCategories';
-import { FeaturedBusinesses } from '@/components/home/FeaturedBusinesses';
 import { HowItWorks } from '@/components/home/HowItWorks';
 import { CommunityStats } from '@/components/home/CommunityStats';
 import { Testimonials } from '@/components/home/Testimonials';
@@ -194,7 +193,6 @@ const HomePage: React.FC = () => {
       <Hero actionButtons={renderActionButtons()} />
       {renderCommunityUserInfo()}
       <BusinessCategories />
-      <FeaturedBusinesses />
       <HowItWorks />
       <CommunityStats />
       <Testimonials />

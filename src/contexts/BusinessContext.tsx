@@ -4,7 +4,6 @@ import { apiService, Business, Category, BusinessCreateRequest, Service, Product
 interface BusinessContextType {
   businesses: Business[];
   categories: Category[];
-  featuredBusinesses: Business[];
   services: Service[];
   products: Product[];
   isLoading: boolean;
@@ -62,12 +61,7 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   const [hasNextPage, setHasNextPage] = useState(false);
   const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
-  // Computed featured businesses
-  const featuredBusinesses = useMemo(() => 
-    Array.isArray(businesses) ? businesses.filter(business => 
-      business.is_featured && business.is_active && business.is_verified
-    ) : [], [businesses]
-  );
+
 
   // Remove the computed services/products logic that causes infinite loops
   // Instead, we'll manage these directly in the fetch functions
@@ -567,7 +561,6 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   const contextValue = useMemo(() => ({
     businesses,
     categories,
-    featuredBusinesses,
     services,
     products,
     isLoading,
@@ -596,7 +589,6 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   }), [
     businesses,
     categories,
-    featuredBusinesses,
     services,
     products,
     isLoading,
