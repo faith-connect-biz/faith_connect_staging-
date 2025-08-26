@@ -131,6 +131,10 @@ export const BusinessManagementPage: React.FC = () => {
   const [showProductDetail, setShowProductDetail] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  // Service detail modal state
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [showServiceDetail, setShowServiceDetail] = useState(false);
+
   useEffect(() => {
     // Check if user is authenticated and is a business user
     if (!user) {
@@ -388,6 +392,11 @@ export const BusinessManagementPage: React.FC = () => {
     setShowProductDetail(true);
   };
 
+  const handleServiceClick = (service: Service) => {
+    setSelectedService(service);
+    setShowServiceDetail(true);
+  };
+
   const handleImageNavigation = (direction: 'next' | 'prev') => {
     if (!selectedProduct) return;
     
@@ -411,6 +420,11 @@ export const BusinessManagementPage: React.FC = () => {
     setShowProductDetail(false);
     setSelectedProduct(null);
     setCurrentImageIndex(0);
+  };
+
+  const closeServiceDetail = () => {
+    setShowServiceDetail(false);
+    setSelectedService(null);
   };
 
   const handleServiceSuccess = () => {
@@ -935,7 +949,7 @@ export const BusinessManagementPage: React.FC = () => {
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </Button>
-                          <Button variant="outline" size="sm" className="flex-1">
+                          <Button variant="outline" size="sm" className="flex-1" onClick={() => handleServiceClick(service)}>
                             <Eye className="h-4 w-4 mr-2" />
                             View
                           </Button>
@@ -1387,6 +1401,97 @@ export const BusinessManagementPage: React.FC = () => {
                   Edit Product
                 </Button>
                 <Button onClick={closeProductDetail}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Service Detail Modal */}
+      <Dialog open={showServiceDetail} onOpenChange={closeServiceDetail}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{selectedService?.name}</span>
+              <Button variant="ghost" size="sm" onClick={closeServiceDetail}>
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedService && (
+            <div className="space-y-6">
+              {/* Service Image */}
+              <div className="relative">
+                {selectedService.service_image_url ? (
+                  <img 
+                    src={selectedService.service_image_url} 
+                    alt={selectedService.name}
+                    className="w-full h-96 object-cover rounded-lg shadow-lg"
+                  />
+                ) : (
+                  <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <Settings className="h-16 w-16 text-gray-400" />
+                    <span className="ml-2 text-gray-500">No image available</span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Service Information */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">{selectedService.name}</h3>
+                  <p className="text-gray-600">{selectedService.description || 'No description available'}</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-500">Price Range</label>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {selectedService.price_range || 'Contact for pricing'}
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-500">Duration</label>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {selectedService.duration || 'Not specified'}
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-500">Status</label>
+                    <Badge variant={selectedService.is_active ? "default" : "secondary"}>
+                      {selectedService.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                  
+                  {selectedService.created_at && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-500">Added</label>
+                      <p className="text-sm text-gray-600">
+                        {new Date(selectedService.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    closeServiceDetail();
+                    handleEditService(selectedService);
+                  }}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Service
+                </Button>
+                <Button onClick={closeServiceDetail}>
                   Close
                 </Button>
               </div>
