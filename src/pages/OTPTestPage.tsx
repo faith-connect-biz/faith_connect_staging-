@@ -108,7 +108,7 @@ const OTPTestPage: React.FC = () => {
                   type="tel"
                   value={testPhone}
                   onChange={(e) => setTestPhone(e.target.value)}
-                  placeholder="254700000000"
+                  placeholder="0714777797"
                 />
               </div>
             </CardContent>

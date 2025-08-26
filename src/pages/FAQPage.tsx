@@ -63,7 +63,7 @@ const FAQPage: React.FC = () => {
     },
     {
       question: "How do I report an issue?",
-      answer: "If you encounter any issues, you can contact us through the 'About' page or email us directly at support@faithconnect.org. We typically respond within 24 hours.",
+      answer: "If you encounter any issues, you can contact us through the 'About' page or email us directly at info@faithconnect.biz. We typically respond within 24 hours.",
       category: "General"
     },
     {
@@ -151,8 +151,8 @@ const FAQPage: React.FC = () => {
               Can't find the answer you're looking for? We're here to help!
             </p>
             <div className="space-y-2 text-lg">
-              <p><strong>Email:</strong> support@faithconnect.org</p>
-              <p><strong>Phone:</strong> +254 700 000 000</p>
+              <p><strong>Email:</strong> info@faithconnect.biz</p>
+              <p><strong>Phone:</strong> 0714777797</p>
               <p><strong>Response Time:</strong> Within 24 hours</p>
             </div>
           </div>

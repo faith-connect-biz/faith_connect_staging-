@@ -631,7 +631,7 @@ const AboutPage = () => {
                   </svg>
                   ),
                   title: "Email",
-                  contact: "support@faithconnect.biz"
+                  contact: "info@faithconnect.biz"
                 },
                 {
                   icon: (
@@ -640,7 +640,7 @@ const AboutPage = () => {
                   </svg>
                   ),
                   title: "Phone",
-                  contact: "+254 700 000 000"
+                  contact: "0714777797"
                 },
                 {
                   icon: (

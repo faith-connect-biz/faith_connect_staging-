@@ -76,7 +76,7 @@ const ContactPage = () => {
                   <Mail className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-xl font-semibold text-fem-navy mb-2">Email Us</h3>
-                <p className="text-fem-terracotta font-medium mb-2">info@faithconnect.com</p>
+                <p className="text-fem-terracotta font-medium mb-2">info@faithconnect.biz</p>
                 <p className="text-gray-600 text-sm">Send us an email anytime</p>
               </div>
               
@@ -85,7 +85,7 @@ const ContactPage = () => {
                   <Phone className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-xl font-semibold text-fem-navy mb-2">Call Us</h3>
-                <p className="text-fem-terracotta font-medium mb-2">+254 700 123 456</p>
+                <p className="text-fem-terracotta font-medium mb-2">0714777797</p>
                 <p className="text-gray-600 text-sm">Mon-Fri from 8am to 6pm</p>
               </div>
               

@@ -45,6 +45,18 @@ import {
   AlertCircle
 } from 'lucide-react';
 
+// Helper function to validate URLs
+const isValidUrl = (string: string): boolean => {
+  try {
+    // If it's just a domain (e.g., "example.com"), add protocol
+    const urlString = string.startsWith('http://') || string.startsWith('https://') ? string : `https://${string}`;
+    new URL(urlString);
+    return true;
+  } catch (_) {
+    return false;
+  }
+};
+
 const BusinessRegistrationPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -195,7 +207,7 @@ const BusinessRegistrationPage = () => {
           businessType: 'both' as "products" | "services" | "both", // Default to both
           phone: business.phone || '',
           email: business.email || '',
-          website: business.website || '',
+          website: business.website || null,
           facebook_url: business.facebook_url || '',
           instagram_url: business.instagram_url || '',
           twitter_url: business.twitter_url || '',
@@ -770,11 +782,11 @@ const BusinessRegistrationPage = () => {
       long_description: formData.long_description.trim(),
       phone: formData.phone.trim(),
       email: formData.email.trim(),
-      website: formData.website.trim() || null,
-      facebook_url: formData.facebook_url.trim() || null,
-      instagram_url: formData.instagram_url.trim() || null,
-      twitter_url: formData.twitter_url.trim() || null,
-      youtube_url: formData.youtube_url.trim() || null,
+      website: formData.website.trim() && isValidUrl(formData.website.trim()) ? formData.website.trim() : null,
+      facebook_url: formData.facebook_url.trim() && isValidUrl(formData.facebook_url.trim()) ? formData.facebook_url.trim() : null,
+      instagram_url: formData.instagram_url.trim() && isValidUrl(formData.instagram_url.trim()) ? formData.instagram_url.trim() : null,
+      twitter_url: formData.twitter_url.trim() && isValidUrl(formData.twitter_url.trim()) ? formData.twitter_url.trim() : null,
+      youtube_url: formData.youtube_url.trim() && isValidUrl(formData.youtube_url.trim()) ? formData.youtube_url.trim() : null,
       address: formData.address.trim(),
       city: formData.city.trim(),
       county: formData.county.trim(),
@@ -787,6 +799,8 @@ const BusinessRegistrationPage = () => {
 
     // Debug logging to see what's being sent
     console.log('Prepared business data:', businessData);
+    console.log('Website field value:', businessData.website);
+    console.log('Website field type:', typeof businessData.website);
     console.log('Hours data being sent:', hours);
     
     // Validate hours data structure

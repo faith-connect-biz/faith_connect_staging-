@@ -60,8 +60,8 @@ const PrivacyPolicyPage: React.FC = () => {
                     Faith Connect acts as the Data Controller within the meaning of the Data Protection Act, 2019. As a Data Controller, we determine the purpose and means of processing your personal data.
                   </p>
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-gray-700 mb-2"><strong>Email:</strong> privacy@faithconnect.org</p>
-                    <p className="text-gray-700 mb-2"><strong>Phone:</strong> +254 700 000 000</p>
+                    <p className="text-gray-700 mb-2"><strong>Email:</strong> info@faithconnect.biz</p>
+                    <p className="text-gray-700 mb-2"><strong>Phone:</strong> 0714777797</p>
                     <p className="text-gray-700 mb-2"><strong>Physical Address:</strong> Faith Connect Headquarters, Nairobi, Kenya</p>
                     <p className="text-gray-700"><strong>ODPC Registration Number:</strong> [To be provided]</p>
                   </div>
@@ -325,8 +325,8 @@ const PrivacyPolicyPage: React.FC = () => {
                   <p className="text-gray-700 mb-4">If you have any questions, concerns, or feedback regarding this Privacy Policy or our data protection practices, please contact:</p>
               <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-gray-700 mb-2"><strong>Faith Connect Data Protection Officer</strong></p>
-                    <p className="text-gray-700 mb-2"><strong>Email:</strong> privacy@faithconnect.org</p>
-                    <p className="text-gray-700 mb-2"><strong>Phone:</strong> +254 700 000 000</p>
+                    <p className="text-gray-700 mb-2"><strong>Email:</strong> info@faithconnect.biz</p>
+                    <p className="text-gray-700 mb-2"><strong>Phone:</strong> 0714777797</p>
                     <p className="text-gray-700"><strong>Postal Address:</strong> Faith Connect Headquarters, Nairobi, Kenya</p>
               </div>
             </section>

@@ -179,8 +179,8 @@ const TermsAndConditionsPage = () => {
                 <section className="mb-8">
                   <h2 className="text-2xl font-bold text-fem-navy mb-4">11. Contact Information</h2>
                   <div className="bg-gray-50 p-6 rounded-lg">
-                    <p className="text-gray-700 mb-2"><strong>Email:</strong> legal@faithconnect.org</p>
-                    <p className="text-gray-700 mb-2"><strong>Phone:</strong> +254 700 000 000</p>
+                    <p className="text-gray-700 mb-2"><strong>Email:</strong> info@faithconnect.biz</p>
+                    <p className="text-gray-700 mb-2"><strong>Phone:</strong> 0714777797</p>
                     <p className="text-gray-700"><strong>Address:</strong> Faith Connect Headquarters, Nairobi, Kenya</p>
                   </div>
                 </section>
