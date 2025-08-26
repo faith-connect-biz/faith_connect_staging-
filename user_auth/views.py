@@ -12,7 +12,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
@@ -33,7 +33,7 @@ from rest_framework.response import Response
 from utils.communication import send_email_verification_code, send_welcome_email, send_sms, send_otp_sms, send_welcome_message, send_password_reset_message
 from .UserSerializer.Serializers import RegisterSerializer, LoginSerializer, ForgotPasswordOTPSerializer, \
     ResetPasswordWithOTPSerializer, UserRegistrationSerializer
-from .utils import success_response, error_response
+from .utils import success_response, error_response, normalize_phone
 from .serializers import SignupSerializer
 
 # Helper functions
@@ -135,12 +135,20 @@ class RegisterAPIView(APIView):
                 try:
                     with transaction.atomic():
                         # Create user with inactive status (will be activated after OTP verification)
+                        # Normalize phone if provided to avoid duplicates across formats
+                        normalized_phone = None
+                        if phone:
+                            try:
+                                normalized_phone = normalize_phone(phone)
+                            except Exception:
+                                normalized_phone = phone
+
                         user = User.objects.create(
                             first_name=user_data['first_name'],
                             last_name=user_data['last_name'],
                             partnership_number=user_data['partnership_number'],
                             email=email,
-                            phone=phone,
+                            phone=normalized_phone,
                             user_type=user_data['user_type'],
                             password=make_password(user_data['password']),
                             is_active=False,  # User is inactive until OTP verification
@@ -197,6 +205,20 @@ class RegisterAPIView(APIView):
                                     'message': f'Failed to send OTP: {str(e)}'
                                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
+                except IntegrityError as e:
+                    # Handle unique constraint violations gracefully
+                    error_message = str(e)
+                    if 'user_auth_user.email' in error_message or 'UNIQUE constraint failed: user_auth_user.email' in error_message:
+                        friendly = 'This email is already registered.'
+                    elif 'user_auth_user.phone' in error_message or 'UNIQUE constraint failed: user_auth_user.phone' in error_message:
+                        friendly = 'This phone number is already registered.'
+                    else:
+                        friendly = 'A uniqueness constraint failed.'
+                    logger.warning(f"[REGISTER INTEGRITY ERROR] {error_message}")
+                    return Response({
+                        'success': False,
+                        'message': friendly
+                    }, status=status.HTTP_400_BAD_REQUEST)
                 except Exception as e:
                     logger.exception(f"[REGISTER CREATE FAILED] error={str(e)}")
                     return Response({
@@ -281,6 +303,9 @@ class ForgotPasswordOTPView(APIView):
             try:
                 if is_email:
                     user = User.objects.get(email=identifier)
+                    # Enforce reset method matches registration contact
+                    if not user.email:
+                        return error_response("This account was registered with phone. Use phone to reset.")
                     # Generate OTP for email
                     otp = str(random.randint(100000, 999999))
                     user.otp = otp
@@ -307,7 +332,14 @@ class ForgotPasswordOTPView(APIView):
                         
                 else:
                     # Phone number
-                    user = User.objects.get(phone=identifier)
+                    try:
+                        normalized = normalize_phone(identifier)
+                    except Exception as e:
+                        return error_response(str(e))
+                    user = User.objects.get(phone=normalized)
+                    # Enforce reset method matches registration contact
+                    if not user.phone:
+                        return error_response("This account was registered with email. Use email to reset.")
                     otp = str(random.randint(100000, 999999))
                     user.otp = otp
                     user.save()
@@ -397,12 +429,35 @@ class SendPhoneOTPView(APIView):
     permission_classes = [AllowAny]
     
     def post(self, request):
-        phone = request.data.get("phone_number")
+        # Accept multiple possible client field names
+        phone = (
+            request.data.get("phone_number")
+            or request.data.get("phone")
+            or request.data.get("phoneNumber")
+            or request.data.get("identifier")
+        )
+        if isinstance(phone, str):
+            phone = phone.strip()
         if not phone:
             return error_response("Phone number is required")
 
         try:
-            user = User.objects.get(phone=phone)
+            # Normalize phone for consistent lookup
+            try:
+                normalized_phone = normalize_phone(phone)
+            except Exception:
+                normalized_phone = phone
+
+            # Prefer the most recent unverified user if duplicates exist
+            user = (
+                User.objects.filter(phone=normalized_phone, is_active=False)
+                .order_by('-id')
+                .first()
+            ) or (
+                User.objects.filter(phone=normalized_phone).order_by('-id').first()
+            )
+            if not user:
+                raise User.DoesNotExist
         except User.DoesNotExist:
             return error_response("User with this phone number does not exist")
 
@@ -457,34 +512,64 @@ class ConfirmPhoneOTPView(APIView):
     permission_classes = [AllowAny]
     
     def post(self, request):
-        phone = request.data.get("phone_number")
-        otp = request.data.get("otp")
+        # Accept multiple possible client field names
+        phone = (
+            request.data.get("phone_number")
+            or request.data.get("phone")
+            or request.data.get("phoneNumber")
+            or request.data.get("identifier")
+        )
+        otp = (
+            request.data.get("otp")
+            or request.data.get("token")
+            or request.data.get("code")
+        )
+        if isinstance(phone, str):
+            phone = phone.strip()
+        if isinstance(otp, str):
+            otp = otp.strip()
 
+        if not phone or not otp:
+            return error_response(message="Phone number and OTP are required")
+
+        # Normalize phone for consistent lookup
         try:
-            user = User.objects.get(phone=phone)
-        except User.DoesNotExist:
-            return error_response(message="User not found")
+            normalized_phone = normalize_phone(phone)
+        except Exception:
+            normalized_phone = phone
 
-        if user.otp == otp:
-            user.phone_verified = True
-            user.otp = None
-            
-            # Activate user account after phone verification
-            user.is_active = True
-            user.is_verified = True
-            user.save()
-            
-            # Send welcome SMS
-            try:
-                send_welcome_message(phone, f"{user.first_name} {user.last_name}")
-                logger.info(f"Welcome SMS sent to {phone} after verification")
-            except Exception as e:
-                logger.warning(f"Failed to send welcome SMS: {str(e)}")
-                # Don't fail the verification if welcome SMS fails
-            
-            logger.info(f"[PHONE VERIFICATION SUCCESS] - User {user.id}, Phone: {phone}")
-            return success_response(message="Phone number verified successfully! Your account is now active.")
-        return error_response(message="Invalid OTP.")
+        # Find matching inactive user by phone and OTP first; fall back to any by phone
+        user = (
+            User.objects.filter(phone=normalized_phone, otp=str(otp), is_active=False)
+            .order_by('-id')
+            .first()
+        )
+
+        if not user:
+            # If no exact match, attempt to locate latest by phone for better error messaging
+            fallback_user = User.objects.filter(phone=normalized_phone).order_by('-id').first()
+            if fallback_user:
+                logger.debug(
+                    f"🔧 DEV TESTING - OTP Verification Failed: Expected {fallback_user.otp}, Got {otp}"
+                )
+            return error_response(message="Invalid OTP.")
+
+        # OTP is valid for this user, activate and clear OTP
+        user.phone_verified = True
+        user.otp = None
+        user.is_active = True
+        user.is_verified = True
+        user.save()
+
+        # Send welcome SMS (best effort)
+        try:
+            send_welcome_message(normalized_phone, f"{user.first_name} {user.last_name}")
+            logger.info(f"Welcome SMS sent to {normalized_phone} after verification")
+        except Exception as e:
+            logger.warning(f"Failed to send welcome SMS: {str(e)}")
+
+        logger.info(f"[PHONE VERIFICATION SUCCESS] - User {user.id}, Phone: {normalized_phone}")
+        return success_response(message="Phone number verified successfully! Your account is now active.")
 
 
 class VerifyRegistrationOTPView(APIView):
@@ -626,15 +711,9 @@ class ResendOTPView(APIView):
                     'message': 'User not found or already verified.'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            # Generate new OTP
+            # Generate new OTP and store it on the user model for a unified flow
             new_otp = generate_otp()
-            
-            # Update user's OTP based on contact method
-            if contact_method == 'email':
-                user.email_token = new_otp
-            else:
-                user.otp = new_otp
-            
+            user.otp = new_otp
             user.save()
             
             logger.info(f"New OTP generated for user {user.id}: {new_otp}")
@@ -644,9 +723,9 @@ class ResendOTPView(APIView):
                 if contact_method == 'email':
                     send_verification_email(contact_value, new_otp)
                     # Log for development testing
-                    logger.debug(f"🔧 DEV TESTING - Resend Email Token: {new_otp} sent to {contact_value}")
-                    print(f"🔧 DEV TESTING - Resend Email Token: {new_otp} sent to {contact_value}")
-                    message = 'New verification token sent to your email.'
+                    logger.debug(f"🔧 DEV TESTING - Resend Email OTP: {new_otp} sent to {contact_value}")
+                    print(f"🔧 DEV TESTING - Resend Email OTP: {new_otp} sent to {contact_value}")
+                    message = 'New OTP sent to your email.'
                 else:
                     send_verification_sms(contact_value, new_otp)
                     # Log for development testing

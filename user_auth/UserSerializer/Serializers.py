@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
+from ..utils import normalize_phone
 
 User = get_user_model()
 
@@ -35,8 +36,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def validate_phone(self, value):
-        if value and User.objects.filter(phone=value).exists():
-            raise serializers.ValidationError("This phone number is already registered.")
+        if value:
+            try:
+                normalized = normalize_phone(value)
+            except ValueError as e:
+                raise serializers.ValidationError(str(e))
+            if User.objects.filter(phone=normalized).exists():
+                raise serializers.ValidationError("This phone number is already registered.")
         return value
 
     def validate(self, data):
@@ -58,7 +64,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         
         if phone:
             try:
-                existing_user = User.objects.get(phone=phone)
+                normalized_phone = normalize_phone(phone)
+            except ValueError as e:
+                raise serializers.ValidationError({'phone': str(e)})
+            # Replace incoming phone with normalized value for downstream creation
+            data['phone'] = normalized_phone
+            try:
+                existing_user = User.objects.get(phone=normalized_phone)
             except User.DoesNotExist:
                 pass
         
@@ -111,6 +123,14 @@ class LoginSerializer(serializers.Serializer):
         password = data.get('password')
 
         user = None
+        # Normalize phone identifiers to canonical format before lookup
+        if auth_method == 'phone':
+            try:
+                identifier = normalize_phone(identifier)
+            except Exception:
+                # If normalization fails, continue with given identifier to avoid leaking hints
+                pass
+
         lookup_field = 'email' if auth_method == 'email' else 'phone'
 
         try:
@@ -160,7 +180,13 @@ class ForgotPasswordOTPSerializer(serializers.Serializer):
             if not User.objects.filter(email=value).exists():
                 raise serializers.ValidationError("User with this email does not exist.")
         else:
-            if not User.objects.filter(phone=value).exists():
+            # Normalize phone before lookup
+            from ..utils import normalize_phone
+            try:
+                normalized = normalize_phone(value)
+            except ValueError as e:
+                raise serializers.ValidationError(str(e))
+            if not User.objects.filter(phone=normalized).exists():
                 raise serializers.ValidationError("User with this phone number does not exist.")
         return value
 
@@ -175,11 +201,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     """
     Serializer for the new two-step registration process
     """
-    # Map camelCase frontend fields to snake_case model fields
-    firstName = serializers.CharField(source='first_name', required=True)
-    lastName = serializers.CharField(source='last_name', required=True)
-    userType = serializers.CharField(source='user_type', required=True)
-    partnershipNumber = serializers.CharField(source='partnership_number', required=True)
+    # Map camelCase frontend fields to snake_case model fields (also accept snake_case aliases)
+    firstName = serializers.CharField(source='first_name', required=False)
+    lastName = serializers.CharField(source='last_name', required=False)
+    userType = serializers.CharField(source='user_type', required=False)
+    partnershipNumber = serializers.CharField(source='partnership_number', required=False)
 
     class Meta:
         model = User
@@ -190,6 +216,20 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'password': {'write_only': True, 'min_length': 6},
         }
+
+    def to_internal_value(self, data):
+        """Allow both camelCase and snake_case inputs by mapping aliases."""
+        data = dict(data)  # make a shallow copy
+        # If camelCase keys are missing, backfill from snake_case
+        if 'firstName' not in data and 'first_name' in data:
+            data['firstName'] = data['first_name']
+        if 'lastName' not in data and 'last_name' in data:
+            data['lastName'] = data['last_name']
+        if 'userType' not in data and 'user_type' in data:
+            data['userType'] = data['user_type']
+        if 'partnershipNumber' not in data and 'partnership_number' in data:
+            data['partnershipNumber'] = data['partnership_number']
+        return super().to_internal_value(data)
 
     def validate_partnershipNumber(self, value):
         if not value:
@@ -209,6 +249,19 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def validate(self, data):
         email = data.get('email')
         phone = data.get('phone')
+        # Ensure the required mapped fields exist regardless of input casing
+        missing = []
+        if not data.get('first_name'):
+            missing.append('firstName')
+        if not data.get('last_name'):
+            missing.append('lastName')
+        if not data.get('user_type'):
+            missing.append('userType')
+        if not data.get('partnership_number'):
+            missing.append('partnershipNumber')
+        if missing:
+            # Return errors matching camelCase names expected by frontend
+            raise serializers.ValidationError({field: ["This field is required."] for field in missing})
 
         # Ensure at least one contact method is provided
         if not email and not phone:

@@ -31,14 +31,15 @@ def is_valid_image_url(url):
 
 def get_image_fallback_url(image_type='profile'):
     """Get fallback image URL based on type"""
+    # Use placeholder image services instead of local static files to prevent redirect loops
     fallback_images = {
-        'profile': '/static/images/default-profile.png',
-        'logo': '/static/images/default-logo.png',
-        'business': '/static/images/default-business.png',
-        'service': '/static/images/default-service.png',
-        'product': '/static/images/default-product.png',
+        'profile': 'https://via.placeholder.com/150x150/cccccc/666666?text=Profile',
+        'logo': 'https://via.placeholder.com/200x100/cccccc/666666?text=Logo',
+        'business': 'https://via.placeholder.com/300x200/cccccc/666666?text=Business',
+        'service': 'https://via.placeholder.com/300x200/cccccc/666666?text=Service',
+        'product': 'https://via.placeholder.com/300x200/cccccc/666666?text=Product',
     }
-    return fallback_images.get(image_type, '/static/images/default-image.png')
+    return fallback_images.get(image_type, 'https://via.placeholder.com/300x200/cccccc/666666?text=Image')
 
 def convert_cloudfront_to_s3_url(cloudfront_url):
     """Convert CloudFront URL to direct S3 URL if possible"""
