@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import AuthModal from "@/components/auth/AuthModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Mail, Phone, MapPin, Clock, MessageCircle, Heart, Zap, Users, ChevronUp } from "lucide-react";
+import { Mail, Phone, MapPin, Clock, MessageCircle, Heart, Zap, Users, ChevronUp, CheckCircle, AlertCircle } from "lucide-react";
 import { motion, useScroll, useTransform } from "framer-motion";
 
 const ContactPage = () => {
@@ -18,6 +18,9 @@ const ContactPage = () => {
     subject: "",
     message: ""
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [submitMessage, setSubmitMessage] = useState('');
 
   const handleOpenAuthModal = () => {
     setIsAuthModalOpen(true);
@@ -41,11 +44,67 @@ const ContactPage = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log("Form submitted:", formData);
-    // You can add your form submission logic here
+    setIsSubmitting(true);
+    setSubmitStatus('idle');
+    setSubmitMessage('');
+
+    try {
+      // Determine API base URL - use localhost for development
+      const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
+      const API_BASE_URL = isDevelopment 
+        ? 'http://localhost:8000' 
+        : import.meta.env.VITE_API_BASE_URL || 'https://femdjango-production.up.railway.app';
+      
+      // Prepare the payload to match the backend API expectations
+      const payload = {
+        name: formData.fullName.trim(),
+        email: formData.email.trim(),
+        subject: formData.subject.trim(),
+        message: formData.message.trim()
+      };
+
+      console.log('Submitting contact form to:', `${API_BASE_URL}/api/contact`);
+      console.log('Payload:', payload);
+
+      const response = await fetch(`${API_BASE_URL}/api/contact`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      console.log('Contact form response:', data);
+
+      if (response.ok && data.success) {
+        setSubmitStatus('success');
+        setSubmitMessage('Thank you! Your message has been sent successfully. We\'ll get back to you soon.');
+        
+        // Reset form after successful submission
+        setFormData({
+          fullName: "",
+          email: "",
+          subject: "",
+          message: ""
+        });
+      } else {
+        throw new Error(data.message || 'Failed to send message');
+      }
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      setSubmitStatus('error');
+      setSubmitMessage(
+        error instanceof Error 
+          ? `Failed to send message: ${error.message}` 
+          : 'Failed to send message. Please try again later.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -174,6 +233,22 @@ const ContactPage = () => {
                   <h3 className="text-2xl font-bold text-fem-navy mb-2">Contact Form</h3>
                   <p className="text-gray-600 mb-6">We'll get back to you within 24 hours</p>
                   
+                  {/* Status Message */}
+                  {submitStatus !== 'idle' && (
+                    <div className={`p-4 rounded-lg flex items-center space-x-2 ${
+                      submitStatus === 'success' 
+                        ? 'bg-green-50 text-green-700 border border-green-200' 
+                        : 'bg-red-50 text-red-700 border border-red-200'
+                    }`}>
+                      {submitStatus === 'success' ? (
+                        <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                      )}
+                      <p className="text-sm">{submitMessage}</p>
+                    </div>
+                  )}
+
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
                       <label htmlFor="fullName" className="block text-sm font-medium text-fem-navy mb-2">
@@ -241,12 +316,22 @@ const ContactPage = () => {
                     
                     <Button
                       type="submit"
-                      className="w-full bg-gradient-to-r from-fem-terracotta to-fem-navy text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all duration-300 flex items-center justify-center space-x-2"
+                      disabled={isSubmitting}
+                      className="w-full bg-gradient-to-r from-fem-terracotta to-fem-navy text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                      </svg>
-                      <span>Send Message</span>
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Sending...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                          </svg>
+                          <span>Send Message</span>
+                        </>
+                      )}
                     </Button>
                   </form>
                 </div>
