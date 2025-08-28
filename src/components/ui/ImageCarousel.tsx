@@ -103,7 +103,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
 
       {/* Thumbnail Strip */}
       {displayImages.length > 1 && (
-        <div className="flex justify-center gap-3 mt-6 px-4 overflow-x-auto">
+        <div className="flex justify-center gap-3 mt-6 px-4">
           {displayImages.map((image, index) => (
             <button
               key={index}
