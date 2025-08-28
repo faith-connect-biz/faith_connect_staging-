@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/services/api';
@@ -13,12 +13,23 @@ import {
 } from 'lucide-react';
 
 export const CallToAction = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isBusinessUser } = useAuth();
+  const navigate = useNavigate();
   const [hasBusiness, setHasBusiness] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const handleOpenAuthModal = () => {
     setIsAuthModalOpen(true);
+  };
+
+  const handleListBusinessClick = () => {
+    // If user is authenticated and is a business user, navigate directly
+    if (isAuthenticated && isBusinessUser()) {
+      navigate('/register-business');
+    } else {
+      // Otherwise, open the auth modal
+      handleOpenAuthModal();
+    }
   };
 
   useEffect(() => {
@@ -129,7 +140,7 @@ export const CallToAction = () => {
                      </div>
                    ) : (
                      <Button 
-                       onClick={handleOpenAuthModal}
+                       onClick={handleListBusinessClick}
                        variant="outline" 
                        className="w-full text-lg py-6 rounded-2xl border-2 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white group-hover:scale-105 transition-all duration-300"
                      >
