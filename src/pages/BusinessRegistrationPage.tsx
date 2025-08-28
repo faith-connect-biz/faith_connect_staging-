@@ -639,23 +639,7 @@ const BusinessRegistrationPage = () => {
       }
     }
 
-    // Social media URL validation (if provided) - removed https:// requirement
-    const socialMediaFields = [
-      { field: 'facebook_url', name: 'Facebook' },
-      { field: 'instagram_url', name: 'Instagram' },
-          { field: 'twitter_url', name: 'Twitter' },
-    { field: 'youtube_url', name: 'YouTube' }
-    ];
-
-    socialMediaFields.forEach(({ field, name }) => {
-      const url = formData[field as keyof typeof formData] as string;
-      if (url.trim()) {
-        // Allow any non-empty string for social media URLs
-        if (url.trim().length < 3) {
-          errors.push(`Please enter a valid ${name} username or URL`);
-        }
-      }
-    });
+    // Social media fields - no validation requiredv
 
     if (!formData.address.trim()) {
       errors.push("Business address is required");
@@ -836,10 +820,10 @@ const BusinessRegistrationPage = () => {
       phone: formData.phone.trim(),
       email: formData.email.trim(),
       website: formData.website.trim() && isValidUrl(formData.website.trim()) ? formData.website.trim() : null,
-      facebook_url: formData.facebook_url.trim() && isValidUrl(formData.facebook_url.trim()) ? formData.facebook_url.trim() : null,
-      instagram_url: formData.instagram_url.trim() && isValidUrl(formData.instagram_url.trim()) ? formData.instagram_url.trim() : null,
-      twitter_url: formData.twitter_url.trim() && isValidUrl(formData.twitter_url.trim()) ? formData.twitter_url.trim() : null,
-      youtube_url: formData.youtube_url.trim() && isValidUrl(formData.youtube_url.trim()) ? formData.youtube_url.trim() : null,
+      facebook_url: formData.facebook_url.trim() || null,
+      instagram_url: formData.instagram_url.trim() || null,
+      twitter_url: formData.twitter_url.trim() || null,
+      youtube_url: formData.youtube_url.trim() || null,
       address: formData.address.trim(),
       city: formData.city.trim(),
       county: formData.county.trim(),

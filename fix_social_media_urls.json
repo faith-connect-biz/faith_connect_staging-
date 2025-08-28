@@ -1,0 +1,62 @@
+{
+  "business_name": "Loriq",
+  "category_id": 11,
+  "description": "Loriq is a consultancy firm specializing in environmental and social safeguards, feasibility studies, resettlement action planning, socio-economic assessments, livelihood restoration, and community development planning. We also support clients in achieving compliance with regulatory requirements, including environmental licensing and permitting processes. What makes us unique is our ability to combine technical expertise, data-driven analysis, and community engagement to deliver integrated solutions that align development goals with sustainability, resilience, and inclusivity.",
+  "long_description": "Loriq is a multidisciplinary consultancy dedicated to advancing sustainable development through innovative, community-centred, and compliance-driven solutions. Our services cover feasibility studies, Environmental and Social Impact Assessments (ESIA), Resettlement Action Plans (RAP), Socio-economic surveys, Livelihood Restoration Plans (LRP), Community Development Planning (CDP) and Asset and Inventory valuation.\nWe guide clients through regulatory and compliance processes, including environmental licensing, permitting, and alignment with both national legislation and international safeguard standards. Our approach combines technical expertise, data-driven methodologies, and participatory engagement to ensure that every project is legally compliant, socially inclusive, and environmentally sound.\nOur mission is to empower governments, private sector organizations, and development partners with practical solutions that enhance resilience, foster inclusive growth, and deliver long-term impact. With a team of seasoned experts, Loriq Investments Limited bridges the gap between development priorities and sustainability imperatives, making us a trusted partner in shaping a greener and more equitable future.",
+  "phone": "+254111549840",
+  "email": "Info@loriq-consulting.com",
+  "website": null,
+  "address": "105855-00101 Ngong road",
+  "city": "Nairobi",
+  "county": "Nairobi",
+  "zip_code": "00101",
+  "hours": [
+    {
+      "day_of_week": 1,
+      "open_time": null,
+      "close_time": null,
+      "is_closed": true
+    },
+    {
+      "day_of_week": 2,
+      "open_time": "08:00",
+      "close_time": "17:00",
+      "is_closed": false
+    },
+    {
+      "day_of_week": 3,
+      "open_time": null,
+      "close_time": null,
+      "is_closed": true
+    },
+    {
+      "day_of_week": 4,
+      "open_time": "08:00",
+      "close_time": "17:00",
+      "is_closed": false
+    },
+    {
+      "day_of_week": 5,
+      "open_time": null,
+      "close_time": null,
+      "is_closed": true
+    },
+    {
+      "day_of_week": 6,
+      "open_time": null,
+      "close_time": null,
+      "is_closed": false
+    },
+    {
+      "day_of_week": 0,
+      "open_time": null,
+      "close_time": null,
+      "is_closed": true
+    }
+  ],
+  "services": [],
+  "products": [],
+  "features": [],
+  "photo_request": null,
+  "photo_request_notes": null
+}

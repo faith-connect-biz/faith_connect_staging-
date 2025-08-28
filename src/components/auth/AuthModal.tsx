@@ -113,7 +113,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     onClose();
   };
 
-  const { login, register } = useAuth();
+  const { login, register, verifyRegistrationOTP, resendRegistrationOTP } = useAuth();
   const { toast } = useToast();
   const { handleError, handleAsyncError } = useErrorHandler({ context: 'auth' });
   const navigate = useNavigate();
@@ -321,11 +321,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const handleVerifyOTP = async (otp: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const response = await apiService.verifyOTP({
-        otp,
-        phone: usePhone ? signupData.phone : undefined,
-        email: usePhone ? undefined : signupData.email
-      });
+      // Use the registration OTP verification method from AuthContext
+      const response = await verifyRegistrationOTP(otp);
 
       if (response.success) {
           toast({
@@ -349,17 +346,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const handleResendOTP = async () => {
     try {
-      const response = await apiService.sendOTP({
-        phone: usePhone ? signupData.phone : undefined,
-        email: usePhone ? undefined : signupData.email
-      });
+      // Use the registration OTP resend method from AuthContext
+      const response = await resendRegistrationOTP();
       
       if (response.success) {
         toast({
           title: "Code Resent!",
-          description: usePhone 
-            ? "A new verification code has been sent to your phone."
-            : "A new verification code has been sent to your email.",
+          description: "A new verification code has been sent to your account.",
         });
       } else {
         handleError(response.message || 'Failed to resend code', 'otp-resend');
@@ -947,3 +940,5 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 </div>
 );
 }
+
+
