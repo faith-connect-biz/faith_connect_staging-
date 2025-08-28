@@ -76,8 +76,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     userType: 'community',
     partnershipNumber: ''
   });
-  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('phone'); // Force phone for now
-  const [usePhone, setUsePhone] = useState(true); // Toggle between phone and email - force phone for now
+  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('phone'); // Allow both email and phone
+  const [usePhone, setUsePhone] = useState(true); // Toggle between phone and email - allow both
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -118,13 +118,16 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const { handleError, handleAsyncError } = useErrorHandler({ context: 'auth' });
   const navigate = useNavigate();
 
-  // Handle toggle between phone and email - disabled for now
+  // Handle toggle between phone and email - now enabled
   const handleToggleChange = (checked: boolean) => {
-    // Email is temporarily disabled, so force phone
-    setUsePhone(true);
-    setAuthMethod('phone');
-    // Clear email data since it's not usable
-    setSignupData(prev => ({ ...prev, email: '' }));
+    setUsePhone(checked);
+    setAuthMethod(checked ? 'phone' : 'email');
+    // Clear the other field when switching
+    if (checked) {
+      setSignupData(prev => ({ ...prev, email: '' }));
+    } else {
+      setSignupData(prev => ({ ...prev, phone: '' }));
+    }
   };
 
   // Reset all states when modal opens to ensure clean state
@@ -211,7 +214,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       setAuthMethod('phone');
       setSignupData(prev => ({ ...prev, email: '' }));
     } else {
-      // Set default to phone for login (email temporarily disabled)
+      // Set default to phone for login (email now enabled)
       setUsePhone(true);
       setAuthMethod('phone');
       setSignupData(prev => ({ ...prev, phone: '' }));
@@ -240,7 +243,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       await login({ 
         identifier, 
         password, 
-        auth_method: 'phone' // Force phone since email is disabled
+        auth_method: usePhone ? 'phone' : 'email'
       });
       toast({
         title: "Success!",
@@ -320,8 +323,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     try {
       const response = await apiService.verifyOTP({
         otp,
-        phone: signupData.phone,
-        email: undefined
+        phone: usePhone ? signupData.phone : undefined,
+        email: usePhone ? undefined : signupData.email
       });
 
       if (response.success) {
@@ -347,14 +350,16 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const handleResendOTP = async () => {
     try {
       const response = await apiService.sendOTP({
-        phone: signupData.phone,
-        email: undefined
+        phone: usePhone ? signupData.phone : undefined,
+        email: usePhone ? undefined : signupData.email
       });
       
       if (response.success) {
         toast({
           title: "Code Resent!",
-          description: "A new verification code has been sent to your phone.",
+          description: usePhone 
+            ? "A new verification code has been sent to your phone."
+            : "A new verification code has been sent to your email.",
         });
       } else {
         handleError(response.message || 'Failed to resend code', 'otp-resend');
@@ -539,13 +544,16 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               {/* OTP Input Component - This will handle all the display */}
               <OTPInput
                 type="signup"
-                email={undefined} // Email temporarily disabled
-                phone={signupData.phone} // Force phone
+                email={usePhone ? undefined : signupData.email}
+                phone={usePhone ? signupData.phone : undefined}
                 onVerify={handleVerifyOTP}
                 onResend={handleResendOTP}
                 onBack={handleBackToSignup}
-                title="Verify Your Phone" // Email temporarily disabled
-                description="We sent a 6-digit verification code to your phone number"
+                title={usePhone ? "Verify Your Phone" : "Verify Your Email"}
+                description={usePhone 
+                  ? "We sent a 6-digit verification code to your phone number"
+                  : "We sent a 6-digit verification code to your email address"
+                }
               />
 
               {/* Back to Signup Button */}
@@ -580,14 +588,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium">Login with</Label>
                       <div className="flex items-center space-x-2">
-                        <span className="text-xs text-gray-400 font-medium">
-                          Email (Temporarily Disabled)
+                        <span className={`text-xs ${!usePhone ? 'text-fem-terracotta font-medium' : 'text-gray-500'}`}>
+                          Email
                         </span>
                         <Switch
                           checked={usePhone}
                           onCheckedChange={handleToggleChange}
                           className="data-[state=checked]:bg-fem-terracotta"
-                          disabled={true}
                         />
                         <span className={`text-xs ${usePhone ? 'text-fem-terracotta font-medium' : 'text-gray-500'}`}>
                           Phone
@@ -612,15 +619,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       </div>
                     ) : (
                       <div>
-                        <Label htmlFor="login-email" className="text-gray-400">Email Address (Temporarily Disabled)</Label>
+                        <Label htmlFor="login-email">Email Address</Label>
                         <Input
                           id="login-email"
                           name="email"
                           type="email"
-                          placeholder="Email temporarily disabled - use phone instead"
+                          placeholder="Enter your email address"
                           required
-                          disabled={true}
-                          className="bg-gray-100 text-gray-400 cursor-not-allowed"
+                          className="focus:ring-fem-terracotta focus:border-fem-terracotta"
                         />
                       </div>
                     )}
@@ -722,17 +728,16 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       <div className="flex items-center justify-between">
                         <Label className="text-sm font-medium">Contact Method</Label>
                         <div className="flex items-center space-x-2">
-                          <span className="text-xs text-gray-400 font-medium">
-                            Email (Temporarily Disabled)
+                          <span className={`text-xs ${!usePhone ? 'text-fem-terracotta font-medium' : 'text-gray-500'}`}>
+                            Email
                           </span>
                           <Switch
                             checked={usePhone}
                             onCheckedChange={handleToggleChange}
                             className="data-[state=checked]:bg-fem-terracotta"
-                            disabled={true}
                           />
                           <span className={`text-xs ${usePhone ? 'text-fem-terracotta font-medium' : 'text-gray-500'}`}>
-                            Phone (Default)
+                            Phone
                           </span>
                         </div>
                       </div>
@@ -756,19 +761,18 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         </div>
                       ) : (
                         <div>
-                          <Label htmlFor="email" className="text-sm text-gray-400">Email Address (Temporarily Disabled)</Label>
+                          <Label htmlFor="email" className="text-sm">Email Address</Label>
                           <Input
                             id="email"
                             type="email"
                             value={signupData.email}
                             onChange={(e) => setSignupData({...signupData, email: e.target.value})}
-                            placeholder="Email temporarily disabled - use phone instead"
-                            className="text-sm bg-gray-100 text-gray-400 cursor-not-allowed"
+                            placeholder="Enter your email address"
+                            className="text-sm focus:ring-fem-terracotta focus:border-fem-terracotta"
                             required
-                            disabled={true}
                           />
-                          <p className="text-xs text-gray-400 mt-1">
-                            Email verification temporarily disabled - use phone instead
+                          <p className="text-xs text-gray-500 mt-1">
+                            OTP will be sent to this email address
                           </p>
                         </div>
                       )}
