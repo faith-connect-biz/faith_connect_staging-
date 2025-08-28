@@ -631,13 +631,8 @@ const BusinessRegistrationPage = () => {
       errors.push("Please enter a valid email address");
     }
 
-    // Website validation (if provided) - removed https:// requirement
-    if (formData.website.trim()) {
-      // Allow any non-empty string for website URLs
-      if (formData.website.trim().length < 3) {
-        errors.push("Please enter a valid website URL or domain");
-      }
-    }
+    // Website validation (if provided) - no validation required
+    // Website field accepts any non-empty string
 
     // Social media fields - no validation requiredv
 
@@ -819,7 +814,7 @@ const BusinessRegistrationPage = () => {
       long_description: formData.long_description.trim(),
       phone: formData.phone.trim(),
       email: formData.email.trim(),
-      website: formData.website.trim() && isValidUrl(formData.website.trim()) ? formData.website.trim() : null,
+      website: formData.website.trim() || null,
       facebook_url: formData.facebook_url.trim() || null,
       instagram_url: formData.instagram_url.trim() || null,
       twitter_url: formData.twitter_url.trim() || null,
