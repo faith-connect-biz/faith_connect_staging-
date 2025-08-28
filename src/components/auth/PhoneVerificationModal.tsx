@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Phone, ArrowLeft } from 'lucide-react';
 
 interface PhoneVerificationModalProps {
@@ -22,6 +23,7 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
   onVerificationSuccess,
   purpose
 }) => {
+  const { verifyRegistrationOTP } = useAuth();
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -73,7 +75,7 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
 
     setIsLoading(true);
     try {
-      await apiService.verifyOTP({ phone, otp, purpose });
+      await verifyRegistrationOTP(otp);
       toast({
         title: "Success",
         description: "Phone number verified successfully!",

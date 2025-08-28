@@ -324,7 +324,6 @@ class ApiService {
           'verify-email',
           'verify-email-confirm',
           'verify-phone',
-          'verify-phone-confirm',
           'forgot-password',
           'reset-password',
           'categories'
@@ -536,7 +535,7 @@ class ApiService {
   }
 
   async verifyOTP(data: OTPVerificationRequest): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.post('/verify-phone-confirm', data);
+    const response = await this.api.post('/verify-registration-otp', data);
     return response.data;
   }
 
