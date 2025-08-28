@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { cn } from '@/lib/utils';
+import React from "react";
+import { cn } from "@/lib/utils";
 
 interface ImageWithFallbackProps {
-  src?: string | null;
+  src: string | null | undefined;
   alt: string;
   fallbackSrc?: string;
   className?: string;
@@ -20,41 +20,24 @@ export const ImageWithFallback: React.FC<ImageWithFallbackProps> = ({
   onLoad,
   ...props
 }) => {
-  const [imgSrc, setImgSrc] = useState<string>(src || fallbackSrc);
-  const [hasError, setHasError] = useState(false);
+  // Use a ref to directly manipulate the DOM for error handling
+  const imgRef = React.useRef<HTMLImageElement>(null);
 
   const handleError = () => {
-    if (!hasError && imgSrc !== fallbackSrc) {
-      setHasError(true);
-      setImgSrc(fallbackSrc);
+    if (imgRef.current && imgRef.current.src !== fallbackSrc) {
+      imgRef.current.src = fallbackSrc;
       onError?.();
     }
   };
 
-  const handleLoad = () => {
-    setHasError(false);
-    onLoad?.();
-  };
-
-  // Update src when prop changes
-  React.useEffect(() => {
-    if (src && src !== imgSrc) {
-      setImgSrc(src);
-      setHasError(false);
-    }
-  }, [src]);
-
   return (
     <img
-      src={imgSrc}
+      ref={imgRef}
+      src={src || fallbackSrc}
       alt={alt}
-      className={cn(
-        "object-cover transition-opacity duration-300",
-        hasError && "opacity-50",
-        className
-      )}
+      className={cn("object-cover", className)}
       onError={handleError}
-      onLoad={handleLoad}
+      onLoad={onLoad}
       {...props}
     />
   );

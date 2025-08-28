@@ -23,6 +23,38 @@ body {
   overflow-x: hidden;
 }
 
+/* Custom Cursor for body */
+body {
+  cursor: default;
+}
+
+/* Custom cursor for interactive elements */
+button, a, input, textarea, select, [role="button"], [tabindex] {
+  cursor: pointer;
+}
+
+/* Custom cursor colors using CSS custom properties */
+* {
+  caret-color: #C84B31; /* fem-terracotta for text input cursors */
+}
+
+/* Focus states with theme colors */
+button:focus, a:focus, input:focus, textarea:focus, select:focus {
+  outline: 2px solid #C84B31; /* fem-terracotta */
+  outline-offset: 2px;
+}
+
+/* Selection colors */
+::selection {
+  background-color: #C84B31; /* fem-terracotta */
+  color: white;
+}
+
+::-moz-selection {
+  background-color: #C84B31; /* fem-terracotta */
+  color: white;
+}
+
 /* CSS Variables */
 :root {
   --background: 0 0% 100%;
@@ -164,6 +196,7 @@ body {
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .btn-outline-modern:hover {
@@ -176,6 +209,7 @@ body {
 .glass-modern {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 

@@ -13,6 +13,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import LikeButton from "@/components/LikeButton";
 import ShareModal from "@/components/ui/ShareModal";
 import { type ShareData } from "@/utils/sharing";
+import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
+import { getBusinessImageUrl, getBusinessLogoUrl } from '@/utils/imageUtils';
 
 interface ProductListProps {
   filters: {
@@ -183,11 +185,12 @@ export const ProductList: React.FC<ProductListProps> = ({
           {/* Product Image with Hover Effects */}
           <div className="aspect-square bg-gray-50 overflow-hidden">
             <img 
-              src={product.product_image_url || product.images?.[0] || business.business_image_url || business.business_logo_url || "/placeholder.svg"} 
+              src={product.product_image_url || product.images?.[0] || business.business_logo_url || business.business_image_url || "/placeholder.svg"} 
               alt={product.name}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = "/placeholder.svg";
+                const target = e.target as HTMLImageElement;
+                target.src = "/placeholder.svg";
               }}
             />
           </div>

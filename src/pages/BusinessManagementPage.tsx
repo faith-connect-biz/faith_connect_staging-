@@ -42,6 +42,8 @@ import { ServiceForm } from '@/components/ServiceForm';
 import { ProductForm } from '@/components/ProductForm';
 import { Label } from '@/components/ui/label';
 import { PhotoRequestModal } from '@/components/PhotoRequestModal';
+import HelpButton from '@/components/onboarding/HelpButton';
+import ScrollToTop from '@/components/ui/ScrollToTop';
 
 
 interface BusinessData {
@@ -1508,7 +1510,9 @@ export const BusinessManagementPage: React.FC = () => {
         businessName={businessData?.business_name || ''}
       />
       
-      <Footer />
-    </div>
-  );
+              <Footer />
+        <ScrollToTop />
+        <HelpButton />
+      </div>
+    );
 };

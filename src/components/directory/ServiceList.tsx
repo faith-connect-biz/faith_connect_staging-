@@ -13,6 +13,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import LikeButton from "@/components/LikeButton";
 import ShareModal from "@/components/ui/ShareModal";
 import { type ShareData } from "@/utils/sharing";
+import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
+import { getBusinessImageUrl, getBusinessLogoUrl } from '@/utils/imageUtils';
 
 interface ServiceListProps {
   filters: {
@@ -146,12 +148,12 @@ export const ServiceList: React.FC<ServiceListProps> = ({
         {/* Service Image */}
         <div className="relative h-48 overflow-hidden">
           <img
-            src={service.service_image_url || '/static/images/default-service.png'}
+            src={service.service_image_url || business.business_logo_url || business.business_image_url || "/placeholder.svg"}
             alt={service.name}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = '/static/images/default-service.png';
+              target.src = "/placeholder.svg";
             }}
           />
           

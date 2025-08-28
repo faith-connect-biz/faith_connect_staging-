@@ -17,6 +17,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import HelpButton from '@/components/onboarding/HelpButton';
+import ScrollToTop from '@/components/ui/ScrollToTop';
 import { 
   Building2, 
   MapPin, 
@@ -79,6 +81,7 @@ const BusinessRegistrationPage = () => {
   const [formData, setFormData] = useState({
     business_name: '',
     category: null as number | null,
+    subcategory: '',
     description: '',
     long_description: '',
     phone: '',
@@ -202,6 +205,7 @@ const BusinessRegistrationPage = () => {
         const transformedData = {
           business_name: business.business_name,
           category: business.category?.id || null,
+          subcategory: business.subcategory || '',
           description: business.description || '',
           long_description: business.long_description || '',
           businessType: 'both' as "products" | "services" | "both", // Default to both
@@ -275,23 +279,26 @@ const BusinessRegistrationPage = () => {
 
   // Hardcoded categories that match the database
   const hardcodedCategories = [
-    { id: 1, name: 'Restaurant', slug: 'restaurant' },
-    { id: 2, name: 'Retail', slug: 'retail' },
-    { id: 3, name: 'Services', slug: 'services' },
-    { id: 4, name: 'Health & Wellness', slug: 'health-wellness' },
-    { id: 5, name: 'Automotive', slug: 'automotive' },
-    { id: 6, name: 'Real Estate', slug: 'real-estate' },
-    { id: 7, name: 'Education', slug: 'education' },
-    { id: 8, name: 'Technology', slug: 'technology' },
-    { id: 9, name: 'Beauty & Personal Care', slug: 'beauty-personal-care' },
-    { id: 10, name: 'Home & Garden', slug: 'home-garden' },
-    { id: 11, name: 'Legal Services', slug: 'legal-services' },
-    { id: 12, name: 'Financial Services', slug: 'financial-services' },
-    { id: 13, name: 'Entertainment', slug: 'entertainment' },
-    { id: 14, name: 'Professional Services', slug: 'professional-services' },
-    { id: 15, name: 'Construction', slug: 'construction' },
-    { id: 16, name: 'Transportation', slug: 'transportation' },
-    { id: 17, name: 'Non-Profit', slug: 'non-profit' }
+    { id: 1, name: 'Agriculture & Farming 🌱', slug: 'agriculture-farming' },
+    { id: 2, name: 'Manufacturing & Production 🏭', slug: 'manufacturing-production' },
+    { id: 3, name: 'Retail & Wholesale 🛒', slug: 'retail-wholesale' },
+    { id: 4, name: 'Hospitality & Tourism 🏨', slug: 'hospitality-tourism' },
+    { id: 5, name: 'Technology & IT 💻', slug: 'technology-it' },
+    { id: 6, name: 'Finance & Insurance 💰', slug: 'finance-insurance' },
+    { id: 7, name: 'Healthcare & Wellness 🏥', slug: 'healthcare-wellness' },
+    { id: 8, name: 'Real Estate & Construction 🏗️', slug: 'real-estate-construction' },
+    { id: 9, name: 'Transportation & Logistics 🚚', slug: 'transportation-logistics' },
+    { id: 10, name: 'Professional Services 📑', slug: 'professional-services' },
+    { id: 11, name: 'Education & Training 📚', slug: 'education-training' },
+    { id: 12, name: 'Energy & Utilities ⚡', slug: 'energy-utilities' },
+    { id: 13, name: 'Creative Industries 🎨', slug: 'creative-industries' },
+    { id: 14, name: 'Food & Beverage 🍽️', slug: 'food-beverage' },
+    { id: 15, name: 'Beauty & Personal Care 💄', slug: 'beauty-personal-care' },
+    { id: 16, name: 'Automotive Services 🚗', slug: 'automotive-services' },
+    { id: 17, name: 'Home & Garden 🏡', slug: 'home-garden' },
+    { id: 18, name: 'Entertainment & Media 🎭', slug: 'entertainment-media' },
+    { id: 19, name: 'Non-Profit & Community 🤝', slug: 'non-profit-community' },
+    { id: 20, name: 'Pet Services & Veterinary 🐾', slug: 'pet-services-veterinary' }
   ];
 
   // Fetch categories from API instead of using hardcoded values
@@ -440,6 +447,51 @@ const BusinessRegistrationPage = () => {
         hours: newHours
       };
     });
+  }, []);
+
+  // Service and Product handlers
+  const handleServiceChange = useCallback((index: number, value: string) => {
+    setFormData(prev => {
+      const newServices = [...prev.services];
+      newServices[index] = { ...newServices[index], name: value };
+      return { ...prev, services: newServices };
+    });
+  }, []);
+
+  const addService = useCallback(() => {
+    setFormData(prev => ({
+      ...prev,
+      services: [...prev.services, { name: '', photo: '' }]
+    }));
+  }, []);
+
+  const removeService = useCallback((index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      services: prev.services.filter((_, i) => i !== index)
+    }));
+  }, []);
+
+  const handleProductChange = useCallback((index: number, field: 'name' | 'price' | 'description', value: string) => {
+    setFormData(prev => {
+      const newProducts = [...prev.products];
+      newProducts[index] = { ...newProducts[index], [field]: value };
+      return { ...prev, products: newProducts };
+    });
+  }, []);
+
+  const addProduct = useCallback(() => {
+    setFormData(prev => ({
+      ...prev,
+      products: [...prev.products, { name: '', price: '', description: '' }]
+    }));
+  }, []);
+
+  const removeProduct = useCallback((index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      products: prev.products.filter((_, i) => i !== index)
+    }));
   }, []);
 
   // Validate specific step data
@@ -778,6 +830,7 @@ const BusinessRegistrationPage = () => {
     const businessData = {
       business_name: formData.business_name.trim(),
       category_id: formData.category as number,
+      subcategory: formData.subcategory.trim(),
       description: formData.description.trim(),
       long_description: formData.long_description.trim(),
       phone: formData.phone.trim(),
@@ -1016,7 +1069,7 @@ const BusinessRegistrationPage = () => {
         </Label>
         <Select value={formData.category?.toString() || ""} onValueChange={(value) => handleInputChange("category", value)}>
           <SelectTrigger className={`mt-1 ${getFieldError("category") ? 'border-red-500 focus:border-red-500' : ''}`}>
-            <SelectValue placeholder="Select a category" />
+            <SelectValue placeholder="Select a business category" />
           </SelectTrigger>
           <SelectContent>
             {categories && categories.length > 0 ? (
@@ -1028,6 +1081,25 @@ const BusinessRegistrationPage = () => {
             )}
           </SelectContent>
         </Select>
+        {getFieldError("category") && (
+          <p className="text-sm text-red-500 mt-1">{getFieldError("category")}</p>
+        )}
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <Label htmlFor="subcategory">
+          Subcategory (Optional)
+        </Label>
+        <Input
+          id="subcategory"
+          value={formData.subcategory}
+          onChange={(e) => handleInputChange("subcategory", e.target.value)}
+          placeholder="e.g., Web Development, Italian Cuisine, Auto Repair"
+          className="mt-1"
+        />
+        <p className="text-sm text-gray-500 mt-1">
+          Provide a more specific category to help customers find your services
+        </p>
       </motion.div>
 
       <motion.div variants={itemVariants}>
@@ -1183,6 +1255,87 @@ const BusinessRegistrationPage = () => {
               )}
             </div>
           ))}
+        </div>
+      </motion.div>
+
+      {/* Services Section */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <Label className="text-lg font-semibold">Services (Optional)</Label>
+        <p className="text-sm text-gray-600 mb-4">Add the main services your business offers.</p>
+        <div className="space-y-3">
+          {formData.services.map((service, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <Input
+                value={service.name}
+                onChange={(e) => handleServiceChange(index, e.target.value)}
+                placeholder="Service name"
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => removeService(index)}
+                className="text-red-600 hover:text-red-700"
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addService}
+            className="w-full"
+          >
+            + Add Service
+          </Button>
+        </div>
+      </motion.div>
+
+      {/* Products Section */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <Label className="text-lg font-semibold">Products (Optional)</Label>
+        <p className="text-sm text-gray-600 mb-4">Add the main products your business sells.</p>
+        <div className="space-y-3">
+          {formData.products.map((product, index) => (
+            <div key={index} className="space-y-2 p-3 border rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <Input
+                  value={product.name}
+                  onChange={(e) => handleProductChange(index, 'name', e.target.value)}
+                  placeholder="Product name"
+                />
+                <Input
+                  value={product.price}
+                  onChange={(e) => handleProductChange(index, 'price', e.target.value)}
+                  placeholder="Price"
+                />
+              </div>
+              <Input
+                value={product.description}
+                onChange={(e) => handleProductChange(index, 'description', e.target.value)}
+                placeholder="Product description"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => removeProduct(index)}
+                className="text-red-600 hover:text-red-700"
+              >
+                Remove Product
+              </Button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addProduct}
+            className="w-full"
+          >
+            + Add Product
+          </Button>
         </div>
       </motion.div>
     </motion.div>
@@ -1394,9 +1547,11 @@ const BusinessRegistrationPage = () => {
           </form>
         </motion.div>
       </div>
-      <Footer />
-    </>
-  );
+              <Footer />
+        <ScrollToTop />
+        <HelpButton />
+      </>
+    );
 };
 
 export default BusinessRegistrationPage;

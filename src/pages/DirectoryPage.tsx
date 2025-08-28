@@ -68,6 +68,7 @@ const DirectoryPage = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [filters, setFilters] = useState({
+    searchTerm: "", // Add searchTerm to filters
     county: "all",
     category: "all",
     rating: [0, 5] as [number, number],
@@ -185,6 +186,8 @@ const DirectoryPage = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSearchExpanded(false);
+    // Update filters with search term
+    setFilters(prev => ({ ...prev, searchTerm }));
     resetPagination(); // Reset pagination when searching
   };
 
@@ -194,8 +197,14 @@ const DirectoryPage = () => {
     }
   };
 
+  // Update search term in filters when it changes
+  useEffect(() => {
+    setFilters(prev => ({ ...prev, searchTerm }));
+  }, [searchTerm]);
+
   const clearFilters = () => {
     setFilters({
+      searchTerm: "", // Clear searchTerm
       county: "all",
       category: "all",
       rating: [0, 5] as [number, number],
@@ -205,6 +214,7 @@ const DirectoryPage = () => {
       hasPhotos: false,
       sortBy: "default"
     });
+    setSearchTerm(""); // Also clear the search input
     resetPagination();
   };
 
@@ -358,7 +368,7 @@ const DirectoryPage = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Categories</SelectItem>
-                          {categories.map((category) => (
+                          {Array.isArray(categories) && categories.map((category) => (
                             <SelectItem key={category.id} value={category.name}>
                               {category.name}
                             </SelectItem>
@@ -379,7 +389,7 @@ const DirectoryPage = () => {
                       </SelectTrigger>
                       <SelectContent>
                           <SelectItem value="all">All Counties</SelectItem>
-                        {counties.map((county) => (
+                        {Array.isArray(counties) && counties.map((county) => (
                           <SelectItem key={county} value={county}>{county}</SelectItem>
                         ))}
                       </SelectContent>

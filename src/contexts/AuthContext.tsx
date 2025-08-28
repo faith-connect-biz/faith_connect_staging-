@@ -82,6 +82,56 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [user?.user_type]); // Only depend on user_type, not the entire user object
 
+  // Session timeout handling - 15 minutes of inactivity
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    let warningTimeoutId: NodeJS.Timeout;
+    
+    const resetTimeout = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (warningTimeoutId) clearTimeout(warningTimeoutId);
+      
+      if (user) {
+        // Set warning at 14 minutes (14 * 60 * 1000 = 840000ms)
+        warningTimeoutId = setTimeout(() => {
+          console.log('AuthContext: Session warning - user will be logged out in 1 minute');
+          // You can add a toast notification here if you want
+        }, 14 * 60 * 1000); // 14 minutes
+        
+        // Set 15 minute timeout (15 * 60 * 1000 = 900000ms)
+        timeoutId = setTimeout(() => {
+          console.log('AuthContext: Session timeout - logging out user due to inactivity');
+          logout();
+        }, 15 * 60 * 1000); // 15 minutes
+      }
+    };
+
+    // Reset timeout on user activity
+    const handleUserActivity = () => {
+      if (user) {
+        resetTimeout();
+      }
+    };
+
+    // Add event listeners for user activity
+    if (user) {
+      resetTimeout();
+      window.addEventListener('mousedown', handleUserActivity);
+      window.addEventListener('keydown', handleUserActivity);
+      window.addEventListener('touchstart', handleUserActivity);
+      window.addEventListener('scroll', handleUserActivity);
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (warningTimeoutId) clearTimeout(warningTimeoutId);
+      window.removeEventListener('mousedown', handleUserActivity);
+      window.removeEventListener('keydown', handleUserActivity);
+      window.removeEventListener('touchstart', handleUserActivity);
+      window.removeEventListener('scroll', handleUserActivity);
+    };
+  }, [user]);
+
   // Check if user is already authenticated on app load
   useEffect(() => {
     const checkAuth = async () => {

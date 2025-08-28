@@ -46,7 +46,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { MotionWrapper, HoverCard, GlassmorphismCard } from "@/components/ui/MotionWrapper";
-import { BusinessLogo } from "@/components/ui/ImageWithFallback";
 import { getBusinessImageUrl, getBusinessLogoUrl } from "@/utils/imageUtils";
 import { apiService } from "@/services/api";
 import type { Business, Review } from "@/services/api";
@@ -620,9 +619,13 @@ const BusinessDetailPage = () => {
           
           <div className="aspect-square rounded-lg overflow-hidden mb-4">
             <img 
-              src={product.product_image_url || "/placeholder.svg"} 
+              src={product.product_image_url || product.images?.[0] || business.business_logo_url || business.business_image_url || "/placeholder.svg"} 
               alt={product.name}
               className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = "/placeholder.svg";
+              }}
             />
           </div>
           
@@ -887,26 +890,8 @@ const BusinessDetailPage = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                 
-                {/* Action Buttons */}
-                <div className="absolute top-2 sm:top-4 right-2 sm:right-4 flex gap-1 sm:gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="bg-white/90 text-gray-800 hover:bg-white text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2"
-                    onClick={handleToggleFavorite}
-                  >
-                    <Heart className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
-                    <span className="hidden sm:inline">{isFavorite ? 'Saved' : 'Save'}</span>
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="bg-white/90 text-gray-800 hover:bg-white text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2"
-                  >
-                    <Share2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                    <span className="hidden sm:inline">Share</span>
-                  </Button>
-                </div>
+
+
 
                 {/* Business Info Overlay */}
                 <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-6 text-white">
@@ -950,16 +935,16 @@ const BusinessDetailPage = () => {
                         businessId={business.id}
                         description={business.description}
                         size="md"
-                            className="bg-white/95 hover:bg-white shadow-xl border-2 border-white/50 text-fem-navy hover:text-fem-terracotta font-semibold w-full sm:w-auto"
+                        className="bg-white/95 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 shadow-xl border-2 border-white/50 hover:border-red-300 text-fem-navy hover:text-red-600 font-semibold w-full sm:w-auto transition-all duration-300 hover:scale-105"
                       />
                     )}
                     <Button
                       onClick={handleShareBusiness}
                       variant="outline"
                           size="md"
-                          className="bg-white/95 hover:bg-white border-2 border-white/50 text-fem-navy hover:text-fem-terracotta shadow-xl font-semibold px-3 sm:px-4 py-2 w-full sm:w-auto"
+                      className="group bg-white/95 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 border-2 border-white/50 hover:border-blue-300 text-fem-navy hover:text-blue-600 shadow-xl font-semibold px-3 sm:px-4 py-2 w-full sm:w-auto transition-all duration-300 hover:scale-105"
                     >
-                      <Share2 className="w-4 h-4 mr-2" />
+                      <Share2 className="w-4 h-4 mr-2 transition-all duration-300 group-hover:scale-110 group-hover:text-blue-500" />
                           <span className="text-sm sm:text-base">Share Business</span>
                     </Button>
                       </div>
@@ -1091,9 +1076,14 @@ const BusinessDetailPage = () => {
                               {business.business_logo_url && (
                                 <div className="flex items-center gap-2 text-gray-600">
                                   <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200 bg-white flex items-center justify-center">
-                                    <BusinessLogo 
-                                      business={business}
-                                      className="w-full h-full"
+                                    <img 
+                                      src={business.business_logo_url || business.business_image_url || "/placeholder.svg"}
+                                      alt={`${business.business_name} logo`}
+                                      className="w-full h-full object-contain"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.src = "/placeholder.svg";
+                                      }}
                                     />
                                   </div>
                                   <span className="text-sm text-gray-500">Business Logo</span>
@@ -1157,9 +1147,13 @@ const BusinessDetailPage = () => {
                                 <div className="relative">
                                   {/* Service Image */}
                                   <img 
-                                    src={service.service_image_url || service.images?.[0] || "/placeholder.svg"} 
+                                    src={service.service_image_url || service.images?.[0] || business.business_logo_url || business.business_image_url || "/placeholder.svg"} 
                                     alt={service.name}
                                     className="w-full h-48 sm:h-40 md:h-48 object-cover rounded-t-lg hover:opacity-90 transition-opacity"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.src = "/placeholder.svg";
+                                    }}
                                   />
                                   
                                   {/* Multiple Images Indicator */}
@@ -1326,9 +1320,13 @@ const BusinessDetailPage = () => {
                                   {/* Main Product Image with Hover Effects */}
                                   <div className="aspect-square bg-gray-50 rounded-t-lg overflow-hidden">
                                     <img 
-                                      src={product.product_image_url || product.images?.[0] || "/placeholder.svg"} 
+                                      src={product.product_image_url || product.images?.[0] || business.business_logo_url || business.business_image_url || "/placeholder.svg"} 
                                       alt={product.name}
                                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.src = "/placeholder.svg";
+                                      }}
                                     />
                                   </div>
                                   

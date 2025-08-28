@@ -1,14 +1,16 @@
 
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
-import { Hero } from "@/components/home/Hero";
-import { BusinessCategories } from "@/components/home/BusinessCategories";
-import { CommunityStats } from "@/components/home/CommunityStats";
-import { CallToAction } from "@/components/home/CallToAction";
-import { OnboardingCheck } from "@/components/OnboardingCheck";
+import React, { useEffect } from 'react';
+import { Navbar } from '@/components/layout/Navbar';
+import { Footer } from '@/components/layout/Footer';
+import { Hero } from '@/components/home/Hero';
+import { BusinessCategories } from '@/components/home/BusinessCategories';
+import { CommunityStats } from '@/components/home/CommunityStats';
+import { CallToAction } from '@/components/home/CallToAction';
+import { OnboardingCheck } from '@/components/OnboardingCheck';
+import HelpButton from '@/components/onboarding/HelpButton';
+import ScrollToTop from '@/components/ui/ScrollToTop';
 // import { DataDebugger } from "@/components/debug/DataDebugger";
 // import { ApiTester } from "@/components/debug/ApiTester";
-import { useEffect } from "react";
 
 const Index = () => {
   useEffect(() => {
@@ -111,6 +113,8 @@ const Index = () => {
          <CallToAction />
        </main>
       <Footer />
+      <ScrollToTop />
+      <HelpButton />
     </div>
   );
 };

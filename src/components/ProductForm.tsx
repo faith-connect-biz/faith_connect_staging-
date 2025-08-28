@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Upload, X, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Plus, Trash2, Camera, FileImage } from 'lucide-react';
 
 import { Product } from '@/services/api';
 
@@ -45,6 +45,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   // Show delete button if user is authenticated and product exists
   // The backend will handle the actual security check
@@ -128,13 +131,29 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleMultipleFiles(Array.from(files));
+    }
+  };
+
+  const handleMultipleFiles = (files: File[]) => {
+    // Check if adding these files would exceed the 5 image limit
+    if (imagePreviews.length + files.length > 5) {
+      toast({
+        title: "Too Many Images",
+        description: "You can only have up to 5 images total. Please remove some existing images first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    files.forEach(file => {
       // Validate file type
       if (!file.type.startsWith('image/')) {
         toast({
           title: "Invalid File",
-          description: "Please select an image file",
+          description: `${file.name} is not an image file`,
           variant: "destructive"
         });
         return;
@@ -144,14 +163,39 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       if (file.size > 5 * 1024 * 1024) {
         toast({
           title: "File Too Large",
-          description: "Image must be less than 5MB",
+          description: `${file.name} must be less than 5MB`,
           variant: "destructive"
         });
         return;
       }
 
       handleImageUpload(file);
+    });
+  };
+
+  // Drag and Drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      handleMultipleFiles(files);
     }
+  }, []);
+
+  const openFileDialog = () => {
+    fileInputRef.current?.click();
   };
 
   const removeImage = (index: number) => {
@@ -369,17 +413,52 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                   </div>
                 ))}
                 
-                {/* Upload Button - Only show if less than 5 images */}
+                {/* Enhanced Upload Area - Only show if less than 5 images */}
                 {imagePreviews.length < 5 && (
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
-                    <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 mx-auto mb-2" />
-                    <Label htmlFor="product-images" className="cursor-pointer text-xs sm:text-sm text-gray-600">
-                      {uploadingImages ? 'Uploading...' : 'Click to upload image'}
-                    </Label>
+                  <div
+                    ref={dropZoneRef}
+                    className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center transition-all duration-200 cursor-pointer ${
+                      isDragOver 
+                        ? 'border-fem-terracotta bg-fem-terracotta/5 scale-105' 
+                        : 'border-gray-300 hover:border-fem-terracotta hover:bg-gray-50'
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={openFileDialog}
+                  >
+                    {isDragOver ? (
+                      <>
+                        <FileImage className="w-8 h-8 sm:w-10 sm:h-10 text-fem-terracotta mx-auto mb-2 animate-pulse" />
+                        <p className="text-fem-terracotta font-medium text-sm sm:text-base">
+                          Drop images here!
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="relative">
+                            <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 mx-auto mb-2" />
+                            <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-gray-300 absolute -bottom-1 -right-1" />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs sm:text-sm text-gray-600 font-medium">
+                              {uploadingImages ? 'Uploading...' : 'Click or drag images here'}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Supports JPG, PNG, GIF, WebP (max 5MB each)
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                    
                     <Input
+                      ref={fileInputRef}
                       id="product-images"
                       type="file"
                       accept="image/*"
+                      multiple
                       onChange={handleImageChange}
                       className="hidden"
                       disabled={uploadingImages}

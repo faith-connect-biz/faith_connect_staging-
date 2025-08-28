@@ -32,6 +32,8 @@ import { useBusiness } from "@/contexts/BusinessContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Business, apiService } from "@/services/api";
 import { toast } from "@/hooks/use-toast";
+import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
+import { getBusinessImageUrl, getBusinessLogoUrl } from '@/utils/imageUtils';
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
@@ -161,9 +163,10 @@ export const BusinessList = ({ filters, currentPage = 1, itemsPerPage = 15, onPa
             <img 
               src={business.business_image_url || business.business_logo_url || "/placeholder.svg"} 
               alt={business.business_name}
-              className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+              className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-100"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = "/placeholder.svg";
+                const target = e.target as HTMLImageElement;
+                target.src = "/placeholder.svg";
               }}
             />
             

@@ -210,18 +210,27 @@ const LikeButton = ({
       disabled={isLoading}
       variant="ghost"
       size="sm"
-      className={`${getButtonSize()} p-0 rounded-full transition-all duration-300 hover:scale-110 ${
+      className={`group relative overflow-hidden transition-all duration-300 hover:scale-110 active:scale-95 ${
         isLiked 
-          ? 'text-red-500 hover:text-red-600 hover:bg-red-50' 
-          : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+          ? 'text-red-500 hover:text-red-600 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 shadow-lg shadow-red-500/20' 
+          : 'text-gray-500 hover:text-red-500 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 hover:shadow-md'
+      } ${getButtonSize()} p-0 rounded-full border-2 ${
+        isLiked 
+          ? 'border-red-300 bg-gradient-to-r from-red-50 to-pink-50' 
+          : 'border-gray-200 hover:border-red-300'
       } ${className}`}
       title={isLiked ? `Remove ${itemName} from favorites` : `Add ${itemName} to favorites`}
     >
       <Heart 
         className={`${getIconSize()} transition-all duration-300 ${
-          isLiked ? 'fill-current' : ''
+          isLiked 
+            ? 'fill-current text-red-500 drop-shadow-sm' 
+            : 'group-hover:scale-110 group-hover:drop-shadow-sm'
         }`} 
       />
+      {isLiked && (
+        <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-pink-400 opacity-20 animate-pulse rounded-full"></div>
+      )}
     </Button>
   );
 };

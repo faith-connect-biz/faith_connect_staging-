@@ -1255,23 +1255,26 @@ class ApiService {
 
   // Hardcoded categories that match the database (same as frontend)
   private hardcodedCategories = [
-    { id: 1, name: 'Restaurant', slug: 'restaurant' },
-    { id: 2, name: 'Retail', slug: 'retail' },
-    { id: 3, name: 'Services', slug: 'services' },
-    { id: 4, name: 'Health & Wellness', slug: 'health-wellness' },
-    { id: 5, name: 'Automotive', slug: 'automotive' },
-    { id: 6, name: 'Real Estate', slug: 'real-estate' },
-    { id: 7, name: 'Education', slug: 'education' },
-    { id: 8, name: 'Technology', slug: 'technology' },
-    { id: 9, name: 'Beauty & Personal Care', slug: 'beauty-personal-care' },
-    { id: 10, name: 'Home & Garden', slug: 'home-garden' },
-    { id: 11, name: 'Legal Services', slug: 'legal-services' },
-    { id: 12, name: 'Financial Services', slug: 'financial-services' },
-    { id: 13, name: 'Entertainment', slug: 'entertainment' },
-    { id: 14, name: 'Professional Services', slug: 'professional-services' },
-    { id: 15, name: 'Construction', slug: 'construction' },
-    { id: 16, name: 'Transportation', slug: 'transportation' },
-    { id: 17, name: 'Non-Profit', slug: 'non-profit' }
+    { id: 1, name: 'Agriculture & Farming 🌱', slug: 'agriculture-farming' },
+    { id: 2, name: 'Manufacturing & Production 🏭', slug: 'manufacturing-production' },
+    { id: 3, name: 'Retail & Wholesale 🛒', slug: 'retail-wholesale' },
+    { id: 4, name: 'Hospitality & Tourism 🏨', slug: 'hospitality-tourism' },
+    { id: 5, name: 'Technology & IT 💻', slug: 'technology-it' },
+    { id: 6, name: 'Finance & Insurance 💰', slug: 'finance-insurance' },
+    { id: 7, name: 'Healthcare & Wellness 🏥', slug: 'healthcare-wellness' },
+    { id: 8, name: 'Real Estate & Construction 🏗️', slug: 'real-estate-construction' },
+    { id: 9, name: 'Transportation & Logistics 🚚', slug: 'transportation-logistics' },
+    { id: 10, name: 'Professional Services 📑', slug: 'professional-services' },
+    { id: 11, name: 'Education & Training 📚', slug: 'education-training' },
+    { id: 12, name: 'Energy & Utilities ⚡', slug: 'energy-utilities' },
+    { id: 13, name: 'Creative Industries 🎨', slug: 'creative-industries' },
+    { id: 14, name: 'Food & Beverage 🍽️', slug: 'food-beverage' },
+    { id: 15, name: 'Beauty & Personal Care 💄', slug: 'beauty-personal-care' },
+    { id: 16, name: 'Automotive Services 🚗', slug: 'automotive-services' },
+    { id: 17, name: 'Home & Garden 🏡', slug: 'home-garden' },
+    { id: 18, name: 'Entertainment & Media 🎭', slug: 'entertainment-media' },
+    { id: 19, name: 'Non-Profit & Community 🤝', slug: 'non-profit-community' },
+    { id: 20, name: 'Pet Services & Veterinary 🐾', slug: 'pet-services-veterinary' }
   ];
 
   // Get categories from backend API

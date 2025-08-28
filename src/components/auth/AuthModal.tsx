@@ -81,6 +81,38 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Enhanced close handler that resets all states
+  const handleClose = () => {
+    // Reset all states before closing
+    setActiveTab('login');
+    setSignupStep('form');
+    setForgotOpen(false);
+    setForgotStep('request');
+    setForgotIdentifier('');
+    setResetOtp('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+    setForgotMethod('phone');
+    setSignupData({
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: '',
+      firstName: '',
+      lastName: '',
+      userType: 'community',
+      partnershipNumber: ''
+    });
+    setAuthMethod('phone');
+    setUsePhone(true);
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    setIsLoading(false);
+    
+    // Call the original onClose
+    onClose();
+  };
+
   const { login, register } = useAuth();
   const { toast } = useToast();
   const { handleError, handleAsyncError } = useErrorHandler({ context: 'auth' });
@@ -94,6 +126,36 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     // Clear email data since it's not usable
     setSignupData(prev => ({ ...prev, email: '' }));
   };
+
+  // Reset all states when modal opens to ensure clean state
+  useEffect(() => {
+    if (isOpen) {
+      // Reset all form states
+      setActiveTab('login');
+      setSignupStep('form');
+      setForgotOpen(false);
+      setForgotStep('request');
+      setForgotIdentifier('');
+      setResetOtp('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setForgotMethod('phone');
+      setSignupData({
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: '',
+        firstName: '',
+        lastName: '',
+        userType: 'community',
+        partnershipNumber: ''
+      });
+      setAuthMethod('phone');
+      setUsePhone(true);
+      setShowPassword(false);
+      setShowConfirmPassword(false);
+    }
+  }, [isOpen]);
 
   // Send OTP to phone number when phone is selected
   const sendPhoneOTP = async (phoneNumber: string) => {
@@ -319,7 +381,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             {signupStep === 'otp' ? 'Verify Your Account' : 'Welcome to FaithConnect'}
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-fem-navy/50 hover:text-fem-terracotta"
             aria-label="Close modal"
           >
@@ -330,9 +392,33 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         <div className="relative flex-1 overflow-y-auto">
           {forgotOpen ? (
             <div className="p-6 space-y-4">
+              {/* Close button for forgot password flow */}
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-fem-navy">
+                  {forgotStep === 'request' ? 'Reset your password' : 'Enter code and new password'}
+                </h3>
+                <button
+                  onClick={() => {
+                    setForgotOpen(false);
+                    setForgotStep('request');
+                    setForgotIdentifier('');
+                    setResetOtp('');
+                    setNewPassword('');
+                    setConfirmNewPassword('');
+                    setActiveTab('login');
+                    setSignupStep('form');
+                    setForgotMethod('phone');
+                    setIsLoading(false);
+                  }}
+                  className="text-fem-navy/50 hover:text-fem-terracotta"
+                  aria-label="Close forgot password"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
               {forgotStep==='request' && (
                 <>
-                  <h3 className="text-lg font-semibold text-fem-navy">Reset your password</h3>
                   <p className="text-sm text-fem-darkgray">Enter your email or phone to receive a reset code.</p>
                   <div className="flex items-center space-x-2 bg-fem-gray p-1 rounded-md">
                     <button type="button" onClick={() => setForgotMethod('email')} className={`px-3 py-1.5 rounded-md text-sm ${forgotMethod==='email'?'bg-white text-fem-terracotta shadow':'text-fem-navy'}`}>Email</button>
@@ -361,14 +447,22 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         setIsLoading(false);
                       }
                     }} className="w-full bg-fem-terracotta hover:bg-fem-terracotta/90 text-white">{isLoading?'Sending...':'Send Reset Code'}</Button>
-                    <Button variant="outline" onClick={()=>setForgotOpen(false)} className="w-full border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white">Back</Button>
+                    <Button variant="outline" onClick={()=>{
+                      setForgotOpen(false);
+                      setForgotStep('request');
+                      setForgotIdentifier('');
+                      setResetOtp('');
+                      setNewPassword('');
+                      setConfirmNewPassword('');
+                      setActiveTab('login');
+                      setSignupStep('form');
+                    }} className="w-full border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white">Back</Button>
                   </div>
                 </>
               )}
 
               {forgotStep==='verify' && (
                 <>
-                  <h3 className="text-lg font-semibold text-fem-navy">Enter code and new password</h3>
                   <div>
                     <Label htmlFor="otp-code">6-digit code</Label>
                     <Input id="otp-code" inputMode="numeric" maxLength={6} value={resetOtp} onChange={(e)=>setResetOtp(e.target.value.replace(/\D/g,''))} className="mt-1 focus:ring-fem-terracotta focus:border-fem-terracotta" />

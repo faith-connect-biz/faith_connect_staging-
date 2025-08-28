@@ -13,7 +13,17 @@ import {
   Building2,
   Palette,
   Wrench,
-  Briefcase
+  Briefcase,
+  Sprout,
+  Factory,
+  Hotel,
+  DollarSign,
+  Truck,
+  Zap,
+  Scissors,
+  Music,
+  Users,
+  PawPrint
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useBusiness } from "@/contexts/BusinessContext";
@@ -21,6 +31,28 @@ import AuthModal from "@/components/auth/AuthModal";
 
 // Icon mapping for categories
 const categoryIcons: { [key: string]: any } = {
+  // New comprehensive categories
+  "Agriculture & Farming 🌱": Sprout,
+  "Manufacturing & Production 🏭": Factory,
+  "Retail & Wholesale 🛒": ShoppingBag,
+  "Hospitality & Tourism 🏨": Hotel,
+  "Technology & IT 💻": Monitor,
+  "Finance & Insurance 💰": DollarSign,
+  "Healthcare & Wellness 🏥": Heart,
+  "Real Estate & Construction 🏗️": Building2,
+  "Transportation & Logistics 🚚": Truck,
+  "Professional Services 📑": Briefcase,
+  "Education & Training 📚": GraduationCap,
+  "Energy & Utilities ⚡": Zap,
+  "Creative Industries 🎨": Palette,
+  "Food & Beverage 🍽️": Utensils,
+  "Beauty & Personal Care 💄": Scissors,
+  "Automotive Services 🚗": Wrench,
+  "Home & Garden 🏡": Home,
+  "Entertainment & Media 🎭": Music,
+  "Non-Profit & Community 🤝": Users,
+  "Pet Services & Veterinary 🐾": PawPrint,
+  // Legacy mappings for backward compatibility
   "Restaurant": Utensils,
   "Retail": ShoppingBag,
   "Services": Settings,
@@ -33,13 +65,11 @@ const categoryIcons: { [key: string]: any } = {
   "Home & Garden": Building2,
   "Professional Services": Briefcase,
   "Automotive Services": Wrench,
-  // New categories from API
   "Food & Dining": Utensils,
   "Health & Beauty": Heart,
   "Fashion & Clothing": ShoppingBag,
   "Sports & Fitness": Heart,
-  "Entertainment": Monitor,
-  // Add more mappings as needed
+  "Entertainment": Monitor
 };
 
 // Default icon for unknown categories
@@ -108,6 +138,28 @@ export const BusinessCategories = () => {
 
   const getCategoryColor = (categoryName: string): string => {
     const colorMap: { [key: string]: string } = {
+      // New comprehensive categories
+      "Agriculture & Farming 🌱": "text-green-600",
+      "Manufacturing & Production 🏭": "text-gray-600",
+      "Retail & Wholesale 🛒": "text-blue-600",
+      "Hospitality & Tourism 🏨": "text-orange-600",
+      "Technology & IT 💻": "text-indigo-600",
+      "Finance & Insurance 💰": "text-purple-600",
+      "Healthcare & Wellness 🏥": "text-red-600",
+      "Real Estate & Construction 🏗️": "text-yellow-600",
+      "Transportation & Logistics 🚚": "text-teal-600",
+      "Professional Services 📑": "text-slate-600",
+      "Education & Training 📚": "text-emerald-600",
+      "Energy & Utilities ⚡": "text-cyan-600",
+      "Creative Industries 🎨": "text-pink-600",
+      "Food & Beverage 🍽️": "text-orange-600",
+      "Beauty & Personal Care 💄": "text-pink-600",
+      "Automotive Services 🚗": "text-amber-600",
+      "Home & Garden 🏡": "text-emerald-600",
+      "Entertainment & Media 🎭": "text-blue-600",
+      "Non-Profit & Community 🤝": "text-purple-600",
+      "Pet Services & Veterinary 🐾": "text-green-600",
+      // Legacy mappings for backward compatibility
       "Restaurant": "text-orange-600",
       "Retail": "text-blue-600",
       "Services": "text-green-600",
@@ -120,7 +172,6 @@ export const BusinessCategories = () => {
       "Home & Garden": "text-emerald-600",
       "Professional Services": "text-slate-600",
       "Automotive Services": "text-amber-600",
-      // New categories from API
       "Food & Dining": "text-orange-600",
       "Health & Beauty": "text-pink-600",
       "Fashion & Clothing": "text-purple-600",
@@ -217,14 +268,14 @@ export const BusinessCategories = () => {
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {[
-                { name: "Food & Dining", icon: "🍽️", count: 0, description: "Restaurants, cafes, and food services" },
-                { name: "Technology", icon: "💻", count: 0, description: "IT services, web development, and tech support" },
-                { name: "Automotive", icon: "🚗", count: 0, description: "Auto repair, maintenance, and car services" },
-                { name: "Health & Beauty", icon: "💄", count: 0, description: "Salons, spas, and wellness services" },
-                { name: "Real Estate", icon: "🏠", count: 0, description: "Property management and real estate services" },
-                { name: "Education", icon: "📚", count: 0, description: "Schools, training, and educational services" },
-                { name: "Professional Services", icon: "💼", count: 0, description: "Legal, accounting, and consulting" },
-                { name: "Home & Garden", icon: "🌱", count: 0, description: "Home improvement and gardening services" }
+                { name: "Agriculture & Farming 🌱", icon: "🌱", count: 0, description: "Crops, livestock, agri-processing" },
+                { name: "Technology & IT 💻", icon: "💻", count: 0, description: "Software, hardware, digital services" },
+                { name: "Healthcare & Wellness 🏥", icon: "🏥", count: 0, description: "Hospitals, clinics, fitness, pharmaceuticals" },
+                { name: "Food & Beverage 🍽️", icon: "🍽️", count: 0, description: "Restaurants, cafes, food services, catering" },
+                { name: "Real Estate & Construction 🏗️", icon: "🏗️", count: 0, description: "Property development, rentals, housing" },
+                { name: "Professional Services 📑", icon: "📑", count: 0, description: "Legal, consulting, accounting, design" },
+                { name: "Transportation & Logistics 🚚", icon: "🚚", count: 0, description: "Delivery, ride-hailing, freight, warehousing" },
+                { name: "Creative Industries 🎨", icon: "🎨", count: 0, description: "Media, film, advertising, design" }
               ].map((category, index) => (
                 <div key={category.name} className="stagger-item tilt-3d magnetic neon-glow bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer">
                   <div className="text-4xl mb-4">{category.icon}</div>
