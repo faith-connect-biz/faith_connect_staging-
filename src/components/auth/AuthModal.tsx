@@ -124,7 +124,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setAuthMethod(checked ? 'phone' : 'email');
     // Clear the other field when switching
     if (checked) {
-      setSignupData(prev => ({ ...prev, email: '' }));
+    setSignupData(prev => ({ ...prev, email: '' }));
     } else {
       setSignupData(prev => ({ ...prev, phone: '' }));
     }

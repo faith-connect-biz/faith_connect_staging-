@@ -30,7 +30,7 @@ export const Footer = () => {
             <h3 className="font-heading font-semibold mb-2 text-fem-gold text-sm">For Community Members</h3>
             <ul className="space-y-1 text-xs text-gray-300">
               <li><Link to="/directory" className="hover:text-fem-gold transition-colors">Explore Services</Link></li>
-              <li><Link to="/profile" className="hover:text-fem-gold transition-colors">Create Profile</Link></li>
+              <li><Link to="/profile" className="hover:text-fem-gold transition-colors">Profile</Link></li>
               <li><Link to="/about" className="hover:text-fem-gold transition-colors">Learn More</Link></li>
             </ul>
           </div>

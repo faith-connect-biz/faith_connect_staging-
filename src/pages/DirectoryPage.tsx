@@ -37,12 +37,17 @@ import {
   Shield,
   Building2,
   Menu,
+  Camera,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useBusiness } from "@/contexts/BusinessContext";
+import { useAuth } from "@/contexts/AuthContext";
+
 
 const DirectoryPage = () => {
   const { businesses, categories, services, products, isLoading, fetchBusinesses, fetchServices, fetchProducts, totalCount, totalProductsCount, totalServicesCount } = useBusiness();
+  const { isAuthenticated } = useAuth();
+
   
   // Debug logging - reduce spam
   // console.log('DirectoryPage - businesses:', businesses);
@@ -571,6 +576,9 @@ const DirectoryPage = () => {
           </div>
         </div>
       </main>
+      
+
+      
       <Footer />
     </div>
   );

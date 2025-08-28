@@ -509,6 +509,10 @@ const BusinessRegistrationPage = () => {
         }
         if (!formData.description.trim()) {
           errors.push("Business description is required");
+        } else if (formData.description.trim().length < 3) {
+          errors.push("Business description must be at least 3 characters long");
+        } else if (formData.description.trim().length > 120) {
+          errors.push("Business description must be no more than 120 characters long");
         }
         break;
         
@@ -557,6 +561,10 @@ const BusinessRegistrationPage = () => {
             }
             if (!formData.description.trim()) {
               stepErrors.push("Business description is required");
+            } else if (formData.description.trim().length < 3) {
+              stepErrors.push("Business description must be at least 3 characters long");
+            } else if (formData.description.trim().length > 120) {
+              stepErrors.push("Business description must be no more than 120 characters long");
             }
             break;
           case 2:
@@ -615,8 +623,10 @@ const BusinessRegistrationPage = () => {
 
     if (!formData.description.trim()) {
       errors.push("Business description is required");
-    } else if (formData.description.trim().length < 5) {
-      errors.push("Business description must be at least 5 characters long");
+    } else if (formData.description.trim().length < 3) {
+      errors.push("Business description must be at least 3 characters long");
+    } else if (formData.description.trim().length > 120) {
+      errors.push("Business description must be no more than 120 characters long");
     }
 
     if (!formData.phone.trim()) {
@@ -1092,7 +1102,18 @@ const BusinessRegistrationPage = () => {
           placeholder="Briefly describe your business and what makes it unique"
           className={`mt-1 ${getFieldError("description") ? 'border-red-500 focus:border-red-500' : ''}`}
           rows={3}
+          maxLength={120}
         />
+        <div className="flex justify-between items-center mt-1">
+          <p className="text-xs text-gray-500">
+            {formData.description.length}/120 characters
+          </p>
+          {formData.description.length > 120 && (
+            <p className="text-xs text-red-500">
+              Maximum 120 characters allowed
+            </p>
+          )}
+        </div>
       </motion.div>
 
       <motion.div variants={itemVariants}>

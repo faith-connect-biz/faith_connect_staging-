@@ -704,34 +704,7 @@ export const BusinessManagementPage: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Professional Photo Request Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Camera className="h-5 w-5" />
-                    <span>Professional Photo Requests</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="text-center py-6">
-                    <Camera className="h-16 w-16 text-fem-terracotta mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      Need Professional Photos?
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                      Request professional photography services from this business. 
-                      Let them know what you need and they'll get back to you.
-                    </p>
-                    <Button 
-                      onClick={() => setShowPhotoRequestModal(true)}
-                      className="bg-fem-terracotta hover:bg-fem-terracotta/90"
-                    >
-                      <Camera className="h-4 w-4 mr-2" />
-                      Request Professional Photos
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+
 
               {/* Social Media Links */}
               <Card>
@@ -895,11 +868,49 @@ export const BusinessManagementPage: React.FC = () => {
             <TabsContent value="services" className="space-y-6">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">Your Services</h2>
-                <Button onClick={handleAddService} className="bg-fem-terracotta hover:bg-fem-terracotta/90">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Service
-                </Button>
+                <div className="flex items-center gap-3">
+                  <Button 
+                    onClick={() => setShowPhotoRequestModal(true)}
+                    variant="outline"
+                    className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    Request Photos
+                  </Button>
+                  <Button onClick={handleAddService} className="bg-fem-terracotta hover:bg-fem-terracotta/90">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Service
+                  </Button>
+                </div>
               </div>
+              
+              {/* Photo Request Information */}
+              <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+                <CardContent className="p-6">
+                  <div className="flex items-start space-x-4">
+                    <div className="flex-shrink-0">
+                      <Camera className="h-8 w-8 text-fem-terracotta" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        Need Professional Photos for Your Services?
+                      </h3>
+                      <p className="text-gray-600 mb-3">
+                        High-quality photos can significantly improve your service listings and attract more customers. 
+                        Request professional photography services to showcase your work in the best light.
+                      </p>
+                      <Button 
+                        onClick={() => setShowPhotoRequestModal(true)}
+                        size="sm"
+                        className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white"
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Request Photography Services
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
               
               {services.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -981,11 +992,49 @@ export const BusinessManagementPage: React.FC = () => {
             <TabsContent value="products" className="space-y-6">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">Your Products</h2>
-                <Button onClick={handleAddProduct} className="bg-fem-terracotta hover:bg-fem-terracotta/90">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Product
-                </Button>
+                <div className="flex items-center gap-3">
+                  <Button 
+                    onClick={() => setShowPhotoRequestModal(true)}
+                    variant="outline"
+                    className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    Request Photos
+                  </Button>
+                  <Button onClick={handleAddProduct} className="bg-fem-terracotta hover:bg-fem-terracotta/90">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Product
+                  </Button>
+                </div>
               </div>
+              
+              {/* Photo Request Information */}
+              <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+                <CardContent className="p-6">
+                  <div className="flex items-start space-x-4">
+                    <div className="flex-shrink-0">
+                      <Camera className="h-8 w-8 text-fem-terracotta" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        Need Professional Photos for Your Products?
+                      </h3>
+                      <p className="text-gray-600 mb-3">
+                        Professional product photography can dramatically increase sales and customer engagement. 
+                        Request photography services to showcase your products with stunning visuals.
+                      </p>
+                      <Button 
+                        onClick={() => setShowPhotoRequestModal(true)}
+                        size="sm"
+                        className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white"
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Request Photography Services
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
               
               {products.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

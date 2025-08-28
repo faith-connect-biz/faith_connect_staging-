@@ -10,8 +10,8 @@ import { apiService } from '@/services/api';
 interface PhotoRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
-  businessId: string;
-  businessName: string;
+  businessId?: string;
+  businessName?: string;
 }
 
 export const PhotoRequestModal: React.FC<PhotoRequestModalProps> = ({
@@ -31,6 +31,43 @@ export const PhotoRequestModal: React.FC<PhotoRequestModalProps> = ({
         description: "Please provide some details about your photo request.",
         variant: "destructive"
       });
+      return;
+    }
+
+    // If no businessId is provided, this is a general photography request
+    if (!businessId) {
+      try {
+        setIsSubmitting(true);
+        // For general requests, we'll send directly to enquiries@faithconnect.biz
+        // This will be handled by the backend when businessId is empty
+        await apiService.createPhotoRequest({
+          business: "", // Empty business ID for general requests
+          notes: notes.trim()
+        });
+        
+        setIsSubmitted(true);
+        toast({
+          title: "Request sent successfully!",
+          description: "Your photography request has been sent to our team.",
+        });
+        
+        // Close modal after a short delay to show success state
+        setTimeout(() => {
+          onClose();
+          setIsSubmitted(false);
+          setNotes('');
+        }, 2000);
+        
+      } catch (error: any) {
+        console.error('Error submitting photo request:', error);
+        toast({
+          title: "Error",
+          description: error.response?.data?.message || "Failed to submit photo request. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -84,10 +121,18 @@ export const PhotoRequestModal: React.FC<PhotoRequestModalProps> = ({
           <div className="text-center py-6">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
             <p className="text-gray-600 mb-2">
-              Your photo request has been successfully sent to <strong>{businessName}</strong>.
+              {businessName ? (
+                <>Your photo request has been successfully sent to <strong>{businessName}</strong>.</>
+              ) : (
+                <>Your photography request has been successfully sent to our team.</>
+              )}
             </p>
             <p className="text-sm text-gray-500">
-              The business owner will review your request and get back to you soon.
+              {businessName ? (
+                "The business owner will review your request and get back to you soon."
+              ) : (
+                "Our team will review your request and get back to you soon."
+              )}
             </p>
           </div>
         </DialogContent>
@@ -109,11 +154,18 @@ export const PhotoRequestModal: React.FC<PhotoRequestModalProps> = ({
           <div className="text-center py-4">
             <Camera className="h-12 w-12 text-fem-terracotta mx-auto mb-3" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Request Professional Photos from {businessName}
+              {businessName ? (
+                <>Request Professional Photos from {businessName}</>
+              ) : (
+                <>Request Photography Services</>
+              )}
             </h3>
             <p className="text-sm text-gray-600">
-              Let the business owner know what type of professional photos you need. 
-              They'll review your request and get back to you.
+              {businessName ? (
+                "Let the business owner know what type of professional photos you need. They'll review your request and get back to you."
+              ) : (
+                "Tell us about your photography needs and we'll forward your request to our team at enquiries@faithconnect.biz"
+              )}
             </p>
           </div>
           

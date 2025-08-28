@@ -130,8 +130,9 @@ export const BusinessCategories = () => {
 
     // console.log('Category stats before filtering:', categoryStats);
 
-    // Show all categories, not just those with businesses
+    // Show only top categories with businesses
     return categoryStats
+      .filter(category => category.count > 0) // Only show categories with businesses
       .sort((a, b) => b.count - a.count) // Sort by business count
       .slice(0, 8); // Show top 8 categories
   };
