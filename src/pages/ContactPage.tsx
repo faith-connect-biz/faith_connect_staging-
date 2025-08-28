@@ -3,10 +3,14 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import AuthModal from "@/components/auth/AuthModal";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { Mail, Phone, MapPin, Clock, MessageCircle, Heart, Zap, Users, ChevronUp } from "lucide-react";
 import { motion, useScroll, useTransform } from "framer-motion";
 
 const ContactPage = () => {
+  const { isAuthenticated, isBusinessUser } = useAuth();
+  const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -17,6 +21,16 @@ const ContactPage = () => {
 
   const handleOpenAuthModal = () => {
     setIsAuthModalOpen(true);
+  };
+
+  const handleRegisterBusinessClick = () => {
+    // If user is authenticated and is a business user, navigate directly
+    if (isAuthenticated && isBusinessUser()) {
+      navigate('/register-business');
+    } else {
+      // Otherwise, open the auth modal
+      handleOpenAuthModal();
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -259,7 +273,7 @@ const ContactPage = () => {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button 
-                    onClick={handleOpenAuthModal}
+                    onClick={handleRegisterBusinessClick}
                     className="bg-fem-terracotta text-white px-8 py-4 rounded-lg font-semibold hover:bg-fem-terracotta/90 transition-colors text-lg"
                   >
                     Register Your Business

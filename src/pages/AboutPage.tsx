@@ -4,10 +4,14 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import AuthModal from "@/components/auth/AuthModal";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { Users, Building, Star, Globe, Heart, Shield, Handshake, Target, Check, ArrowRight, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 
 const AboutPage = () => {
+  const { isAuthenticated, isBusinessUser } = useAuth();
+  const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
@@ -16,6 +20,16 @@ const AboutPage = () => {
 
   const handleOpenAuthModal = () => {
     setIsAuthModalOpen(true);
+  };
+
+  const handleRegisterBusinessClick = () => {
+    // If user is authenticated and is a business user, navigate directly
+    if (isAuthenticated && isBusinessUser()) {
+      navigate('/register-business');
+    } else {
+      // Otherwise, open the auth modal
+      handleOpenAuthModal();
+    }
   };
 
   // Enhanced carousel images with more creative content
@@ -590,7 +604,7 @@ const AboutPage = () => {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
                   <Button 
-                    onClick={handleOpenAuthModal}
+                    onClick={handleRegisterBusinessClick}
                     className="bg-fem-terracotta text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold hover:bg-fem-terracotta/90 transition-colors text-base sm:text-lg"
                   >
                     Register Your Business

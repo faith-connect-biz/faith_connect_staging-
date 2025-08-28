@@ -25,8 +25,9 @@ import {
   Users,
   PawPrint
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useBusiness } from "@/contexts/BusinessContext";
+import { useAuth } from "@/contexts/AuthContext";
 import AuthModal from "@/components/auth/AuthModal";
 
 // Icon mapping for categories
@@ -77,10 +78,22 @@ const DefaultIcon = Building2;
 
 export const BusinessCategories = () => {
   const { categories, businesses, isLoading, isLoadingBusinesses } = useBusiness();
+  const { isAuthenticated, isBusinessUser } = useAuth();
+  const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const handleOpenAuthModal = () => {
     setIsAuthModalOpen(true);
+  };
+
+  const handleRegisterBusinessClick = () => {
+    // If user is authenticated and is a business user, navigate directly
+    if (isAuthenticated && isBusinessUser()) {
+      navigate('/register-business');
+    } else {
+      // Otherwise, open the auth modal
+      handleOpenAuthModal();
+    }
   };
 
   // Calculate business count for each category
@@ -294,7 +307,7 @@ export const BusinessCategories = () => {
             <div className="text-center mt-8">
               <p className="text-sm text-gray-500 mb-4">No businesses registered yet - be the first to join our community!</p>
               <Button 
-                onClick={handleOpenAuthModal}
+                onClick={handleRegisterBusinessClick}
                 className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white px-6 py-3 rounded-lg font-medium transition-colors"
               >
                 Register Your Business
