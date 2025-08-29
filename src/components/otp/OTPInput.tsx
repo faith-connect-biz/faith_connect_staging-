@@ -111,7 +111,7 @@ export const OTPInput: React.FC<OTPInputProps> = ({
         toast({
           title: "Success!",
           description: type === 'signup' 
-            ? (phone ? "Phone number verified successfully! You can now sign in." : "Email verified successfully! You can now sign in.")
+            ? (phone ? "Phone number verified successfully! You have been automatically signed in." : "Email verified successfully! You have been automatically signed in.")
             : "Password reset code verified!",
         });
       } else {

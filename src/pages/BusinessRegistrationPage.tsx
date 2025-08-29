@@ -16,6 +16,7 @@ import { Business, Category } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
+import { MultiImageUpload } from '@/components/ui/MultiImageUpload';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import HelpButton from '@/components/onboarding/HelpButton';
 import ScrollToTop from '@/components/ui/ScrollToTop';
@@ -81,7 +82,7 @@ const BusinessRegistrationPage = () => {
   const [formData, setFormData] = useState({
     business_name: '',
     category: null as number | null,
-    subcategory: '',
+
     description: '',
     long_description: '',
     phone: '',
@@ -105,8 +106,8 @@ const BusinessRegistrationPage = () => {
       saturday: { open: '', close: '', closed: false },
       sunday: { open: '', close: '', closed: false }
     },
-    services: [] as Array<{name: string, photo?: string}>,
-    products: [] as Array<{name: string, price: string, description: string, photo?: string}>,
+    services: [] as Array<{name: string, description?: string, photos?: string[]}>,
+    products: [] as Array<{name: string, price: string, description: string, photos?: string[]}>,
     features: ['']
   });
 
@@ -205,18 +206,18 @@ const BusinessRegistrationPage = () => {
         const transformedData = {
           business_name: business.business_name,
           category: business.category?.id || null,
-          subcategory: business.subcategory || '',
+    
           description: business.description || '',
           long_description: business.long_description || '',
-          businessType: 'both' as "products" | "services" | "both", // Default to both
+          businessType: 'both' as "products" | "services" | "both", // Will be determined below
           phone: business.phone || '',
           email: business.email || '',
-          website: business.website || null,
+          website: business.website || '',
           facebook_url: business.facebook_url || '',
           instagram_url: business.instagram_url || '',
           twitter_url: business.twitter_url || '',
                 youtube_url: business.youtube_url || '',
-          address: business.address,
+          address: business.address || '',
           city: business.city || '',
           county: business.county || '',
           zipCode: business.zip_code || '',
@@ -250,18 +251,72 @@ const BusinessRegistrationPage = () => {
               saturday: { open: '', close: '', closed: false },
               sunday: { open: '', close: '', closed: false }
             },
-          services: [], // TODO: Fetch services when API endpoint is available
-          products: [], // TODO: Fetch products when API endpoint is available
-          features: [], // TODO: Fetch features when API endpoint is available
-          tags: []
+          services: [], // Will be populated below
+          products: [], // Will be populated below
+          features: [''] // Initialize with empty string to match form structure
         };
 
         console.log('BusinessRegistrationPage: Transformed data for form:', transformedData);
-        setFormData(transformedData);
-        toast({
-          title: "Edit Mode",
-          description: "Business data loaded. You can now edit your business information.",
-        });
+        
+        // Fetch services and products for the business
+        try {
+          const [servicesData, productsData] = await Promise.all([
+            apiService.getBusinessServices(business.id),
+            apiService.getBusinessProducts(business.id)
+          ]);
+          
+          console.log('BusinessRegistrationPage: Fetched services:', servicesData);
+          console.log('BusinessRegistrationPage: Fetched products:', productsData);
+          
+          // Transform services to match form structure
+          const transformedServices = servicesData.map(service => ({
+            name: service.name,
+            description: service.description || '',
+            photos: service.images || []
+          }));
+          
+          // Transform products to match form structure
+          const transformedProducts = productsData.map(product => ({
+            name: product.name,
+            description: product.description || '',
+            price: product.price || '0.00',
+            photos: product.images || []
+          }));
+          
+          // Determine business type based on existing services and products
+          let businessType: "products" | "services" | "both" = 'both';
+          if (transformedServices.length > 0 && transformedProducts.length === 0) {
+            businessType = 'services';
+          } else if (transformedServices.length === 0 && transformedProducts.length > 0) {
+            businessType = 'products';
+          } else if (transformedServices.length > 0 && transformedProducts.length > 0) {
+            businessType = 'both';
+          }
+          
+          // Update the form data with services and products
+          const finalData = {
+            ...transformedData,
+            businessType,
+            services: transformedServices,
+            products: transformedProducts
+          };
+          
+          console.log('BusinessRegistrationPage: Final data with services and products:', finalData);
+          setFormData(finalData);
+          
+          toast({
+            title: "Edit Mode",
+            description: "Business data loaded. You can now edit your business information.",
+          });
+        } catch (error) {
+          console.error('BusinessRegistrationPage: Error fetching services/products:', error);
+          // Still set the form data even if services/products fail to load
+          setFormData(transformedData);
+          toast({
+            title: "Edit Mode",
+            description: "Business data loaded, but services/products could not be loaded. You can still edit other information.",
+          });
+        }
       } else {
         throw new Error('Business not found');
       }
@@ -352,7 +407,8 @@ const BusinessRegistrationPage = () => {
         return formErrors.filter(error => 
           error.toLowerCase().includes('business name') ||
           error.toLowerCase().includes('category') ||
-          error.toLowerCase().includes('description')
+          error.toLowerCase().includes('description') ||
+          error.toLowerCase().includes('listing')
         );
       case 2:
         return formErrors.filter(error => 
@@ -385,6 +441,7 @@ const BusinessRegistrationPage = () => {
         error.toLowerCase().includes('business name') && field === 'business_name' ||
         error.toLowerCase().includes('category') && field === 'category' ||
         error.toLowerCase().includes('description') && field === 'description' ||
+        error.toLowerCase().includes('listing') && field === 'businessType' ||
         error.toLowerCase().includes('phone') && field === 'phone' ||
         error.toLowerCase().includes('email') && field === 'email' ||
         error.toLowerCase().includes('address') && field === 'address'
@@ -450,10 +507,29 @@ const BusinessRegistrationPage = () => {
   }, []);
 
   // Service and Product handlers
-  const handleServiceChange = useCallback((index: number, value: string) => {
+  const handleServiceChange = useCallback((index: number, field: 'name' | 'description', value: string) => {
     setFormData(prev => {
       const newServices = [...prev.services];
-      newServices[index] = { ...newServices[index], name: value };
+      newServices[index] = { ...newServices[index], [field]: value };
+      return { ...prev, services: newServices };
+    });
+  }, []);
+
+  const handleServiceImageChange = useCallback((index: number, imageUrl: string) => {
+    setFormData(prev => {
+      const newServices = [...prev.services];
+      const currentPhotos = newServices[index].photos || [];
+      newServices[index] = { ...newServices[index], photos: [...currentPhotos, imageUrl] };
+      return { ...prev, services: newServices };
+    });
+  }, []);
+
+  const handleServiceImageRemove = useCallback((index: number, imageIndex: number) => {
+    setFormData(prev => {
+      const newServices = [...prev.services];
+      const currentPhotos = newServices[index].photos || [];
+      const updatedPhotos = currentPhotos.filter((_, i) => i !== imageIndex);
+      newServices[index] = { ...newServices[index], photos: updatedPhotos };
       return { ...prev, services: newServices };
     });
   }, []);
@@ -461,7 +537,7 @@ const BusinessRegistrationPage = () => {
   const addService = useCallback(() => {
     setFormData(prev => ({
       ...prev,
-      services: [...prev.services, { name: '', photo: '' }]
+      services: [...prev.services, { name: '', description: '', photos: [] }]
     }));
   }, []);
 
@@ -476,6 +552,25 @@ const BusinessRegistrationPage = () => {
     setFormData(prev => {
       const newProducts = [...prev.products];
       newProducts[index] = { ...newProducts[index], [field]: value };
+      return { ...prev, products: newProducts };
+    });
+  }, []);
+
+  const handleProductImageChange = useCallback((index: number, imageUrl: string) => {
+    setFormData(prev => {
+      const newProducts = [...prev.products];
+      const currentPhotos = newProducts[index].photos || [];
+      newProducts[index] = { ...newProducts[index], photos: [...currentPhotos, imageUrl] };
+      return { ...prev, products: newProducts };
+    });
+  }, []);
+
+  const handleProductImageRemove = useCallback((index: number, imageIndex: number) => {
+    setFormData(prev => {
+      const newProducts = [...prev.products];
+      const currentPhotos = newProducts[index].photos || [];
+      const updatedPhotos = currentPhotos.filter((_, i) => i !== imageIndex);
+      newProducts[index] = { ...newProducts[index], photos: updatedPhotos };
       return { ...prev, products: newProducts };
     });
   }, []);
@@ -619,7 +714,9 @@ const BusinessRegistrationPage = () => {
       errors.push("Business category is required");
     }
 
-
+    if (!formData.businessType) {
+      errors.push("Please select what you will be listing (products, services, or both)");
+    }
 
     if (!formData.description.trim()) {
       errors.push("Business description is required");
@@ -681,71 +778,71 @@ const BusinessRegistrationPage = () => {
   };
 
   // Upload images to S3 and get URLs
-  const uploadImagesToS3 = async (items: Array<{name: string, photo?: string, price?: string, description?: string}>, type: 'service' | 'product') => {
+  const uploadImagesToS3 = async (items: Array<{name: string, photos?: string[], price?: string, description?: string}>, type: 'service' | 'product') => {
     const uploadedItems = [];
-    const totalItems = items.filter(item => item.photo && item.photo.startsWith('data:image')).length;
+    let totalImages = 0;
     let uploadedCount = 0;
     
-    if (totalItems > 0) {
+    // Count total base64 images to upload
+    items.forEach(item => {
+      if (item.photos) {
+        totalImages += item.photos.filter(photo => photo.startsWith('data:image')).length;
+      }
+    });
+    
+    if (totalImages > 0) {
       setUploadingImages(true);
       setUploadProgress(0);
     }
     
     for (const item of items) {
-      if (item.photo && item.photo.startsWith('data:image')) {
-        try {
-          // Convert base64 to blob
-          const response = await fetch(item.photo);
-          const blob = await response.blob();
-          
-          // Create file object
-          const file = new File([blob], `${type}_${item.name}_${Date.now()}.jpg`, { type: 'image/jpeg' });
-          
-          // Get pre-signed URL for upload
-          const uploadData = await apiService.getProfilePhotoUploadUrl(file.name, file.type);
-          
-          // Upload file to S3
-          const uploadSuccess = await apiService.uploadFileToS3(uploadData.presigned_url, file);
-          
-          if (uploadSuccess) {
-            // Generate S3 URL
-            const s3Url = `https://${import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp'}.s3.${import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1'}.amazonaws.com/${uploadData.file_key}`;
-            
-            uploadedItems.push({
-              ...item,
-              photo: s3Url
-            });
-            
-            uploadedCount++;
-            setUploadProgress((uploadedCount / totalItems) * 100);
+      const uploadedPhotos: string[] = [];
+      
+      if (item.photos && item.photos.length > 0) {
+        for (const photo of item.photos) {
+          if (photo.startsWith('data:image')) {
+            try {
+              // Convert base64 to blob
+              const response = await fetch(photo);
+              const blob = await response.blob();
+              
+              // Create file object
+              const file = new File([blob], `${type}_${item.name}_${Date.now()}.jpg`, { type: 'image/jpeg' });
+              
+              // Get pre-signed URL for upload
+              const uploadData = await apiService.getProfilePhotoUploadUrl(file.name, file.type);
+              
+              // Upload file to S3
+              const uploadSuccess = await apiService.uploadFileToS3(uploadData.presigned_url, file);
+              
+              if (uploadSuccess) {
+                // Generate S3 URL
+                const s3Url = `https://${import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp'}.s3.${import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1'}.amazonaws.com/${uploadData.file_key}`;
+                uploadedPhotos.push(s3Url);
+              }
+              
+              uploadedCount++;
+              setUploadProgress((uploadedCount / totalImages) * 100);
+            } catch (error) {
+              console.error(`Failed to upload ${type} image for ${item.name}:`, error);
+              uploadedCount++;
+              setUploadProgress((uploadedCount / totalImages) * 100);
+            }
           } else {
-            // If upload fails, add item without photo
-            uploadedItems.push({
-              ...item,
-              photo: null
-            });
-            
-            uploadedCount++;
-            setUploadProgress((uploadedCount / totalItems) * 100);
+            // Already a URL, keep as is
+            uploadedPhotos.push(photo);
           }
-        } catch (error) {
-          console.error(`Failed to upload ${type} image for ${item.name}:`, error);
-          // Add item without photo if upload fails
-          uploadedItems.push({
-            ...item,
-            photo: null
-          });
-          
-          uploadedCount++;
-          setUploadProgress((uploadedCount / totalItems) * 100);
         }
-      } else {
-        // No photo or already a URL, add as is
-        uploadedItems.push(item);
       }
+      
+      // Add item with uploaded photos
+      uploadedItems.push({
+        ...item,
+        photos: uploadedPhotos
+      });
     }
     
-    if (totalItems > 0) {
+    if (totalImages > 0) {
       setUploadingImages(false);
       setUploadProgress(0);
     }
@@ -755,6 +852,12 @@ const BusinessRegistrationPage = () => {
 
   // Prepare business data for API submission
   const prepareBusinessData = async () => {
+    // Debug: Check what's in the form data
+    console.log('DEBUG: formData.services:', formData.services);
+    console.log('DEBUG: formData.products:', formData.products);
+    console.log('DEBUG: formData.services length:', formData.services.length);
+    console.log('DEBUG: formData.products length:', formData.products.length);
+    console.log('DEBUG: formData.businessType:', formData.businessType);
          // Convert hours to the format expected by the API
      const hours = Object.entries(formData.hours)
        .map(([day, hours]) => {
@@ -797,11 +900,11 @@ const BusinessRegistrationPage = () => {
       .filter(service => service.name.trim() !== '')
       .map(service => ({
         name: service.name,
-        description: `${service.name} service`,
+        description: service.description || `${service.name} service`,
         price_range: 'Varies',
         duration: 'Varies',
         is_available: true,
-        images: service.photo ? [service.photo] : []  // Use images array with S3 URL
+        photos: service.photos || []  // Use photos array with S3 URLs
       }));
 
     // Convert products to the format expected by the API
@@ -812,30 +915,29 @@ const BusinessRegistrationPage = () => {
         description: product.description || `${product.name} product`,
         price: product.price || '0.00',
         is_available: true,
-        images: product.photo ? [product.photo] : []  // Use images array with S3 URL
+        photos: product.photos || []  // Use photos array with S3 URLs
       }));
 
     // Clean and prepare the data
     const businessData = {
       business_name: formData.business_name.trim(),
       category_id: formData.category as number,
-      subcategory: formData.subcategory.trim(),
       description: formData.description.trim(),
       long_description: formData.long_description.trim(),
       phone: formData.phone.trim(),
       email: formData.email.trim(),
-      website: formData.website.trim() || null,
-      facebook_url: formData.facebook_url.trim() || null,
-      instagram_url: formData.instagram_url.trim() || null,
-      twitter_url: formData.twitter_url.trim() || null,
-      youtube_url: formData.youtube_url.trim() || null,
+      website: formData.website?.trim() || null,
+      facebook_url: formData.facebook_url?.trim() || null,
+      instagram_url: formData.instagram_url?.trim() || null,
+      twitter_url: formData.twitter_url?.trim() || null,
+      youtube_url: formData.youtube_url?.trim() || null,
       address: formData.address.trim(),
       city: formData.city.trim(),
       county: formData.county.trim(),
-      zip_code: formData.zipCode.trim() || null,
+      zip_code: formData.zipCode?.trim() || null,
       hours: hours,
-      services: services,
-      products: products,
+      services_data: services,
+      products_data: products,
       features: formData.features.filter(feature => feature.trim() !== '')
     };
 
@@ -912,7 +1014,7 @@ const BusinessRegistrationPage = () => {
 
     try {
       // Check if there are images to upload
-      const hasImages = formData.services.some(s => s.photo) || formData.products.some(p => p.photo);
+      const hasImages = formData.services.some(s => s.photos && s.photos.length > 0) || formData.products.some(p => p.photos && p.photos.length > 0);
       
       if (hasImages) {
         toast({
@@ -1075,21 +1177,7 @@ const BusinessRegistrationPage = () => {
         )}
       </motion.div>
 
-      <motion.div variants={itemVariants}>
-        <Label htmlFor="subcategory">
-          Subcategory (Optional)
-        </Label>
-        <Input
-          id="subcategory"
-          value={formData.subcategory}
-          onChange={(e) => handleInputChange("subcategory", e.target.value)}
-          placeholder="e.g., Web Development, Italian Cuisine, Auto Repair"
-          className="mt-1"
-        />
-        <p className="text-sm text-gray-500 mt-1">
-          Provide a more specific category to help customers find your services
-        </p>
-      </motion.div>
+
 
       <motion.div variants={itemVariants}>
         <Label htmlFor="description">
@@ -1128,6 +1216,59 @@ const BusinessRegistrationPage = () => {
           className="mt-1"
           rows={5}
         />
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <Label className="text-base font-medium">
+          What will you be listing? <span className="text-red-500">*</span>
+        </Label>
+        <div className="mt-3 space-y-3">
+          <div className="flex items-center space-x-2">
+            <input
+              type="radio"
+              id="businessType-products"
+              name="businessType"
+              value="products"
+              checked={formData.businessType === 'products'}
+              onChange={(e) => handleInputChange("businessType", e.target.value)}
+              className="w-4 h-4 text-fem-terracotta bg-gray-100 border-gray-300 focus:ring-fem-terracotta focus:ring-2"
+            />
+            <Label htmlFor="businessType-products" className="text-sm font-normal cursor-pointer">
+              Products only
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <input
+              type="radio"
+              id="businessType-services"
+              name="businessType"
+              value="services"
+              checked={formData.businessType === 'services'}
+              onChange={(e) => handleInputChange("businessType", e.target.value)}
+              className="w-4 h-4 text-fem-terracotta bg-gray-100 border-gray-300 focus:ring-fem-terracotta focus:ring-2"
+            />
+            <Label htmlFor="businessType-services" className="text-sm font-normal cursor-pointer">
+              Services only
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <input
+              type="radio"
+              id="businessType-both"
+              name="businessType"
+              value="both"
+              checked={formData.businessType === 'both'}
+              onChange={(e) => handleInputChange("businessType", e.target.value)}
+              className="w-4 h-4 text-fem-terracotta bg-gray-100 border-gray-300 focus:ring-fem-terracotta focus:ring-2"
+            />
+            <Label htmlFor="businessType-both" className="text-sm font-normal cursor-pointer">
+              Both products and services
+            </Label>
+          </div>
+        </div>
+        <p className="text-sm text-gray-500 mt-2">
+          This will determine what sections are available in the next step
+        </p>
       </motion.div>
     </motion.div>
   );
@@ -1258,86 +1399,122 @@ const BusinessRegistrationPage = () => {
         </div>
       </motion.div>
 
-      {/* Services Section */}
-      <motion.div variants={itemVariants} className="space-y-4">
-        <Label className="text-lg font-semibold">Services (Optional)</Label>
-        <p className="text-sm text-gray-600 mb-4">Add the main services your business offers.</p>
-        <div className="space-y-3">
-          {formData.services.map((service, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <Input
-                value={service.name}
-                onChange={(e) => handleServiceChange(index, e.target.value)}
-                placeholder="Service name"
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => removeService(index)}
-                className="text-red-600 hover:text-red-700"
-              >
-                Remove
-              </Button>
-            </div>
-          ))}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={addService}
-            className="w-full"
-          >
-            + Add Service
-          </Button>
-        </div>
-      </motion.div>
-
-      {/* Products Section */}
-      <motion.div variants={itemVariants} className="space-y-4">
-        <Label className="text-lg font-semibold">Products (Optional)</Label>
-        <p className="text-sm text-gray-600 mb-4">Add the main products your business sells.</p>
-        <div className="space-y-3">
-          {formData.products.map((product, index) => (
-            <div key={index} className="space-y-2 p-3 border rounded-lg">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+      {/* Services Section - Only show if business type includes services */}
+      {(formData.businessType === 'services' || formData.businessType === 'both') && (
+        <motion.div variants={itemVariants} className="space-y-4">
+          <Label className="text-lg font-semibold">Services (Optional)</Label>
+          <p className="text-sm text-gray-600 mb-4">Add the main services your business offers.</p>
+          <div className="space-y-4">
+            {formData.services.map((service, index) => (
+              <div key={index} className="space-y-3 p-4 border rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Input
+                    value={service.name}
+                    onChange={(e) => handleServiceChange(index, 'name', e.target.value)}
+                    placeholder="Service name"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeService(index)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    Remove Service
+                  </Button>
+                </div>
                 <Input
-                  value={product.name}
-                  onChange={(e) => handleProductChange(index, 'name', e.target.value)}
-                  placeholder="Product name"
+                  value={service.description || ''}
+                  onChange={(e) => handleServiceChange(index, 'description', e.target.value)}
+                  placeholder="Service description (optional)"
                 />
-                <Input
-                  value={product.price}
-                  onChange={(e) => handleProductChange(index, 'price', e.target.value)}
-                  placeholder="Price"
+                <MultiImageUpload
+                  value={service.photos || []}
+                  onChange={(imageUrls) => {
+                    setFormData(prev => {
+                      const newServices = [...prev.services];
+                      newServices[index] = { ...newServices[index], photos: imageUrls };
+                      return { ...prev, services: newServices };
+                    });
+                  }}
+                  label="Service Images"
+                  placeholder="Upload service images"
+                  maxImages={5}
                 />
               </div>
-              <Input
-                value={product.description}
-                onChange={(e) => handleProductChange(index, 'description', e.target.value)}
-                placeholder="Product description"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => removeProduct(index)}
-                className="text-red-600 hover:text-red-700"
-              >
-                Remove Product
-              </Button>
-            </div>
-          ))}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={addProduct}
-            className="w-full"
-          >
-            + Add Product
-          </Button>
-        </div>
-      </motion.div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addService}
+              className="w-full"
+            >
+              + Add Service
+            </Button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Products Section - Only show if business type includes products */}
+      {(formData.businessType === 'products' || formData.businessType === 'both') && (
+        <motion.div variants={itemVariants} className="space-y-4">
+          <Label className="text-lg font-semibold">Products (Optional)</Label>
+          <p className="text-sm text-gray-600 mb-4">Add the main products your business sells.</p>
+          <div className="space-y-4">
+            {formData.products.map((product, index) => (
+              <div key={index} className="space-y-3 p-4 border rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <Input
+                    value={product.name}
+                    onChange={(e) => handleProductChange(index, 'name', e.target.value)}
+                    placeholder="Product name"
+                  />
+                  <Input
+                    value={product.price}
+                    onChange={(e) => handleProductChange(index, 'price', e.target.value)}
+                    placeholder="Price"
+                  />
+                </div>
+                <Input
+                  value={product.description}
+                  onChange={(e) => handleProductChange(index, 'description', e.target.value)}
+                  placeholder="Product description"
+                />
+                <MultiImageUpload
+                  value={product.photos || []}
+                  onChange={(imageUrls) => {
+                    setFormData(prev => {
+                      const newProducts = [...prev.products];
+                      newProducts[index] = { ...newProducts[index], photos: imageUrls };
+                      return { ...prev, products: newProducts };
+                    });
+                  }}
+                  label="Product Images"
+                  placeholder="Upload product images"
+                  maxImages={5}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => removeProduct(index)}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  Remove Product
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addProduct}
+              className="w-full"
+            >
+              + Add Product
+            </Button>
+          </div>
+        </motion.div>
+      )}
     </motion.div>
   );
 

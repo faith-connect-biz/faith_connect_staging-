@@ -60,6 +60,7 @@ import { ReviewForm } from "@/components/ReviewForm";
 import LikeButton from "@/components/LikeButton";
 import ShareModal from "@/components/ui/ShareModal";
 import { type ShareData } from "@/utils/sharing";
+import { ProtectedContactInfo } from "@/components/ui/ProtectedContactInfo";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
@@ -1042,18 +1043,11 @@ const BusinessDetailPage = () => {
                           <div>
                             <h4 className="font-semibold text-fem-navy mb-3">Contact Information</h4>
                             <div className="space-y-2">
-                              {business.phone && (
-                                <div className="flex items-center gap-2 text-gray-600">
-                                  <Phone className="w-4 h-4 text-fem-terracotta" />
-                                  <span>{business.phone}</span>
-                                </div>
-                              )}
-                              {business.email && (
-                                <div className="flex items-center gap-2 text-gray-600">
-                                  <Mail className="w-4 h-4 text-fem-terracotta" />
-                                  <span>{business.email}</span>
-                                </div>
-                              )}
+                              <ProtectedContactInfo 
+                                phone={business.phone}
+                                email={business.email}
+                                variant="inline"
+                              />
                               {business.website && (
                                 <div className="flex items-center gap-2 text-gray-600">
                                   <Globe className="w-4 h-4 text-fem-terracotta" />
@@ -1599,16 +1593,11 @@ const BusinessDetailPage = () => {
                   </CardHeader>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {business.phone && (
-                        <Button 
-                          variant="outline" 
-                          className="w-full"
-                          onClick={() => window.open(`tel:${business.phone}`, '_self')}
-                        >
-                          <Phone className="w-4 h-4 mr-2" />
-                          Call Now
-                        </Button>
-                      )}
+                      <ProtectedContactInfo 
+                        phone={business.phone}
+                        email={business.email}
+                        variant="card"
+                      />
                       
                       {business.website ? (
                         <Button 

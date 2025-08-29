@@ -215,6 +215,21 @@ export interface BusinessCreateRequest {
     is_available?: boolean;
     images?: string[]; // Up to 10 images
   }>;
+  services_data?: Array<{
+    name: string;
+    description?: string;
+    price_range?: string;
+    duration?: string;
+    is_available?: boolean;
+    photos?: string[]; // Up to 5 images
+  }>;
+  products_data?: Array<{
+    name: string;
+    description?: string;
+    price: string;
+    is_available?: boolean;
+    photos?: string[]; // Up to 5 images
+  }>;
   features?: string[];
   photo_request?: string | null;
   photo_request_notes?: string | null;
@@ -740,8 +755,8 @@ class ApiService {
         youtube_url: data.youtube_url,
         // Include additional data that the backend expects
         hours: data.hours || [],
-        services: data.services || [],
-        products: data.products || [],
+        services_data: data.services_data || [],
+        products_data: data.products_data || [],
         features: data.features || [],
         photo_request: data.photo_request || null,
         photo_request_notes: data.photo_request_notes || null
@@ -788,8 +803,8 @@ class ApiService {
         youtube_url: data.youtube_url,
         // Include additional data that the backend expects
         hours: data.hours || [],
-        services: data.services || [],
-        products: data.products || [],
+        services_data: data.services_data || [],
+        products_data: data.products_data || [],
         features: data.features || [],
         photo_request: data.photo_request || null,
         photo_request_notes: data.photo_request_notes || null
@@ -813,204 +828,18 @@ class ApiService {
     await this.api.delete(`/business/${id}`);
   }
 
+  // DEPRECATED: This method is dangerous and can cause security issues
+  // Use getUserBusiness() instead which properly filters by current user
   async getCurrentUserBusiness(): Promise<Business | null> {
-    try {
-      console.log('getCurrentUserBusiness: Starting...');
-      
-      // Get current user first
-      const user = await this.getCurrentUser();
-      console.log('getCurrentUserBusiness: Current user:', user);
-      console.log('getCurrentUserBusiness: User object keys:', Object.keys(user));
-      
-      if (!user || !user.id) {
-        console.error('getCurrentUserBusiness: No user or user ID found');
-        return null;
-      }
-      
-      // Check if user object has business information directly
-      if ((user as any).business) {
-        console.log('getCurrentUserBusiness: User has business field:', (user as any).business);
-        return (user as any).business;
-      }
-      
-      // Try to get business by user ID directly first
-      try {
-        const directResponse = await this.api.get(`/business/user/${user.id}/`);
-        if (directResponse.data) {
-          console.log('getCurrentUserBusiness: Found business via direct user endpoint:', directResponse.data);
-          return directResponse.data;
-        }
-      } catch (directError) {
-        console.log('getCurrentUserBusiness: Direct user endpoint failed, trying alternative method...');
-      }
-      
-      // Try alternative endpoint format
-      try {
-        const altResponse = await this.api.get(`/business/?user=${user.id}`);
-        if (altResponse.data && altResponse.data.results && altResponse.data.results.length > 0) {
-          console.log('getCurrentUserBusiness: Found business via user query parameter:', altResponse.data.results[0]);
-          return altResponse.data.results[0];
-        }
-      } catch (altError) {
-        console.log('getCurrentUserBusiness: Alternative endpoint failed, trying main method...');
-      }
-      
-      // Fetch businesses and find the one owned by current user
-      const businessesResponse = await this.getBusinesses();
-      console.log('getCurrentUserBusiness: All businesses response:', businessesResponse);
-      
-      // Log all businesses to see their structure
-      businessesResponse.results.forEach((business, index) => {
-        console.log(`getCurrentUserBusiness: Business ${index}:`, {
-          id: business.id,
-          user: business.user,
-          business_name: business.business_name,
-          allFields: Object.keys(business)
-        });
-      });
-      
-      const userBusiness = businessesResponse.results.find(business => {
-        console.log('getCurrentUserBusiness: Checking business:', business.id, 'user:', business.user, 'current user:', user.id);
-        
-        // Check multiple possible field names for user ownership
-        const possibleUserFields = ['user', 'user_id', 'owner', 'owner_id'];
-        const hasUserMatch = possibleUserFields.some(field => {
-          const fieldValue = (business as any)[field];
-          return fieldValue === user.id;
-        });
-        
-        console.log('getCurrentUserBusiness: User match result:', hasUserMatch);
-        return hasUserMatch;
-      });
-      
-      console.log('getCurrentUserBusiness: Found user business:', userBusiness);
-      
-      if (userBusiness) {
-        // Get full business details including services, products, etc.
-        const fullBusiness = await this.getBusiness(userBusiness.id);
-        console.log('getCurrentUserBusiness: Full business details:', fullBusiness);
-        return fullBusiness;
-      }
-      
-      console.log('getCurrentUserBusiness: No business found for user');
-      return null;
-    } catch (error) {
-      console.error('Error fetching current user business:', error);
-      return null;
-    }
+    console.warn('getCurrentUserBusiness is deprecated. Use getUserBusiness() instead.');
+    return this.getUserBusiness();
   }
 
-  // Alternative method to get current user's business
+  // DEPRECATED: This method is dangerous and can cause security issues
+  // Use getUserBusiness() instead which properly filters by current user
   async getCurrentUserBusinessSimple(): Promise<Business | null> {
-    try {
-      console.log('getCurrentUserBusinessSimple: Starting...');
-      
-      // Get current user first
-      const user = await this.getCurrentUser();
-      console.log('getCurrentUserBusinessSimple: Current user:', user);
-      console.log('getCurrentUserBusinessSimple: User object keys:', Object.keys(user));
-      console.log('getCurrentUserBusinessSimple: User ID:', user.id);
-      console.log('getCurrentUserBusinessSimple: User partnership_number:', user.partnership_number);
-      
-      if (!user || !user.id) {
-        console.error('getCurrentUserBusinessSimple: No user or user ID found');
-        return null;
-      }
-      
-      // Try to get business by user ID using path parameter (this should return a single business)
-      try {
-        const response = await this.api.get(`/business/user/${user.id}/`);
-        console.log('getCurrentUserBusinessSimple: Direct user endpoint response:', response.data);
-        console.log('getCurrentUserBusinessSimple: Response data type:', typeof response.data);
-        console.log('getCurrentUserBusinessSimple: Response data keys:', response.data ? Object.keys(response.data) : 'null');
-        
-        if (response.data) {
-          return response.data;
-        }
-      } catch (error) {
-        console.log('getCurrentUserBusinessSimple: Direct user endpoint failed:', error);
-      }
-      
-      // Try using partnership_number as fallback
-      if (user.partnership_number) {
-        try {
-          const response = await this.api.get(`/business/?partnership_number=${user.partnership_number}`);
-          console.log('getCurrentUserBusinessSimple: Partnership number response:', response.data);
-          
-          if (response.data && response.data.results && response.data.results.length > 0) {
-            const business = response.data.results[0];
-            console.log('getCurrentUserBusinessSimple: Found business via partnership number:', business);
-            return business;
-          }
-        } catch (error) {
-          console.log('getCurrentUserBusinessSimple: Partnership number method failed:', error);
-        }
-      }
-      
-      // Try to get business by user ID using query parameter
-      try {
-        const response = await this.api.get(`/business/?user=${user.id}`);
-        console.log('getCurrentUserBusinessSimple: Response:', response.data);
-        
-        if (response.data && response.data.results && response.data.results.length > 0) {
-          const business = response.data.results[0];
-          console.log('getCurrentUserBusinessSimple: Found business via query parameter:', business);
-          return business;
-        }
-      } catch (error) {
-        console.log('getCurrentUserBusinessSimple: Query parameter method failed:', error);
-      }
-      
-      // Try to find business by checking all businesses and matching user ID
-      try {
-        const allBusinessesResponse = await this.getBusinesses();
-        console.log('getCurrentUserBusinessSimple: All businesses response:', allBusinessesResponse);
-        
-        if (allBusinessesResponse.results && allBusinessesResponse.results.length > 0) {
-          // Look for business where user ID matches
-          const userBusiness = allBusinessesResponse.results.find(business => {
-            console.log('getCurrentUserBusinessSimple: Checking business:', {
-              id: business.id,
-              business_name: business.business_name,
-              user: business.user,
-              user_id: (business as any).user_id,
-              owner: (business as any).owner,
-              owner_id: (business as any).owner_id
-            });
-            
-            // Check multiple possible field names for user ownership
-            const possibleUserFields = ['user', 'user_id', 'owner', 'owner_id'];
-            const hasUserMatch = possibleUserFields.some(field => {
-              const fieldValue = (business as any)[field];
-              if (fieldValue && typeof fieldValue === 'object' && fieldValue.id) {
-                // If field is an object with id, compare IDs
-                return fieldValue.id === user.id;
-              } else if (fieldValue) {
-                // If field is a direct value, compare directly
-                return fieldValue === user.id;
-              }
-              return false;
-            });
-            
-            console.log('getCurrentUserBusinessSimple: User match result:', hasUserMatch);
-            return hasUserMatch;
-          });
-          
-          if (userBusiness) {
-            console.log('getCurrentUserBusinessSimple: Found user business via all businesses search:', userBusiness);
-            return userBusiness;
-          }
-        }
-      } catch (error) {
-        console.log('getCurrentUserBusinessSimple: All businesses search failed:', error);
-      }
-      
-      console.log('getCurrentUserBusinessSimple: No business found');
-      return null;
-    } catch (error) {
-      console.error('getCurrentUserBusinessSimple: Error:', error);
-      return null;
-    }
+    console.warn('getCurrentUserBusinessSimple is deprecated. Use getUserBusiness() instead.');
+    return this.getUserBusiness();
   }
 
   // Get business services

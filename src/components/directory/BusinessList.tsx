@@ -34,6 +34,7 @@ import { Business, apiService } from "@/services/api";
 import { toast } from "@/hooks/use-toast";
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import { getBusinessImageUrl, getBusinessLogoUrl } from '@/utils/imageUtils';
+import { ProtectedContactInfo } from '@/components/ui/ProtectedContactInfo';
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
@@ -237,20 +238,12 @@ export const BusinessList = ({ filters, currentPage = 1, itemsPerPage = 15, onPa
             )}
 
             {/* Business Contact Info */}
-            <div className="space-y-2 mb-3">
-              {business.phone && (
-                <div className="flex items-center text-sm text-gray-600">
-                  <Phone className="w-4 h-4 mr-1" />
-                  {business.phone}
-                </div>
-              )}
-              
-              {business.email && (
-                <div className="flex items-center text-sm text-gray-600">
-                  <MessageCircle className="w-4 h-4 mr-1" />
-                  {business.email}
-                </div>
-              )}
+            <div className="mb-3">
+              <ProtectedContactInfo 
+                phone={business.phone}
+                email={business.email}
+                variant="inline"
+              />
             </div>
 
             {/* Business Location */}

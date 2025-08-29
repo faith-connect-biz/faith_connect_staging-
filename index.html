@@ -7,9 +7,24 @@
     <meta name="description" content="Connect with trusted businesses within our faith-based community" />
     <meta name="author" content="Faith Connect" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#dc2626" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="FaithConnect" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="msapplication-TileColor" content="#dc2626" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <!-- Icons -->
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/svg+xml" href="/NewFavIcon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/sw.js" as="script" />
     <meta property="og:title" content="Faith Connect Business Directory" />
     <meta property="og:description" content="Connect with trusted businesses within our faith-based community" />
     <meta property="og:type" content="website" />

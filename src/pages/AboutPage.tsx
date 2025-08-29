@@ -708,6 +708,7 @@ const AboutPage = () => {
       <AuthModal 
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)}
+        hideTabs={true}
       />
     </div>
   );

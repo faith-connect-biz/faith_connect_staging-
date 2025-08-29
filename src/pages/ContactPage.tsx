@@ -381,6 +381,7 @@ const ContactPage = () => {
       <AuthModal 
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)}
+        hideTabs={true}
       />
     </div>
   );

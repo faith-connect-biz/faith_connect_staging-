@@ -7,6 +7,7 @@ import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BusinessProvider } from "@/contexts/BusinessContext";
+import PWAStatus from "@/components/pwa/PWAStatus";
 import Index from "./pages/Index";
 import DirectoryPage from "./pages/DirectoryPage";
 import AboutPage from "./pages/AboutPage";
@@ -84,6 +85,7 @@ const App = () => (
               </Routes>
               <Toaster />
               <Sonner />
+              <PWAStatus variant="floating" />
             </OnboardingProvider>
           </BusinessProvider>
         </AuthProvider>
