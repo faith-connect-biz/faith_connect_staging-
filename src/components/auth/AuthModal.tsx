@@ -53,10 +53,12 @@ const getPasswordStrengthText = (password: string): string => {
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  defaultTab?: 'login' | 'signup';
+  hideTabs?: boolean;
 }
 
-export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const [activeTab, setActiveTab] = useState('login');
+export default function AuthModal({ isOpen, onClose, defaultTab = 'login', hideTabs = false }: AuthModalProps) {
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [isLoading, setIsLoading] = useState(false);
   const [signupStep, setSignupStep] = useState<'form' | 'otp'>('form');
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -84,7 +86,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   // Enhanced close handler that resets all states
   const handleClose = () => {
     // Reset all states before closing
-    setActiveTab('login');
+    setActiveTab(defaultTab);
     setSignupStep('form');
     setForgotOpen(false);
     setForgotStep('request');
@@ -134,7 +136,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   useEffect(() => {
     if (isOpen) {
       // Reset all form states
-      setActiveTab('login');
+      setActiveTab(defaultTab);
       setSignupStep('form');
       setForgotOpen(false);
       setForgotStep('request');
@@ -190,7 +192,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     if (isOpen) {
       // Always reset to form step when modal opens
       setSignupStep('form');
-      setActiveTab('login'); // Default to login tab
+      setActiveTab(defaultTab); // Use the defaultTab prop
       setSignupData({
         email: '',
         phone: '',
@@ -564,11 +566,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           {/* Regular Signup/Login Form - Only show when signupStep === 'form' */}
           {signupStep === 'form' && (
             <div className="p-6">
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 bg-fem-gray text-fem-navy rounded-md">
-                  <TabsTrigger value="login" className="data-[state=active]:bg-white data-[state=active]:text-fem-terracotta hover:text-fem-terracotta">Login</TabsTrigger>
-            <TabsTrigger value="signup" className="data-[state=active]:bg-white data-[state=active]:text-fem-terracotta hover:text-fem-terracotta">Sign Up</TabsTrigger>
-          </TabsList>
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'login' | 'signup')}>
+                {!hideTabs && (
+                  <TabsList className="grid w-full grid-cols-2 bg-fem-gray text-fem-navy rounded-md">
+                    <TabsTrigger value="login" className="data-[state=active]:bg-white data-[state=active]:text-fem-terracotta hover:text-fem-terracotta">Login</TabsTrigger>
+                    <TabsTrigger value="signup" className="data-[state=active]:bg-white data-[state=active]:text-fem-terracotta hover:text-fem-terracotta">Sign Up</TabsTrigger>
+                  </TabsList>
+                )}
 
                 <TabsContent value="login" className="space-y-4">
                   {/* Login Contact Method Toggle */}

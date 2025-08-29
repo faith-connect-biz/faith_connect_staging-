@@ -1,0 +1,19 @@
+
+<svg width="390" height="844" viewBox="0 0 390 844" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a8a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#dc2626;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="390" height="844" fill="url(#grad)"/>
+  <text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="white" font-family="Arial, sans-serif" font-size="19.5" font-weight="bold">
+    FaithConnect Screenshot
+  </text>
+  <text x="50%" y="506.4" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="7.8">
+    390x844
+  </text>
+  <text x="50%" y="590.8" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="5.85">
+    Replace with actual screenshot
+  </text>
+</svg>

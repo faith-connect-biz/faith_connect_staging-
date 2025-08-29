@@ -168,6 +168,7 @@ export const CallToAction = () => {
       <AuthModal 
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)}
+        hideTabs={true}
       />
     </section>
   );

@@ -44,6 +44,7 @@ import { Label } from '@/components/ui/label';
 import { PhotoRequestModal } from '@/components/PhotoRequestModal';
 import HelpButton from '@/components/onboarding/HelpButton';
 import ScrollToTop from '@/components/ui/ScrollToTop';
+import { ProtectedContactInfo } from '@/components/ui/ProtectedContactInfo';
 
 
 interface BusinessData {
@@ -84,6 +85,7 @@ interface LocalProduct {
   is_active?: boolean;
   in_stock: boolean;
   created_at?: string;
+  business?: string; // Add business property to match Product type
 }
 
 
@@ -199,6 +201,8 @@ export const BusinessManagementPage: React.FC = () => {
 
             // Fetch services, products, and hours for the business
             try {
+              console.log('BusinessManagementPage: Fetching business details for business ID (from state):', business.id);
+              
               const [servicesData, productsData, hoursData, analyticsData] = await Promise.all([
                 apiService.getBusinessServices(business.id),
                 apiService.getBusinessProducts(business.id),
@@ -206,8 +210,27 @@ export const BusinessManagementPage: React.FC = () => {
                 apiService.getBusinessAnalytics(business.id)
               ]);
 
+              console.log('BusinessManagementPage: Services data received (from state):', servicesData);
+              console.log('BusinessManagementPage: Products data received (from state):', productsData);
+              console.log('BusinessManagementPage: Hours data received (from state):', hoursData);
+              console.log('BusinessManagementPage: Analytics data received (from state):', analyticsData);
+
               setServices(servicesData);
-              setProducts(productsData);
+              // Transform products to match LocalProduct interface
+              const transformedProducts: LocalProduct[] = productsData.map(product => ({
+                id: product.id,
+                name: product.name,
+                description: product.description || '',
+                price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
+                price_currency: product.price_currency || 'KES',
+                product_image_url: product.product_image_url,
+                images: product.images || [],
+                is_active: product.is_active,
+                in_stock: product.in_stock,
+                created_at: product.created_at,
+                business: typeof product.business === 'string' ? product.business : product.business?.id || ''
+              }));
+              setProducts(transformedProducts);
               setBusinessHours(hoursData);
               setAnalytics(analyticsData);
               
@@ -233,17 +256,33 @@ export const BusinessManagementPage: React.FC = () => {
         }
       }
       
-      // Try the simple method first
-      let business = await apiService.getCurrentUserBusinessSimple();
-      
-      if (!business) {
-        // Fallback to the complex method
-        business = await apiService.getCurrentUserBusiness();
-      }
+      // Use the correct method to get current user's business
+      let business = await apiService.getUserBusiness();
       
       console.log('Raw business data from API:', business);
+      console.log('Business owner user ID:', business?.user?.id);
+      console.log('Current user ID:', user?.id);
+      console.log('Business ownership match:', business?.user?.id?.toString() === user?.id?.toString());
       
       if (business) {
+        // Security check: Ensure the business belongs to the current user
+        if (business.user?.id?.toString() !== user?.id?.toString()) {
+          console.error('SECURITY ISSUE: Business does not belong to current user!');
+          console.error('Business user ID:', business.user?.id);
+          console.error('Current user ID:', user?.id);
+          toast({
+            title: "Security Error",
+            description: "This business does not belong to you. Please contact support.",
+            variant: "destructive"
+          });
+          setBusinessData(null);
+          setServices([]);
+          setProducts([]);
+          setBusinessHours([]);
+          setIsLoading(false);
+          return;
+        }
+        
         // Transform the API response to match our local interface
         const transformedBusinessData: BusinessData = {
           id: business.id,
@@ -277,6 +316,8 @@ export const BusinessManagementPage: React.FC = () => {
 
         // Fetch services, products, and hours for the business
         try {
+          console.log('BusinessManagementPage: Fetching business details for business ID (from API):', business.id);
+          
           const [servicesData, productsData, hoursData, analyticsData] = await Promise.all([
             apiService.getBusinessServices(business.id),
             apiService.getBusinessProducts(business.id),
@@ -284,8 +325,27 @@ export const BusinessManagementPage: React.FC = () => {
             apiService.getBusinessAnalytics(business.id)
           ]);
 
+          console.log('BusinessManagementPage: Services data received (from API):', servicesData);
+          console.log('BusinessManagementPage: Products data received (from API):', productsData);
+          console.log('BusinessManagementPage: Hours data received (from API):', hoursData);
+          console.log('BusinessManagementPage: Analytics data received (from API):', analyticsData);
+
           setServices(servicesData);
-          setProducts(productsData);
+          // Transform products to match LocalProduct interface
+          const transformedProducts: LocalProduct[] = productsData.map(product => ({
+            id: product.id,
+            name: product.name,
+            description: product.description || '',
+            price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
+            price_currency: product.price_currency || 'KES',
+            product_image_url: product.product_image_url,
+            images: product.images || [],
+            is_active: product.is_active,
+            in_stock: product.in_stock,
+            created_at: product.created_at,
+            business: typeof product.business === 'string' ? product.business : product.business?.id || ''
+          }));
+          setProducts(transformedProducts);
           setBusinessHours(hoursData);
           setAnalytics(analyticsData);
         } catch (error) {
@@ -331,7 +391,21 @@ export const BusinessManagementPage: React.FC = () => {
     if (!businessData) return;
     try {
       const productsData = await apiService.getBusinessProducts(businessData.id);
-      setProducts(productsData);
+      // Transform products to match LocalProduct interface
+      const transformedProducts: LocalProduct[] = productsData.map(product => ({
+        id: product.id,
+        name: product.name,
+        description: product.description || '',
+        price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
+        price_currency: product.price_currency || 'KES',
+        product_image_url: product.product_image_url,
+        images: product.images || [],
+        is_active: product.is_active,
+        in_stock: product.in_stock,
+        created_at: product.created_at,
+        business: typeof product.business === 'string' ? product.business : product.business?.id || ''
+      }));
+      setProducts(transformedProducts);
     } catch (error) {
       console.error('Error fetching business products:', error);
       setProducts([]);
@@ -427,6 +501,7 @@ export const BusinessManagementPage: React.FC = () => {
   const closeServiceDetail = () => {
     setShowServiceDetail(false);
     setSelectedService(null);
+    setCurrentImageIndex(0);
   };
 
   const handleServiceSuccess = () => {
@@ -1283,7 +1358,7 @@ export const BusinessManagementPage: React.FC = () => {
         isOpen={showProductForm}
         onClose={() => setShowProductForm(false)}
         businessId={businessData?.id || ''}
-        product={editingProduct}
+        product={editingProduct as any}
         onSuccess={handleProductSuccess}
       />
 
@@ -1474,20 +1549,81 @@ export const BusinessManagementPage: React.FC = () => {
           
           {selectedService && (
             <div className="space-y-6">
-              {/* Service Image */}
+              {/* Service Images */}
               <div className="relative">
-                {selectedService.service_image_url ? (
-                  <img 
-                    src={selectedService.service_image_url} 
-                    alt={selectedService.name}
-                    className="w-full h-96 object-cover rounded-lg shadow-lg"
-                  />
-                ) : (
-                  <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <Settings className="h-16 w-16 text-gray-400" />
-                    <span className="ml-2 text-gray-500">No image available</span>
-                  </div>
-                )}
+                {(() => {
+                  const allImages = [
+                    ...(selectedService.service_image_url ? [selectedService.service_image_url] : []),
+                    ...(selectedService.images || [])
+                  ];
+                  
+                  if (allImages.length > 0) {
+                    return (
+                      <div className="relative">
+                        <img 
+                          src={allImages[currentImageIndex] || allImages[0]} 
+                          alt={`${selectedService.name} - Image ${currentImageIndex + 1}`}
+                          className="w-full h-96 object-cover rounded-lg shadow-lg"
+                        />
+                        
+                        {/* Image Navigation */}
+                        {allImages.length > 1 && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 rounded-full p-2"
+                              onClick={() => handleImageNavigation('prev')}
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 rounded-full p-2"
+                              onClick={() => handleImageNavigation('next')}
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                            
+                            {/* Image Counter */}
+                            <div className="absolute bottom-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                              {currentImageIndex + 1} / {allImages.length}
+                            </div>
+                          </>
+                        )}
+                        
+                        {/* Image Thumbnails */}
+                        {allImages.length > 1 && (
+                          <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
+                            {allImages.map((image, index) => (
+                              <button
+                                key={index}
+                                onClick={() => setCurrentImageIndex(index)}
+                                className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${
+                                  index === currentImageIndex ? 'border-fem-terracotta' : 'border-gray-200'
+                                }`}
+                              >
+                                <img 
+                                  src={image} 
+                                  alt={`Thumbnail ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <Settings className="h-16 w-16 text-gray-400" />
+                        <span className="ml-2 text-gray-500">No images available</span>
+                      </div>
+                    );
+                  }
+                })()}
               </div>
               
               {/* Service Information */}

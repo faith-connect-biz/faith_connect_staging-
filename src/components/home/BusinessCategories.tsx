@@ -321,6 +321,7 @@ export const BusinessCategories = () => {
       <AuthModal 
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)}
+        hideTabs={true}
       />
     </section>
   );

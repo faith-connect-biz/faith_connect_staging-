@@ -21,6 +21,7 @@ const Navbar: React.FC = () => {
   const { user, isAuthenticated, isBusiness, logout, isLoggingOut } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<'login' | 'signup'>('login');
   const [hasExistingBusiness, setHasExistingBusiness] = useState(false);
   const [isCheckingBusiness, setIsCheckingBusiness] = useState(false);
   const navigate = useNavigate();
@@ -84,7 +85,8 @@ const Navbar: React.FC = () => {
     setIsMenuOpen(false);
   };
 
-  const openAuthModal = () => {
+  const openAuthModal = (tab: 'login' | 'signup' = 'login') => {
+    setAuthModalTab(tab);
     setIsAuthModalOpen(true);
   };
 
@@ -96,6 +98,7 @@ const Navbar: React.FC = () => {
   useEffect(() => {
     const shouldOpen = localStorage.getItem('open_login_modal');
     if (shouldOpen) {
+      setAuthModalTab('login');
       setIsAuthModalOpen(true);
       localStorage.removeItem('open_login_modal');
     }
@@ -194,13 +197,13 @@ const Navbar: React.FC = () => {
                <Button 
                  variant="outline" 
                  className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
-                 onClick={openAuthModal}
+                 onClick={() => openAuthModal('login')}
                >
                  Sign In
                </Button>
                <Button 
                  className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white"
-                 onClick={openAuthModal}
+                 onClick={() => openAuthModal('signup')}
                >
                  Register
                </Button>
@@ -328,13 +331,13 @@ const Navbar: React.FC = () => {
                   <Button 
                     variant="outline" 
                     className="w-full border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
-                    onClick={openAuthModal}
+                    onClick={() => openAuthModal('login')}
                   >
                     Sign In
                   </Button>
                   <Button 
                     className="w-full bg-fem-terracotta hover:bg-fem-terracotta/90 text-white"
-                    onClick={openAuthModal}
+                    onClick={() => openAuthModal('signup')}
                   >
                     Register
                   </Button>
@@ -349,6 +352,8 @@ const Navbar: React.FC = () => {
       <AuthModal 
         isOpen={isAuthModalOpen}
         onClose={closeAuthModal}
+        defaultTab={authModalTab}
+        hideTabs={true}
       />
     </nav>
   );
