@@ -852,12 +852,6 @@ const BusinessRegistrationPage = () => {
 
   // Prepare business data for API submission
   const prepareBusinessData = async () => {
-    // Debug: Check what's in the form data
-    console.log('DEBUG: formData.services:', formData.services);
-    console.log('DEBUG: formData.products:', formData.products);
-    console.log('DEBUG: formData.services length:', formData.services.length);
-    console.log('DEBUG: formData.products length:', formData.products.length);
-    console.log('DEBUG: formData.businessType:', formData.businessType);
          // Convert hours to the format expected by the API
      const hours = Object.entries(formData.hours)
        .map(([day, hours]) => {

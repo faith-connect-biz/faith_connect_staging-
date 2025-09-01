@@ -36,6 +36,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBusiness } from '@/contexts/BusinessContext';
 import { toast } from '@/hooks/use-toast';
 import { apiService, Service, Product } from '@/services/api';
 import { ServiceForm } from '@/components/ServiceForm';
@@ -92,6 +93,7 @@ interface LocalProduct {
 export const BusinessManagementPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const { forceReAuth } = useAuth();
+  const { fetchBusinesses } = useBusiness();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('overview');
@@ -474,12 +476,21 @@ export const BusinessManagementPage: React.FC = () => {
   };
 
   const handleImageNavigation = (direction: 'next' | 'prev') => {
-    if (!selectedProduct) return;
+    if (!selectedProduct && !selectedService) return;
     
-    const allImages = [
-      ...(selectedProduct.product_image_url ? [selectedProduct.product_image_url] : []),
-      ...(selectedProduct.images || [])
-    ];
+    let allImages: string[] = [];
+    
+    if (selectedProduct) {
+      allImages = [
+        ...(selectedProduct.images || []),
+        ...(selectedProduct.product_image_url ? [selectedProduct.product_image_url] : [])
+      ];
+    } else if (selectedService) {
+      allImages = [
+        ...(selectedService.images || []),
+        ...(selectedService.service_image_url ? [selectedService.service_image_url] : [])
+      ];
+    }
     
     if (direction === 'next') {
       setCurrentImageIndex((prev) => 
@@ -558,6 +569,11 @@ export const BusinessManagementPage: React.FC = () => {
                ...prev,
                business_image_url: finalImageUrl
              } : null);
+             
+             // Refresh the business context to update other components
+             if (fetchBusinesses) {
+               fetchBusinesses({ page: 1, limit: 15 });
+             }
            } catch (error) {
              console.error('Error updating business profile photo in backend:', error);
              // Still update local state with S3 URL as fallback
@@ -565,6 +581,11 @@ export const BusinessManagementPage: React.FC = () => {
                ...prev,
                business_image_url: s3Url
              } : null);
+             
+             // Refresh the business context to update other components
+             if (fetchBusinesses) {
+               fetchBusinesses({ page: 1, limit: 15 });
+             }
            }
            
            toast({
@@ -996,7 +1017,7 @@ export const BusinessManagementPage: React.FC = () => {
                           {/* Service Preview Image */}
                           <div className="flex-shrink-0">
                             <img 
-                              src={service.service_image_url || service.images?.[0] || "/placeholder.svg"} 
+                              src={service.images?.[0] || service.service_image_url || "/placeholder.svg"} 
                               alt={service.name}
                               className="w-16 h-16 object-cover rounded-lg border border-gray-200"
                               onError={(e) => {
@@ -1120,7 +1141,7 @@ export const BusinessManagementPage: React.FC = () => {
                           {/* Product Preview Image */}
                           <div className="flex-shrink-0">
                             <img 
-                              src={product.product_image_url || product.images?.[0] || "/placeholder.svg"} 
+                              src={product.images?.[0] || product.product_image_url || "/placeholder.svg"} 
                               alt={product.name}
                               className="w-16 h-16 object-cover rounded-lg border border-gray-200"
                               onError={(e) => {
@@ -1380,8 +1401,8 @@ export const BusinessManagementPage: React.FC = () => {
               <div className="relative">
                 {(() => {
                   const allImages = [
-                    ...(selectedProduct.product_image_url ? [selectedProduct.product_image_url] : []),
-                    ...(selectedProduct.images || [])
+                    ...(selectedProduct.images || []),
+                    ...(selectedProduct.product_image_url ? [selectedProduct.product_image_url] : [])
                   ];
                   
                   if (allImages.length === 0) {
@@ -1436,8 +1457,8 @@ export const BusinessManagementPage: React.FC = () => {
               {/* Thumbnail Gallery */}
               {(() => {
                 const allImages = [
-                  ...(selectedProduct.product_image_url ? [selectedProduct.product_image_url] : []),
-                  ...(selectedProduct.images || [])
+                  ...(selectedProduct.images || []),
+                  ...(selectedProduct.product_image_url ? [selectedProduct.product_image_url] : [])
                 ];
                 
                 if (allImages.length > 1) {
@@ -1553,8 +1574,8 @@ export const BusinessManagementPage: React.FC = () => {
               <div className="relative">
                 {(() => {
                   const allImages = [
-                    ...(selectedService.service_image_url ? [selectedService.service_image_url] : []),
-                    ...(selectedService.images || [])
+                    ...(selectedService.images || []),
+                    ...(selectedService.service_image_url ? [selectedService.service_image_url] : [])
                   ];
                   
                   if (allImages.length > 0) {
