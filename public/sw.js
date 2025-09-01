@@ -273,49 +273,65 @@ async function removeOfflineData(id) {
   console.log('Service Worker: Removing offline data', id);
 }
 
-// Push notification handling
-self.addEventListener('push', (event) => {
-  console.log('Service Worker: Push notification received');
+// Push notification event listener
+self.addEventListener('push', function(event) {
+  console.log('[Service Worker] Push Received.');
   
-  let notificationData = {
-    title: 'FaithConnect',
-    body: 'New notification from FaithConnect',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/badge-72x72.png',
+  let notificationTitle = 'FaithConnect';
+  let notificationOptions = {
+    body: 'You have a new notification!',
+    icon: '/android-chrome-192x192.png',
+    badge: '/android-chrome-192x192.png',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
-      primaryKey: 1,
-      url: '/'
+      primaryKey: 1
     },
     actions: [
       {
         action: 'explore',
         title: 'View',
-        icon: '/icons/checkmark.png'
+        icon: '/android-chrome-192x192.png'
       },
       {
         action: 'close',
         title: 'Close',
-        icon: '/icons/xmark.png'
+        icon: '/android-chrome-192x192.png'
       }
     ]
   };
 
-  // Parse notification data if available
   if (event.data) {
-    try {
-      const data = event.data.json();
-      notificationData = { ...notificationData, ...data };
-    } catch (error) {
-      // If not JSON, treat as text
-      notificationData.body = event.data.text();
-    }
+    const data = event.data.json();
+    notificationTitle = data.title || notificationTitle;
+    notificationOptions.body = data.body || notificationOptions.body;
+    notificationOptions.icon = data.icon || notificationOptions.icon;
   }
-  
+
   event.waitUntil(
-    self.registration.showNotification(notificationData.title, notificationData)
+    self.registration.showNotification(notificationTitle, notificationOptions)
   );
+});
+
+// Notification click event listener
+self.addEventListener('notificationclick', function(event) {
+  console.log('[Service Worker] Notification click Received.');
+
+  event.notification.close();
+
+  if (event.action === 'explore') {
+    event.waitUntil(
+      clients.openWindow('/')
+    );
+  } else if (event.action === 'close') {
+    // Just close the notification
+    return;
+  } else {
+    // Default action - open the app
+    event.waitUntil(
+      clients.openWindow('/')
+    );
+  }
 });
 
 // Background sync for offline notifications
@@ -383,19 +399,6 @@ async function removeOfflineNotification(id) {
   // This would be implemented to remove stored notification from IndexedDB
   console.log('Service Worker: Removing offline notification:', id);
 }
-
-// Notification click handling
-self.addEventListener('notificationclick', (event) => {
-  console.log('Service Worker: Notification clicked');
-  
-  event.notification.close();
-  
-  if (event.action === 'explore') {
-    event.waitUntil(
-      clients.openWindow('/')
-    );
-  }
-});
 
 // Message handling from main thread
 self.addEventListener('message', (event) => {

@@ -131,27 +131,30 @@ class PWAService {
     });
   }
 
-  // Register service worker
+  // Register service worker - DISABLED
   private async registerServiceWorker(): Promise<void> {
     if ('serviceWorker' in navigator) {
       try {
         const registration = await navigator.serviceWorker.register('/sw.js');
-        console.log('Service Worker registered:', registration);
-
-        // Handle service worker updates
+        console.log('SW registered: ', registration);
+        
+        // Check for updates
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // New service worker available
-                this.showUpdateNotification();
+                // New content is available, show update notification
+                console.log('New content is available; please refresh.');
               }
             });
           }
         });
+        
+        return;
       } catch (error) {
-        console.error('Service Worker registration failed:', error);
+        console.error('SW registration failed: ', error);
+        return;
       }
     }
   }

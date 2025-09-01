@@ -341,7 +341,8 @@ class ApiService {
           'verify-phone',
           'forgot-password',
           'reset-password',
-          'categories'
+          'categories',
+          'stats'
         ];
         
         // Check if the current endpoint is public
@@ -363,13 +364,18 @@ class ApiService {
         
 
         
-        // Only add auth token for protected endpoints
-        // If it's a public endpoint OR a public business endpoint, don't add auth
+        // Add auth token for all protected endpoints
+        // This includes: all write operations, restricted segments, and non-public endpoints
         if (!isPublicEndpoint && !isPublicBusinessEndpoint) {
           const token = localStorage.getItem('access_token');
           if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+            console.log(`[API] Adding auth token for ${config.method?.toUpperCase()} ${config.url}`);
+          } else {
+            console.warn(`[API] No auth token found for protected endpoint: ${config.method?.toUpperCase()} ${config.url}`);
           }
+        } else {
+          console.log(`[API] Public endpoint, no auth required: ${config.method?.toUpperCase()} ${config.url}`);
         }
         
         return config;
@@ -1255,6 +1261,12 @@ class ApiService {
     rating: number;
     review_text?: string;
   }): Promise<Review> {
+    // Ensure user is properly authenticated before submitting review
+    const isAuthenticated = await this.ensureAuthenticated();
+    if (!isAuthenticated) {
+      throw new Error('Authentication required. Please log in to submit a review.');
+    }
+
     // Check if user can review this business
     const canReview = await this.canUserReviewBusiness(businessId);
     if (!canReview) {
@@ -1265,7 +1277,10 @@ class ApiService {
       ...data,
       business: businessId
     };
+    
+    console.log(`[API] Submitting review for business ${businessId}:`, reviewData);
     const response = await this.api.post(`/business/${businessId}/reviews/`, reviewData);
+    console.log(`[API] Review submitted successfully:`, response.data);
     return response.data;
   }
 
@@ -1348,6 +1363,24 @@ class ApiService {
       }
       return false;
     }
+  }
+
+  // Enhanced authentication check for review submission
+  async ensureAuthenticated(): Promise<boolean> {
+    if (!this.isAuthenticated()) {
+      console.warn('[API] User not authenticated');
+      return false;
+    }
+    
+    // Validate token with backend
+    const isValid = await this.validateToken();
+    if (!isValid) {
+      console.warn('[API] Token validation failed');
+      return false;
+    }
+    
+    console.log('[API] User properly authenticated');
+    return true;
   }
 
   getAuthToken(): string | null {

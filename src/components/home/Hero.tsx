@@ -1,9 +1,10 @@
 
 import { Link, useNavigate } from "react-router-dom";
 import { Search, ArrowRight, Sparkles, Users, Briefcase, Target, Globe, Zap, Plus, Heart, Star } from "lucide-react";
-import { useState, ReactNode } from "react";
+import { useState, ReactNode, useEffect } from "react";
 import ImageCarousel from "@/components/ui/ImageCarousel";
 import { useAuth } from '@/contexts/AuthContext';
+import { apiService } from '@/services/api';
 
 interface HeroProps {
   actionButtons?: ReactNode;
@@ -12,6 +13,8 @@ interface HeroProps {
 export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [stats, setStats] = useState<any>(null);
+  const [businessLogos, setBusinessLogos] = useState<any[]>([]);
   const { user, isAuthenticated, isBusiness, isCommunity } = useAuth();
 
   const handleSearch = () => {
@@ -27,6 +30,24 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
       handleSearch();
     }
   };
+
+  // Fetch platform stats and business logos
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/businesses/stats/`);
+        const data = await response.json();
+        if (data.success) {
+          setStats(data.data);
+          setBusinessLogos(data.data.business_logos || []);
+        }
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   const carouselImages = [
     // {
@@ -137,20 +158,40 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
 
                 {/* Enhanced Trust Indicators */}
                 <div className="flex flex-wrap items-center gap-8 pt-8 scroll-reveal">
-                                      <div className="flex items-center gap-4">
-                      <div className="flex -space-x-3">
-                        {[1,2,3,4,5].map(i => (
+                  <div className="flex items-center gap-4">
+                    <div className="flex -space-x-3">
+                      {businessLogos.length > 0 ? (
+                        businessLogos.slice(0, 5).map((business, i) => (
+                          <div 
+                            key={business.id} 
+                            className="w-12 h-12 rounded-full border-3 border-white shadow-xl hover:scale-110 transition-transform duration-300 overflow-hidden"
+                          >
+                            <img 
+                              src={business.logo_url} 
+                              alt={business.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = "/placeholder.svg";
+                              }}
+                            />
+                          </div>
+                        ))
+                      ) : (
+                        [1,2,3,4,5].map(i => (
                           <div 
                             key={i} 
                             className="w-12 h-12 rounded-full bg-gradient-to-br from-fem-gold to-fem-terracotta border-3 border-white shadow-xl hover:scale-110 transition-transform duration-300" 
                           />
-                        ))}
-                      </div>
-                      <div>
-                        <div className="text-white font-mont font-semibold text-lg tracking-wide">1000+ Local Businesses</div>
-                        <div className="text-gray-300 text-sm font-mont">Active Community</div>
-                      </div>
+                        ))
+                      )}
                     </div>
+                    <div>
+                      <div className="text-white font-mont font-semibold text-lg tracking-wide">
+                        {stats ? `${stats.total_businesses}+ Local Businesses` : "1000+ Local Businesses"}
+                      </div>
+                      <div className="text-gray-300 text-sm font-mont">Active Community</div>
+                    </div>
+                  </div>
                   
                   <div className="flex items-center gap-4">
                     <Globe className="w-10 h-10 text-fem-gold animate-float" />

@@ -14,6 +14,7 @@ const AboutPage = () => {
   const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [stats, setStats] = useState<any>(null);
   
   // Container ref for the hero section
   const containerRef = useRef<HTMLDivElement>(null);
@@ -104,6 +105,23 @@ const AboutPage = () => {
 
     return () => clearInterval(timer);
   }, [carouselImages.length]);
+
+  // Fetch platform stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/businesses/stats/`);
+        const data = await response.json();
+        if (data.success) {
+          setStats(data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % carouselImages.length);
@@ -321,28 +339,36 @@ const AboutPage = () => {
                 <div className="w-16 h-16 bg-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-4">
                   <Users className="w-8 h-8 text-white" />
                 </div>
-                <div className="text-3xl font-bold text-fem-navy mb-2">500+</div>
+                <div className="text-3xl font-bold text-fem-navy mb-2">
+                  {stats ? `${stats.total_users}+` : "500+"}
+                </div>
                 <div className="text-gray-600">Community Members</div>
               </div>
               <div className="text-center animate-fade-in" style={{ animationDelay: '0.2s' }}>
                 <div className="w-16 h-16 bg-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-4">
                   <Building className="w-8 h-8 text-white" />
                 </div>
-                <div className="text-3xl font-bold text-fem-navy mb-2">200+</div>
+                <div className="text-3xl font-bold text-fem-navy mb-2">
+                  {stats ? `${stats.total_businesses}+` : "200+"}
+                </div>
                 <div className="text-gray-600">Businesses Listed</div>
               </div>
               <div className="text-center animate-fade-in" style={{ animationDelay: '0.3s' }}>
                 <div className="w-16 h-16 bg-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-4">
                   <Star className="w-8 h-8 text-white" />
                 </div>
-                <div className="text-3xl font-bold text-fem-navy mb-2">4.8</div>
+                <div className="text-3xl font-bold text-fem-navy mb-2">
+                  {stats ? stats.average_rating : "4.8"}
+                </div>
                 <div className="text-gray-600">Average Rating</div>
               </div>
               <div className="text-center animate-fade-in" style={{ animationDelay: '0.4s' }}>
                 <div className="w-16 h-16 bg-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-4">
                   <Globe className="w-8 h-8 text-white" />
                 </div>
-                <div className="text-3xl font-bold text-fem-navy mb-2">15+</div>
+                <div className="text-3xl font-bold text-fem-navy mb-2">
+                  {stats ? `${stats.counties_covered}+` : "15+"}
+                </div>
                 <div className="text-gray-600">Counties Covered</div>
               </div>
             </div>
