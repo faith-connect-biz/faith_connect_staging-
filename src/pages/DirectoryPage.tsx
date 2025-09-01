@@ -101,6 +101,7 @@ const DirectoryPage = () => {
       const params = {
         page: currentPage,
         limit: itemsPerPage,
+        search: filters.searchTerm || undefined, // Add search term to API params
         category: categories && filters.category !== 'all' ? categories.find(cat => cat.name === filters.category)?.id : undefined,
         county: filters.county !== 'all' ? filters.county : undefined,
         rating: filters.rating[1] < 5 ? filters.rating[1] : undefined,
