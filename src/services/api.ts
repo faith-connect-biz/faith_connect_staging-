@@ -357,7 +357,9 @@ class ApiService {
         const isRestrictedSegment = config.url?.includes('/user-activity/') ||
           config.url?.includes('/favorites/') ||
           config.url?.includes('/like/') ||
-          config.url?.includes('/photo-request/');
+          config.url?.includes('/photo-request/') ||
+          config.url?.includes('/hours/') ||
+          config.url?.includes('/analytics/');
         // Allow unauthenticated only for GETs to business resources and reviews listing
         // IMPORTANT: POST/PUT/DELETE requests to business endpoints require authentication
         const isPublicBusinessEndpoint = isBusinessPath && !isWriteMethod && !isRestrictedSegment;

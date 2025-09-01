@@ -1,13 +1,13 @@
 
-import { Link, useNavigate } from "react-router-dom";
-import { Search, ArrowRight, Sparkles, Users, Briefcase, Target, Globe, Zap, Plus, Heart, Star } from "lucide-react";
-import { useState, ReactNode, useEffect } from "react";
-import ImageCarousel from "@/components/ui/ImageCarousel";
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, ArrowRight, Sparkles, Users, Briefcase, Target, Globe, Zap, Plus, Heart, Star, Building2, CheckCircle } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/services/api';
+import ImageCarousel from "@/components/ui/ImageCarousel";
 
 interface HeroProps {
-  actionButtons?: ReactNode;
+  actionButtons?: React.ReactNode;
 }
 
 export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
@@ -15,6 +15,8 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [stats, setStats] = useState<any>(null);
   const [businessLogos, setBusinessLogos] = useState<any[]>([]);
+  const [hasBusiness, setHasBusiness] = useState(false);
+  const [isCheckingBusiness, setIsCheckingBusiness] = useState(false);
   const { user, isAuthenticated, isBusiness, isCommunity } = useAuth();
 
   const handleSearch = () => {
@@ -31,18 +33,56 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
     }
   };
 
+  // Check if user already has a business
+  useEffect(() => {
+    const checkExistingBusiness = async () => {
+      if (isAuthenticated && isBusiness) {
+        setIsCheckingBusiness(true);
+        try {
+          const existingBusiness = await apiService.getUserBusiness();
+          setHasBusiness(!!existingBusiness);
+        } catch (error) {
+          console.error('Error checking existing business:', error);
+          setHasBusiness(false);
+        } finally {
+          setIsCheckingBusiness(false);
+        }
+      }
+    };
+
+    checkExistingBusiness();
+  }, [isAuthenticated, isBusiness]);
+
   // Fetch platform stats and business logos
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/businesses/stats/`);
+        console.log('Fetching stats from:', `${import.meta.env.VITE_API_BASE_URL}/business/stats/`);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/business/stats/`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('Stats API response:', data);
+        
         if (data.success) {
           setStats(data.data);
           setBusinessLogos(data.data.business_logos || []);
+          console.log('Business logos set:', data.data.business_logos);
+        } else {
+          console.warn('Stats API returned success: false');
         }
       } catch (error) {
         console.error('Error fetching stats:', error);
+        // Set fallback stats to prevent UI from breaking
+        setStats({
+          total_businesses: 1000,
+          total_users: 500,
+          average_rating: 4.8,
+          counties_covered: 15
+        });
       }
     };
 
@@ -128,29 +168,95 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
                 </div>
 
                 {/* Modern Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-6 scroll-reveal">
-                  {actionButtons || (
+                <div className="scroll-reveal">
+                  {actionButtons ? (
+                    actionButtons
+                  ) : (
                     <>
-                      <Link to="/directory" className="group">
-                        <button className="btn-modern group-hover:scale-110 transition-transform duration-300 text-lg px-6 py-3">
-                          <div className="flex items-center gap-3">
-                            <Briefcase className="w-6 h-6" />
-                            <span className="font-mont font-semibold tracking-wide">Browse Directory</span>
-                            <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" />
-                          </div>
-                        </button>
-                      </Link>
-                      
-                      {isAuthenticated && (isBusiness || !isCommunity) && (
-                        <Link to="/register-business" className="group">
-                          <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-6 py-3">
-                            <div className="flex items-center gap-3">
-                              <Plus className="w-6 h-6" />
-                              <span className="font-mont font-semibold tracking-wide">List Your Business</span>
-                              <ArrowRight className="w-6 h-6 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
+                      {!isAuthenticated ? (
+                        <div className="flex flex-col sm:flex-row gap-6 justify-center lg:justify-start">
+                          <Link to="/directory" className="group">
+                            <button className="btn-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+                              <div className="flex items-center gap-3">
+                                <Search className="w-6 h-6" />
+                                <span className="font-mont font-semibold tracking-wide">Browse Directory</span>
+                                <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" />
+                              </div>
+                            </button>
+                          </Link>
+                          <Link to="/register-business" className="group">
+                            <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+                              <div className="flex items-center gap-3">
+                                <Building2 className="w-6 h-6" />
+                                <span className="font-mont font-semibold tracking-wide">List Your Business</span>
+                                <ArrowRight className="w-6 h-6 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
+                              </div>
+                            </button>
+                          </Link>
+                        </div>
+                      ) : (
+                        <>
+                          {isCommunity && (
+                            <div className="flex flex-col sm:flex-row gap-6 justify-center lg:justify-start">
+                              <Link to="/directory" className="group">
+                                <button className="btn-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+                                  <div className="flex items-center gap-3">
+                                    <Search className="w-6 h-6" />
+                                    <span className="font-mont font-semibold tracking-wide">Browse Directory</span>
+                                    <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" />
+                                  </div>
+                                </button>
+                              </Link>
+                              <Link to="/profile" className="group">
+                                <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+                                  <div className="flex items-center gap-3">
+                                    <Users className="w-6 h-6" />
+                                    <span className="font-mont font-semibold tracking-wide">View Profile</span>
+                                    <ArrowRight className="w-6 h-6 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
+                                  </div>
+                                </button>
+                              </Link>
                             </div>
-                          </button>
-                        </Link>
+                          )}
+                          
+                          {isBusiness && (
+                            <div className="flex flex-col sm:flex-row gap-6 justify-center lg:justify-start">
+                              <Link to="/directory" className="group">
+                                <button className="btn-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+                                  <div className="flex items-center gap-3">
+                                    <Search className="w-6 h-6" />
+                                    <span className="font-mont font-semibold tracking-wide">Browse Directory</span>
+                                    <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" />
+                                  </div>
+                                </button>
+                              </Link>
+                              
+                              {hasBusiness ? (
+                                <div className="group cursor-not-allowed">
+                                  <button 
+                                    disabled 
+                                    className="btn-outline-modern opacity-50 cursor-not-allowed text-lg px-8 py-4"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <CheckCircle className="w-6 h-6" />
+                                      <span className="font-mont font-semibold tracking-wide">Business Listed</span>
+                                    </div>
+                                  </button>
+                                </div>
+                              ) : (
+                                <Link to="/register-business" className="group">
+                                  <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+                                    <div className="flex items-center gap-3">
+                                      <Plus className="w-6 h-6" />
+                                      <span className="font-mont font-semibold tracking-wide">List Your Business</span>
+                                      <ArrowRight className="w-6 h-6 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
+                                    </div>
+                                  </button>
+                                </Link>
+                              )}
+                            </div>
+                          )}
+                        </>
                       )}
                     </>
                   )}
@@ -160,28 +266,38 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
                 <div className="flex flex-wrap items-center gap-8 pt-8 scroll-reveal">
                   <div className="flex items-center gap-4">
                     <div className="flex -space-x-3">
-                      {businessLogos.length > 0 ? (
+                      {businessLogos && businessLogos.length > 0 ? (
                         businessLogos.slice(0, 5).map((business, i) => (
                           <div 
-                            key={business.id} 
+                            key={business.id || i} 
                             className="w-12 h-12 rounded-full border-3 border-white shadow-xl hover:scale-110 transition-transform duration-300 overflow-hidden"
+                            title={business.name || `Business ${i + 1}`}
                           >
                             <img 
-                              src={business.logo_url} 
-                              alt={business.name}
+                              src={business.logo_url || business.business_image_url} 
+                              alt={business.name || `Business ${i + 1}`}
                               className="w-full h-full object-cover"
                               onError={(e) => {
-                                e.currentTarget.src = "/placeholder.svg";
+                                console.warn(`Failed to load business logo for ${business.name || i}:`, business.logo_url);
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
                               }}
                             />
+                            {/* Fallback icon if image fails */}
+                            <div className="hidden w-full h-full bg-gradient-to-br from-fem-gold to-fem-terracotta rounded-full flex items-center justify-center">
+                              <Building2 className="w-6 h-6 text-white" />
+                            </div>
                           </div>
                         ))
                       ) : (
                         [1,2,3,4,5].map(i => (
                           <div 
                             key={i} 
-                            className="w-12 h-12 rounded-full bg-gradient-to-br from-fem-gold to-fem-terracotta border-3 border-white shadow-xl hover:scale-110 transition-transform duration-300" 
-                          />
+                            className="w-12 h-12 rounded-full bg-gradient-to-br from-fem-gold to-fem-terracotta border-3 border-white shadow-xl hover:scale-110 transition-transform duration-300 flex items-center justify-center" 
+                            title="Loading business logos..."
+                          >
+                            <Building2 className="w-6 h-6 text-white" />
+                          </div>
                         ))
                       )}
                     </div>

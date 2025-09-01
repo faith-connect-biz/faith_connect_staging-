@@ -98,22 +98,12 @@ export const BusinessCategories = () => {
 
   // Calculate business count for each category
   const getCategoryStats = () => {
-    console.log('BusinessCategories Debug:', { 
-      isLoading, 
-      isLoadingBusinesses,
-      categoriesLength: categories?.length, 
-      businessesLength: businesses?.length,
-      categories: categories,
-      businesses: businesses?.map(b => ({ id: b.id, name: b.business_name, category: b.category }))
-    });
-
     // Check if either businesses or categories are still loading
     if (isLoading || isLoadingBusinesses) {
       return [];
     }
 
     if (!Array.isArray(categories) || !categories.length) {
-      console.log('No categories available');
       return [];
     }
 

@@ -230,12 +230,14 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       const page = params?.page || 1;
       const limit = params?.limit || 15;
 
-      // Serve from cache immediately to avoid blank UI
-      if (productsCache[page]) {
+      // Serve from cache immediately to avoid blank UI, but not for search queries
+      if (productsCache[page] && !params.search) {
+        console.log('🔍 BusinessContext - Serving products from cache for page:', page);
         setProducts(productsCache[page]);
         setCurrentPage(page);
         setIsLoading(true); // show subtle loader while refreshing
       } else {
+        console.log('🔍 BusinessContext - Not serving products from cache (search or no cache)');
         setIsLoading(true);
       }
       setError(null);
@@ -259,6 +261,12 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       // console.log('fetchProducts - response.results length:', response?.results?.length);
       
       if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
+        console.log('🔍 BusinessContext - Setting products:', {
+          count: response.count || 0,
+          resultsLength: response.results.length,
+          searchTerm: params.search,
+          page
+        });
         setProducts(response.results);
         setTotalProductsCount(response.count || 0);
         console.log('fetchProducts - Setting totalProductsCount to:', response.count || 0);
@@ -266,8 +274,13 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
         setHasNextPage(!!response.next);
         setHasPreviousPage(!!response.previous);
 
-        // Cache current page
-        setProductsCache(prev => ({ ...prev, [page]: response.results }));
+        // Cache current page, but clear cache for search queries
+        if (params.search) {
+          console.log('🔍 BusinessContext - Clearing products cache for search');
+          setProductsCache({ [page]: response.results });
+        } else {
+          setProductsCache(prev => ({ ...prev, [page]: response.results }));
+        }
 
         // Background prefetch next page if available
         const hasNext = !!response.next;
@@ -322,12 +335,14 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       const page = params?.page || 1;
       const limit = params?.limit || 15;
 
-      // Serve from cache immediately to avoid blank UI
-      if (servicesCache[page]) {
+      // Serve from cache immediately to avoid blank UI, but not for search queries
+      if (servicesCache[page] && !params.search) {
+        console.log('🔍 BusinessContext - Serving from cache for page:', page);
         setServices(servicesCache[page]);
         setCurrentPage(page);
         setIsLoading(true); // show subtle loader while refreshing
       } else {
+        console.log('🔍 BusinessContext - Not serving from cache (search or no cache)');
         setIsLoading(true);
       }
       setError(null);
@@ -351,6 +366,12 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       // console.log('fetchServices - response.results length:', response?.results?.length);
       
       if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
+        console.log('🔍 BusinessContext - Setting services:', {
+          count: response.count || 0,
+          resultsLength: response.results.length,
+          searchTerm: params.search,
+          page
+        });
         setServices(response.results);
         setTotalServicesCount(response.count || 0);
         console.log('fetchServices - Setting totalServicesCount to:', response.count || 0);
@@ -358,8 +379,13 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
         setHasNextPage(!!response.next);
         setHasPreviousPage(!!response.previous);
 
-        // Cache current page
-        setServicesCache(prev => ({ ...prev, [page]: response.results }));
+        // Cache current page, but clear cache for search queries
+        if (params.search) {
+          console.log('🔍 BusinessContext - Clearing services cache for search');
+          setServicesCache({ [page]: response.results });
+        } else {
+          setServicesCache(prev => ({ ...prev, [page]: response.results }));
+        }
 
         // Background prefetch next page if available
         const hasNext = !!response.next;

@@ -1,20 +1,18 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { Service, Business } from '@/services/api';
 import { Pagination } from '@/components/Pagination';
-import { Search, Filter, Star, MapPin, Building2, Settings, Grid3X3, List, Eye, Share2, Clock } from 'lucide-react';
+import { Star, MapPin, Building2, Settings, Eye, Share2, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { AnimatePresence } from 'framer-motion';
 import { useAuth } from "@/contexts/AuthContext";
 import LikeButton from "@/components/LikeButton";
 import ShareModal from "@/components/ui/ShareModal";
 import { type ShareData } from "@/utils/sharing";
-import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
-import { getBusinessImageUrl, getBusinessLogoUrl } from '@/utils/imageUtils';
+import { getServiceImageUrl } from '@/utils/imageUtils';
 
 interface ServiceListProps {
   filters: {
@@ -27,7 +25,6 @@ interface ServiceListProps {
     openNow: boolean;
     hasPhotos: boolean;
     sortBy: string;
-    priceRange?: string;
     duration?: string;
   };
   itemsPerPage?: number;
@@ -35,71 +32,61 @@ interface ServiceListProps {
 
 export const ServiceList: React.FC<ServiceListProps> = ({ 
   filters, 
-  itemsPerPage = 15 
+  itemsPerPage = 15
 }) => {
   const { services, businesses, isLoading, fetchServices, totalServicesCount } = useBusiness();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { isAuthenticated } = useAuth();
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [currentShareData, setCurrentShareData] = useState<ShareData | null>(null);
 
-  // Calculate paging window from API pagination
+  // Apply client-side filtering - instant search
+  const filteredServices = useMemo(() => {
+    if (!Array.isArray(services)) return [];
+    
+    if (filters.searchTerm && filters.searchTerm.trim()) {
+      const searchLower = filters.searchTerm.toLowerCase().trim();
+      return services.filter(service => {
+        const serviceName = service.name?.toLowerCase() || '';
+        const serviceDescription = service.description?.toLowerCase() || '';
+        const businessName = (typeof service.business === 'object' ? service.business.business_name : '')?.toLowerCase() || '';
+        
+        return serviceName.includes(searchLower) || 
+               serviceDescription.includes(searchLower) || 
+               businessName.includes(searchLower);
+      });
+    }
+    
+    return services;
+  }, [services, filters.searchTerm]);
+
+  // Update pagination
+  useEffect(() => {
+    setTotalItems(filteredServices.length);
+    setTotalPages(Math.ceil(filteredServices.length / itemsPerPage) || 1);
+  }, [filteredServices, itemsPerPage]);
+
+  // Fetch services from API - only once on mount
+  useEffect(() => {
+    fetchServices({ page: 1, limit: 100 }); // Fetch more items for client-side filtering
+  }, [fetchServices]);
+
+  // Paginate filtered services
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-
-  // We rely on server-side pagination; services already represent the current page
-  const filteredServices = Array.isArray(services) ? services : [];
-
-  // Update total items and pages when filtered services change
-  useEffect(() => {
-    console.log('ServiceList - totalServicesCount:', totalServicesCount);
-    console.log('ServiceList - filteredServices.length:', filteredServices.length);
-    setTotalItems(totalServicesCount || filteredServices.length);
-    setTotalPages(Math.ceil((totalServicesCount || filteredServices.length) / itemsPerPage) || 1);
-    console.log('ServiceList - Setting totalItems to:', totalServicesCount || filteredServices.length);
-  }, [filteredServices, itemsPerPage, totalServicesCount]);
-
-  // Separate effect to ensure totalServicesCount updates are handled
-  useEffect(() => {
-    console.log('ServiceList - totalServicesCount changed to:', totalServicesCount);
-    if (totalServicesCount > 0) {
-      setTotalItems(totalServicesCount);
-      setTotalPages(Math.ceil(totalServicesCount / itemsPerPage));
-      console.log('ServiceList - Updated totalItems to:', totalServicesCount);
-      console.log('ServiceList - Updated totalPages to:', Math.ceil(totalServicesCount / itemsPerPage));
-    }
-  }, [totalServicesCount, itemsPerPage]);
-
-  // Fetch from API when page, page size, or filters change
-  useEffect(() => {
-    const params: any = { page: currentPage, limit: itemsPerPage };
-    // Map a subset of filters to API params if available
-    if (filters?.priceRange && filters.priceRange !== 'all') params.price_range = filters.priceRange;
-    if (filters?.duration && filters.duration !== 'all') params.duration = filters.duration;
-    if (filters?.category && filters.category !== 'all') params.category = filters.category;
-    if (filters?.searchTerm) params.search = filters.searchTerm;
-    fetchServices(params);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, itemsPerPage, filters.searchTerm, filters.category, filters.priceRange, filters.duration]);
-
-  // Services are already paginated by server
-  const paginatedServices = filteredServices;
+  const paginatedServices = filteredServices.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    // Scroll to top when page changes
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleServiceClick = (service: Service) => {
-    // Navigate to the business page when service is clicked
     let business;
     if (typeof service.business === 'string') {
-      // Business is an ID string, find it in the businesses array
       business = businesses.find(b => b.id === service.business);
     } else {
       business = service.business;
@@ -108,7 +95,6 @@ export const ServiceList: React.FC<ServiceListProps> = ({
     if (business && typeof business === 'object' && business.id) {
       navigate(`/business/${business.id}`);
     } else if (typeof service.business === 'string') {
-      // If we can't find the business but have the ID, navigate to it directly
       navigate(`/business/${service.business}`);
     }
   };
@@ -118,11 +104,9 @@ export const ServiceList: React.FC<ServiceListProps> = ({
     
     const shareData: ShareData = {
       title: service.name,
-      description: service.description || `Check out ${service.name} from ${business.business_name}`,
+      text: service.description || `Check out ${service.name} from ${business.business_name}`,
       url: window.location.href,
-      imageUrl: service.service_image_url || business.business_image_url,
-      businessName: business.business_name,
-      category: business.category?.name || 'Service'
+      image: service.service_image_url || business.business_image_url,
     };
     
     setCurrentShareData(shareData);
@@ -142,27 +126,27 @@ export const ServiceList: React.FC<ServiceListProps> = ({
     return (
       <Card 
         key={service.id} 
-        className="group relative overflow-hidden bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer border-0"
+        className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer hover:scale-[1.02] rounded-2xl"
         onClick={() => handleServiceClick(service)}
       >
         {/* Service Image */}
         <div className="relative h-48 overflow-hidden">
           <img
-            src={service.service_image_url || business.business_logo_url || business.business_image_url || "/placeholder.svg"}
+            src={getServiceImageUrl(service, business)}
             alt={service.name}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.src = "/placeholder.svg";
             }}
           />
           
-          {/* Overlay with Action Buttons */}
+          {/* Hover Overlay with Action Buttons */}
           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-end p-3">
             <div className="flex gap-2">
               {isAuthenticated && (
                 <LikeButton
-                  itemId={service.id}
+                  itemId={String(service.id)}
                   itemType="service"
                   itemName={service.name}
                   businessName={business.business_name}
@@ -271,34 +255,6 @@ export const ServiceList: React.FC<ServiceListProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* View Mode Toggle */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <Button
-            variant={viewMode === 'grid' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('grid')}
-            className="flex items-center space-x-2"
-          >
-            <Grid3X3 className="w-4 h-4" />
-            <span>Grid</span>
-          </Button>
-          <Button
-            variant={viewMode === 'list' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('list')}
-            className="flex items-center space-x-2"
-          >
-            <List className="w-4 h-4" />
-            <span>List</span>
-          </Button>
-        </div>
-        
-        <div className="text-sm text-gray-600">
-          Showing {startIndex + 1}-{Math.min(endIndex, totalItems)} of {totalItems} services
-        </div>
-      </div>
-
       {/* Loading State */}
       {isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -317,16 +273,10 @@ export const ServiceList: React.FC<ServiceListProps> = ({
 
       {/* Services Grid */}
       {!isLoading && paginatedServices.length > 0 && (
-        <div className={`grid gap-6 ${
-          viewMode === 'grid' 
-            ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' 
-            : 'grid-cols-1'
-        }`}>
-          <AnimatePresence>
-            {paginatedServices.map((service) => (
-              <ServiceCard key={service.id} service={service} />
-            ))}
-          </AnimatePresence>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {paginatedServices.map((service) => (
+            <ServiceCard key={service.id} service={service} />
+          ))}
         </div>
       )}
 

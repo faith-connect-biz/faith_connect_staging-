@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { apiService, User, LoginRequest, RegisterRequest, AuthTokens } from '@/services/api';
+import { apiService } from '@/services/api';
+import { User, AuthTokens, LoginRequest, RegisterRequest } from '@/services/api';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -82,6 +84,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [user?.user_type]); // Only depend on user_type, not the entire user object
 
+  const logout = async () => {
+    try {
+      setIsLoggingOut(true);
+      console.log('AuthContext: Logging out user...');
+      
+      // Clear all auth data
+      setUser(null);
+      setAuthTokens(null);
+      setUserType(null);
+      setIsBusiness(false);
+      setIsCommunity(false);
+      
+      // Clear localStorage
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      
+      // Call logout API if we have a refresh token
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
+        try {
+          await apiService.logout({ refresh: refreshToken });
+        } catch (error) {
+          console.warn('Logout API call failed, but continuing with local logout:', error);
+        }
+      }
+      
+      console.log('AuthContext: Logout completed');
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   // Session timeout handling - 15 minutes of inactivity
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -95,12 +132,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Set warning at 14 minutes (14 * 60 * 1000 = 840000ms)
         warningTimeoutId = setTimeout(() => {
           console.log('AuthContext: Session warning - user will be logged out in 1 minute');
-          // You can add a toast notification here if you want
+          // Show toast notification for session warning
+          toast.warning('Your session will expire in 1 minute due to inactivity. Please continue using the app to stay logged in.', {
+            duration: 10000, // 10 seconds
+            position: 'top-center',
+          });
         }, 14 * 60 * 1000); // 14 minutes
         
         // Set 15 minute timeout (15 * 60 * 1000 = 900000ms)
         timeoutId = setTimeout(() => {
           console.log('AuthContext: Session timeout - logging out user due to inactivity');
+          // Show logout notification
+          toast.error('You have been logged out due to inactivity. Please log in again to continue.', {
+            duration: 5000,
+            position: 'top-center',
+          });
           logout();
         }, 15 * 60 * 1000); // 15 minutes
       }
@@ -120,6 +166,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       window.addEventListener('keydown', handleUserActivity);
       window.addEventListener('touchstart', handleUserActivity);
       window.addEventListener('scroll', handleUserActivity);
+      window.addEventListener('click', handleUserActivity);
+      window.addEventListener('focus', handleUserActivity);
     }
 
     return () => {
@@ -129,8 +177,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       window.removeEventListener('keydown', handleUserActivity);
       window.removeEventListener('touchstart', handleUserActivity);
       window.removeEventListener('scroll', handleUserActivity);
+      window.removeEventListener('click', handleUserActivity);
+      window.removeEventListener('focus', handleUserActivity);
     };
-  }, [user]);
+  }, [user, logout]);
 
   // Check if user is already authenticated on app load
   useEffect(() => {
@@ -361,31 +411,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         success: false,
         message: 'Failed to resend OTP. Please try again.'
       };
-    }
-  };
-
-  const logout = async () => {
-    // Prevent multiple logout calls
-    if (isLoggingOut) {
-      return;
-    }
-    
-    try {
-      setIsLoggingOut(true);
-      await apiService.logout();
-    } catch (error) {
-      console.error('Logout failed:', error);
-      // Continue with local cleanup even if logout fails
-    } finally {
-      // Always clear local state regardless of API response
-      setUser(null);
-      setUserType(null);
-      setIsBusiness(false);
-      setIsCommunity(false);
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user');
-      setIsLoggingOut(false);
     }
   };
 
