@@ -246,7 +246,7 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   }) => {
     try {
       const page = params?.page || 1;
-      const limit = params?.limit || 15;
+      const limit = params?.limit || 20; // Increased from 15 to 20 for better initial load
 
       // Serve from cache immediately to avoid blank UI, but not for search queries
       if (productsCache[page] && !params.search) {
@@ -273,10 +273,6 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       apiParams.limit = limit;
       
       const response = await apiService.getAllProducts(apiParams);
-      // Remove excessive debug logging
-      // console.log('fetchProducts - API response:', response);
-      // console.log('fetchProducts - response.count:', response?.count);
-      // console.log('fetchProducts - response.results length:', response?.results?.length);
       
       if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
         console.log('🔍 BusinessContext - Setting products:', {
@@ -289,7 +285,6 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
         const shuffledProducts = shuffleArray(response.results);
         setProducts(shuffledProducts);
         setTotalProductsCount(response.count || 0);
-        console.log('fetchProducts - Setting totalProductsCount to:', response.count || 0);
         setCurrentPage(page);
         setHasNextPage(!!response.next);
         setHasPreviousPage(!!response.previous);
