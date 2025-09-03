@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BusinessList } from '@/components/directory/BusinessList';
 import { ServiceList } from '@/components/directory/ServiceList';
 import { ProductList } from '@/components/directory/ProductList';
+import { DirectorySkeleton } from '@/components/directory/DirectorySkeleton';
 import { BusinessCategories } from '@/components/BusinessCategories';
 import { toast } from 'sonner';
 
@@ -30,7 +31,18 @@ interface Filters {
 }
 
 export const DirectoryPage: React.FC = () => {
-  const { fetchBusinesses, fetchServices, fetchProducts, fetchCategories, businesses, totalServicesCount, totalProductsCount } = useBusiness();
+  const { 
+    fetchBusinesses, 
+    fetchServices, 
+    fetchProducts, 
+    fetchCategories, 
+    businesses, 
+    totalServicesCount, 
+    totalProductsCount,
+    isLoading,
+    isLoadingBusinesses,
+    isLoadingProducts
+  } = useBusiness();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('businesses');
   const [searchTerm, setSearchTerm] = useState('');
@@ -103,12 +115,20 @@ export const DirectoryPage: React.FC = () => {
     }
   };
 
-  // Load initial data
+  // Load initial data with optimized loading strategy
   useEffect(() => {
-    fetchBusinesses({ page: 1, limit: 100 });
-    fetchServices({ page: 1, limit: 100 });
-    fetchProducts({ page: 1, limit: 100 });
-    fetchCategories();
+    // Load with smaller initial batch size for faster initial render
+    const initialLimit = 20; // Reduced from 100 to 20 for faster loading
+    
+    // Load all data in parallel instead of sequentially
+    Promise.all([
+      fetchBusinesses({ page: 1, limit: initialLimit }),
+      fetchServices({ page: 1, limit: initialLimit }),
+      fetchProducts({ page: 1, limit: initialLimit }),
+      fetchCategories()
+    ]).catch(error => {
+      console.error('Error loading initial data:', error);
+    });
   }, [fetchBusinesses, fetchServices, fetchProducts, fetchCategories]);
 
   // Shuffle data based on session key for consistent randomization per session
@@ -362,7 +382,11 @@ export const DirectoryPage: React.FC = () => {
                     <h3 className="text-lg sm:text-xl sm:text-2xl font-bold text-fem-navy mb-2">Professional Services</h3>
                     <p className="text-gray-600 text-sm sm:text-base">Discover trusted service providers in our community</p>
                   </div>
-                  <ServiceList filters={filters} />
+                  {isLoading ? (
+                    <DirectorySkeleton count={6} type="service" />
+                  ) : (
+                    <ServiceList filters={filters} />
+                  )}
                 </TabsContent>
 
                 <TabsContent value="businesses" className="mt-4 sm:mt-6">
@@ -370,7 +394,11 @@ export const DirectoryPage: React.FC = () => {
                     <h3 className="text-lg sm:text-xl sm:text-2xl font-bold text-fem-navy mb-2">Local Businesses</h3>
                     <p className="text-gray-600 text-sm sm:text-base">Discover trusted businesses in our community</p>
                   </div>
-                  <BusinessList filters={filters} />
+                  {isLoadingBusinesses ? (
+                    <DirectorySkeleton count={6} type="business" />
+                  ) : (
+                    <BusinessList filters={filters} />
+                  )}
                 </TabsContent>
 
                 <TabsContent value="products" className="mt-4 sm:mt-6">
@@ -378,7 +406,11 @@ export const DirectoryPage: React.FC = () => {
                     <h3 className="text-lg sm:text-xl sm:text-2xl font-bold text-fem-navy mb-2">Quality Products</h3>
                     <p className="text-gray-600 text-sm sm:text-base">Find high-quality products from local businesses</p>
                   </div>
-                  <ProductList filters={filters} />
+                  {isLoadingProducts ? (
+                    <DirectorySkeleton count={6} type="product" />
+                  ) : (
+                    <ProductList filters={filters} />
+                  )}
                 </TabsContent>
               </Tabs>
             </CardContent>
