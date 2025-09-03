@@ -1,14 +1,13 @@
 from django.core.management.base import BaseCommand
 from business.models import Category
 from django.utils.text import slugify
+from django.db import IntegrityError
 
 class Command(BaseCommand):
     help = 'Seed business categories with specific IDs'
 
     def handle(self, *args, **kwargs):
-        # First, clear all existing categories to avoid conflicts
-        self.stdout.write("🗑️ Clearing existing categories...")
-        Category.objects.all().delete()
+        self.stdout.write("🌱 Seeding business categories...")
         
         categories_data = [
             (1, "Restaurant", "restaurant", "Restaurants, cafes, and food service businesses"),
@@ -27,17 +26,50 @@ class Command(BaseCommand):
             (14, "Professional Services", "professional-services", "Consulting, accounting, and professional services"),
             (15, "Construction", "construction", "Building, renovation, and construction services"),
             (16, "Transportation", "transportation", "Delivery, logistics, and transport services"),
-            (17, "Non-Profit", "non-profit", "Charitable organizations and non-profit services")
+            (17, "Non-Profit", "non-profit", "Charitable organizations and non-profit services"),
+            (18, "Baking & Food Services", "baking-food-services", "Comprehensive baking and food services including custom cakes, pastries, breads, catering, wedding cakes, artisan foods, desserts, confectionery, gluten-free options, and specialty dietary baked goods")
         ]
 
+        created_count = 0
+        updated_count = 0
+        error_count = 0
+
         for category_id, name, slug, description in categories_data:
-            # Create category with specific ID
-            category = Category.objects.create(
-                id=category_id,
-                name=name,
-                slug=slug,
-                description=description
-            )
-            self.stdout.write(self.style.SUCCESS(f"✅ Created category: {name} (ID: {category_id})"))
+            try:
+                # Try to get existing category or create new one
+                category, created = Category.objects.get_or_create(
+                    id=category_id,
+                    defaults={
+                        'name': name,
+                        'slug': slug,
+                        'description': description
+                    }
+                )
+                
+                if created:
+                    self.stdout.write(self.style.SUCCESS(f"✅ Created category: {name} (ID: {category_id})"))
+                    created_count += 1
+                else:
+                    # Update existing category if data has changed
+                    if (category.name != name or category.slug != slug or category.description != description):
+                        category.name = name
+                        category.slug = slug
+                        category.description = description
+                        category.save()
+                        self.stdout.write(self.style.WARNING(f"🔄 Updated category: {name} (ID: {category_id})"))
+                        updated_count += 1
+                    else:
+                        self.stdout.write(self.style.SUCCESS(f"ℹ️  Category already exists: {name} (ID: {category_id})"))
+                        
+            except IntegrityError as e:
+                self.stdout.write(self.style.ERROR(f"❌ Error creating category {name}: {e}"))
+                error_count += 1
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f"❌ Unexpected error creating category {name}: {e}"))
+                error_count += 1
         
-        self.stdout.write(self.style.SUCCESS(f"🎉 Successfully created {len(categories_data)} categories!"))
+        self.stdout.write(self.style.SUCCESS(f"\n🎉 Categories seeding complete!"))
+        self.stdout.write(f"   Created: {created_count}")
+        self.stdout.write(f"   Updated: {updated_count}")
+        self.stdout.write(f"   Errors: {error_count}")
+        self.stdout.write(f"   Total processed: {len(categories_data)}")

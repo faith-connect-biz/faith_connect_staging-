@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import LikeButton from "@/components/LikeButton";
 import ShareModal from "@/components/ui/ShareModal";
 import { type ShareData } from "@/utils/sharing";
-import { getProductImageUrl } from '@/utils/imageUtils';
+import { getProductImageUrl, getProductImages } from '@/utils/imageUtils';
 
 interface ProductListProps {
   filters: {
@@ -43,13 +43,25 @@ export const ProductList: React.FC<ProductListProps> = ({
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [currentShareData, setCurrentShareData] = useState<ShareData | null>(null);
 
+  // Shuffle function to randomize order and prevent bias
+  const shuffleArray = (array: any[]) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
   // Apply client-side filtering - instant search
   const filteredProducts = useMemo(() => {
     if (!Array.isArray(products)) return [];
     
+    let filtered = products;
+    
     if (filters.searchTerm && filters.searchTerm.trim()) {
       const searchLower = filters.searchTerm.toLowerCase().trim();
-      return products.filter(product => {
+      filtered = filtered.filter(product => {
         const productName = product.name?.toLowerCase() || '';
         const productDescription = product.description?.toLowerCase() || '';
         const businessName = (typeof product.business === 'object' ? product.business.business_name : '')?.toLowerCase() || '';
@@ -60,7 +72,8 @@ export const ProductList: React.FC<ProductListProps> = ({
       });
     }
     
-    return products;
+    // Randomize the order to prevent bias
+    return shuffleArray(filtered);
   }, [products, filters.searchTerm]);
 
   // Update pagination
@@ -129,17 +142,64 @@ export const ProductList: React.FC<ProductListProps> = ({
         className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer hover:scale-[1.02] rounded-2xl"
         onClick={() => handleProductClick(product)}
       >
-        {/* Product Image */}
+        {/* Product Image Gallery */}
         <div className="relative h-48 overflow-hidden">
-          <img
-            src={getProductImageUrl(product, business)}
-            alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = "/placeholder.svg";
-            }}
-          />
+          {(() => {
+            const productImages = getProductImages(product, business);
+            if (productImages.length > 0) {
+              return (
+                <>
+                  {/* Main Image */}
+                  <img
+                    src={productImages[0]}
+                    alt={product.name}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "/placeholder.svg";
+                    }}
+                  />
+                  
+                  {/* Multiple Images Indicator */}
+                  {productImages.length > 1 && (
+                    <div className="absolute top-2 left-2">
+                      <Badge className="bg-black/80 text-white text-xs font-medium px-2 py-1 rounded-full border border-white/20 shadow-lg">
+                        {productImages.length} images
+                      </Badge>
+                    </div>
+                  )}
+                  
+                  {/* Image Gallery Preview */}
+                  {productImages.length > 1 && (
+                    <div className="absolute bottom-2 left-2 right-2">
+                      <div className="flex space-x-1">
+                        {productImages.slice(0, 4).map((imageUrl: string, index: number) => (
+                          <img
+                            key={index}
+                            src={imageUrl}
+                            alt={`${product.name} view ${index + 1}`}
+                            className="w-8 h-8 object-cover rounded border border-white shadow-sm"
+                          />
+                        ))}
+                        {productImages.length > 4 && (
+                          <div className="w-8 h-8 bg-black/70 rounded border border-white shadow-sm flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">+{productImages.length - 4}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            } else {
+              // Fallback when no images
+              return (
+                <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                  <Package className="w-16 h-16 text-gray-400" />
+                </div>
+              );
+            }
+          })()}
           
           {/* Hover Overlay with Action Buttons */}
           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-end p-3">
@@ -176,7 +236,7 @@ export const ProductList: React.FC<ProductListProps> = ({
           {/* Price Tag - Floating Design */}
           <div className="absolute bottom-3 left-3">
             <div className="bg-fem-terracotta text-white px-4 py-2 rounded-full shadow-xl font-bold text-sm">
-              ${product.price}
+              {product.price_currency || 'KSh'} {product.price}
             </div>
           </div>
           

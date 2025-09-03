@@ -166,7 +166,7 @@ button:focus, a:focus, input:focus, textarea:focus, select:focus {
   padding: clamp(4rem, 10vh, 8rem) 0;
 }
 
-/* Modern Button Styles */
+/* Modern Button Styles - Gold to Terracotta Theme */
 .btn-modern {
   background: linear-gradient(135deg, #FFBD59 0%, #C84B31 100%);
   color: white;
@@ -359,5 +359,263 @@ button:focus, a:focus, input:focus, textarea:focus, select:focus {
   
   .text-hero {
     font-size: clamp(2.5rem, 10vw, 4rem);
+  }
+}
+
+/* Scrollbar utilities */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
+}
+
+/* Line clamp utilities */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+/* PWA-specific styles */
+@media (display-mode: standalone) {
+  /* Remove browser UI elements in PWA mode */
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Improve button touch targets for PWA */
+  button, .btn-modern, .btn-outline-modern {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 20px;
+    font-size: 16px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+  }
+  
+  /* Better spacing for mobile buttons */
+  .flex.flex-col.sm\\:flex-row.gap-6 {
+    gap: 1rem;
+  }
+  
+  .flex.flex-col.sm\\:flex-row.gap-6 > * {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  /* Improve card layouts for PWA */
+  .card, .hover-card-effect {
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+  }
+  
+  .card:hover, .hover-card-effect:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+}
+
+/* Improved button layouts for mobile */
+@media (max-width: 768px) {
+  .btn-modern, .btn-outline-modern {
+    width: 100%;
+    padding: 16px 24px;
+    font-size: 18px;
+    border-radius: 16px;
+    margin-bottom: 12px;
+  }
+  
+  /* Better spacing for mobile action buttons */
+  .action-buttons-container {
+    gap: 16px;
+  }
+  
+  .action-buttons-container > * {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  /* Improve mobile form elements */
+  input, select, textarea {
+    min-height: 48px;
+    font-size: 16px;
+    border-radius: 12px;
+    padding: 12px 16px;
+  }
+  
+  /* Better mobile navigation */
+  .navbar, .nav {
+    padding: 16px;
+  }
+  
+  /* Improve mobile card layouts */
+  .mobile-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  
+  /* Better mobile spacing */
+  .py-16 {
+    padding: 48px 0;
+  }
+  
+  .px-4 {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  
+  .mb-12 {
+    margin-bottom: 48px;
+  }
+  
+  .mb-8 {
+    margin-bottom: 32px;
+  }
+}
+
+/* Improved mobile touch targets */
+@media (max-width: 768px) {
+  /* Ensure all interactive elements meet minimum touch target size */
+  button, a, input, select, textarea, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Better mobile spacing for forms */
+  .form-group, .input-group {
+    margin-bottom: 20px;
+  }
+  
+  /* Improve mobile button groups */
+  .button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .button-group button {
+    width: 100%;
+  }
+}
+
+/* PWA Status Bar and Safe Area Handling */
+@supports (padding: max(0px)) {
+  /* Handle safe areas for notched devices */
+  body {
+    padding-top: max(0px, env(safe-area-inset-top));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+  
+  /* Ensure content doesn't get hidden behind status bar */
+  .navbar, .header {
+    padding-top: max(16px, env(safe-area-inset-top) + 16px);
+  }
+  
+  /* Handle bottom safe area for navigation */
+  .footer, .bottom-nav {
+    padding-bottom: max(16px, env(safe-area-inset-bottom) + 16px);
+  }
+}
+
+/* Enhanced mobile experience */
+@media (max-width: 768px) {
+  /* Better mobile grid layouts */
+  .grid {
+    gap: 16px;
+  }
+  
+  /* Improve mobile spacing */
+  .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  
+  /* Better mobile typography */
+  h1 {
+    font-size: 2rem;
+    line-height: 1.2;
+  }
+  
+  h2 {
+    font-size: 1.75rem;
+    line-height: 1.3;
+  }
+  
+  h3 {
+    font-size: 1.5rem;
+    line-height: 1.4;
+  }
+  
+  /* Improve mobile button spacing */
+  .btn-modern, .btn-outline-modern {
+    margin-bottom: 16px;
+  }
+  
+  /* Better mobile card spacing */
+  .card {
+    margin-bottom: 16px;
+  }
+  
+  /* Improve mobile form layouts */
+  form {
+    gap: 20px;
+  }
+  
+  /* Better mobile navigation */
+  .nav-item {
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+  }
+}
+
+/* PWA-specific enhancements */
+@media (display-mode: standalone) {
+  /* Remove scrollbars in PWA mode */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Better PWA button interactions */
+  button:active, .btn-modern:active, .btn-outline-modern:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+  
+  /* Improve PWA card interactions */
+  .card:active, .hover-card-effect:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+  
+  /* Better PWA form interactions */
+  input:focus, select:focus, textarea:focus {
+    outline: 2px solid #C84B31;
+    outline-offset: 2px;
+    border-radius: 12px;
   }
 }

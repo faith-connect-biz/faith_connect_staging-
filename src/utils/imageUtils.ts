@@ -219,3 +219,58 @@ export const generateProductPlaceholder = (productName: string): string => {
   
   return canvas.toDataURL();
 };
+
+// New functions to get multiple images for gallery display
+export const getServiceImages = (service: any, business: any): string[] => {
+  const images: string[] = [];
+  
+  // Add main service image if available and not placeholder
+  if (service.service_image_url && !service.service_image_url.includes('via.placeholder.com')) {
+    images.push(service.service_image_url);
+  }
+  
+  // Add additional service images if available and not placeholders
+  if (service.images && Array.isArray(service.images)) {
+    const validImages = service.images.filter((img: string) => 
+      img && !img.includes('via.placeholder.com')
+    );
+    images.push(...validImages);
+  }
+  
+  // If no service images, add business image as fallback
+  if (images.length === 0) {
+    const businessImage = getBusinessImageUrl(business);
+    if (businessImage && !businessImage.includes('via.placeholder.com')) {
+      images.push(businessImage);
+    }
+  }
+  
+  return images;
+};
+
+export const getProductImages = (product: any, business: any): string[] => {
+  const images: string[] = [];
+  
+  // Add main product image if available and not placeholder
+  if (product.product_image_url && !product.product_image_url.includes('via.placeholder.com')) {
+    images.push(product.product_image_url);
+  }
+  
+  // Add additional product images if available and not placeholders
+  if (product.images && Array.isArray(product.images)) {
+    const validImages = product.images.filter((img: string) => 
+      img && !img.includes('via.placeholder.com')
+    );
+    images.push(...validImages);
+  }
+  
+  // If no product images, add business image as fallback
+  if (images.length === 0) {
+    const businessImage = getBusinessImageUrl(business);
+    if (businessImage && !businessImage.includes('via.placeholder.com')) {
+      images.push(businessImage);
+    }
+  }
+  
+  return images;
+};
