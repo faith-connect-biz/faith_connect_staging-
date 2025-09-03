@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useMemo } from 'react';
 import { apiService } from '@/services/apiService';
 
 // Constants for consistent limits across the entire app
@@ -35,7 +35,7 @@ interface Service {
   description?: string;
   price?: number;
   duration?: string;
-  business?: string;
+  business?: string | Business;
   category?: string;
   allKeys?: string[];
 }
@@ -46,7 +46,7 @@ interface Product {
   description?: string;
   price?: number;
   in_stock?: boolean;
-  business?: string;
+  business?: string | Business;
   category?: string;
   allKeys?: string[];
 }
@@ -83,48 +83,13 @@ interface BusinessContextType {
   error: string | null;
   
   // Actions
-  fetchBusinesses: (params?: {
-    search?: string;
-    category?: number;
-    city?: string;
-    county?: string;
-    rating?: number;
-    is_featured?: boolean;
-    ordering?: string;
-    page?: number;
-    limit?: number;
-    offset?: number;
-  }) => Promise<void>;
-  
-  fetchServices: (params?: {
-    search?: string;
-    category?: string;
-    price_range?: string;
-    duration?: string;
-    ordering?: string;
-    page?: number;
-    limit?: number;
-    offset?: number;
-  }) => Promise<void>;
-  
-  fetchProducts: (params?: {
-    search?: string;
-    category?: string;
-    in_stock?: boolean;
-    price_currency?: string;
-    ordering?: string;
-    page?: number;
-    limit?: number;
-    offset?: number;
-  }) => Promise<void>;
-  
+  fetchBusinesses: (params?: any) => Promise<void>;
+  fetchServices: (params?: any) => Promise<void>;
+  fetchProducts: (params?: any) => Promise<void>;
   fetchCategories: () => Promise<void>;
   
   // Cache management
   clearCache: () => void;
-  clearBusinessesCache: () => void;
-  clearServicesCache: () => void;
-  clearProductsCache: () => void;
 }
 
 const BusinessContext = createContext<BusinessContextType | undefined>(undefined);
@@ -138,7 +103,7 @@ export const useBusiness = () => {
 };
 
 // Utility function to shuffle arrays for variety
-const shuffleArray = <T>(array: T[]): T[] => {
+const shuffleArray = (array: any[]): any[] => {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -147,10 +112,10 @@ const shuffleArray = <T>(array: T[]): T[] => {
   return shuffled;
 };
 
-// Cache management class
-class DataCache {
-  private cache = new Map<string, any>();
-  private timestamps = new Map<string, number>();
+// Simple cache implementation
+class SimpleCache {
+  private cache = new Map();
+  private timestamps = new Map();
   private readonly TTL = 5 * 60 * 1000; // 5 minutes
 
   set(key: string, data: any): void {
@@ -175,10 +140,6 @@ class DataCache {
   clear(): void {
     this.cache.clear();
     this.timestamps.clear();
-  }
-
-  has(key: string): boolean {
-    return this.cache.has(key) && this.timestamps.has(key);
   }
 }
 
@@ -207,9 +168,9 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [error, setError] = useState<string | null>(null);
   
   // Cache instances
-  const businessesCache = new DataCache();
-  const servicesCache = new DataCache();
-  const productsCache = new DataCache();
+  const businessesCache = new SimpleCache();
+  const servicesCache = new SimpleCache();
+  const productsCache = new SimpleCache();
   
   // Abort controllers for request cancellation
   const businessesAbortRef = useRef<AbortController | null>(null);
@@ -230,12 +191,12 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // Unified fetch function with caching
-  const fetchWithCache = async <T>(
-    type: 'businesses' | 'services' | 'products',
+  const fetchWithCache = async (
+    type: string,
     fetchFunction: (params: any) => Promise<any>,
     params: any,
-    cache: DataCache,
-    setData: (data: T[]) => void,
+    cache: SimpleCache,
+    setData: (data: any[]) => void,
     setLoading: (loading: boolean) => void,
     setTotal: (total: number) => void,
     setPage: (page: number) => void,
@@ -329,18 +290,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const fetchBusinesses = useCallback(async (params?: {
-    search?: string;
-    category?: number;
-    city?: string;
-    county?: string;
-    rating?: number;
-    is_featured?: boolean;
-    ordering?: string;
-    page?: number;
-    limit?: number;
-    offset?: number;
-  }) => {
+  const fetchBusinesses = useCallback(async (params?: any) => {
     await fetchWithCache(
       'businesses',
       apiService.getBusinesses,
@@ -355,16 +305,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
   }, []);
 
-  const fetchServices = useCallback(async (params?: {
-    search?: string;
-    category?: string;
-    price_range?: string;
-    duration?: string;
-    ordering?: string;
-    page?: number;
-    limit?: number;
-    offset?: number;
-  }) => {
+  const fetchServices = useCallback(async (params?: any) => {
     await fetchWithCache(
       'services',
       apiService.getAllServices,
@@ -379,16 +320,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
   }, []);
 
-  const fetchProducts = useCallback(async (params?: {
-    search?: string;
-    category?: string;
-    in_stock?: boolean;
-    price_currency?: string;
-    ordering?: string;
-    page?: number;
-    limit?: number;
-    offset?: number;
-  }) => {
+  const fetchProducts = useCallback(async (params?: any) => {
     await fetchWithCache(
       'products',
       apiService.getAllProducts,
@@ -433,21 +365,6 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     servicesCache.clear();
     productsCache.clear();
     console.log('🔍 BusinessContext - All caches cleared');
-  }, []);
-
-  const clearBusinessesCache = useCallback(() => {
-    businessesCache.clear();
-    console.log('🔍 BusinessContext - Businesses cache cleared');
-  }, []);
-
-  const clearServicesCache = useCallback(() => {
-    servicesCache.clear();
-    console.log('🔍 BusinessContext - Services cache cleared');
-  }, []);
-
-  const clearProductsCache = useCallback(() => {
-    productsCache.clear();
-    console.log('🔍 BusinessContext - Products cache cleared');
   }, []);
 
   // Computed values
@@ -496,10 +413,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     fetchCategories,
     
     // Cache management
-    clearCache,
-    clearBusinessesCache,
-    clearServicesCache,
-    clearProductsCache
+    clearCache
   };
 
   return (
@@ -507,4 +421,4 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       {children}
     </BusinessContext.Provider>
   );
-}; 
+};
