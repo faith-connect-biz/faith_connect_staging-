@@ -41,6 +41,7 @@ export const DirectoryPage: React.FC = () => {
     totalProductsCount,
     isLoading,
     isLoadingBusinesses,
+    isLoadingServices,
     isLoadingProducts
   } = useBusiness();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -384,7 +385,7 @@ export const DirectoryPage: React.FC = () => {
                     <h3 className="text-lg sm:text-xl sm:text-2xl font-bold text-fem-navy mb-2">Professional Services</h3>
                     <p className="text-gray-600 text-sm sm:text-base">Discover trusted service providers in our community</p>
                   </div>
-                  {isLoading ? (
+                  {isLoadingServices ? (
                     <DirectorySkeleton count={6} type="service" />
                   ) : (
                     <ServiceList filters={filters} />
