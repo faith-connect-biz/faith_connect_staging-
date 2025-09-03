@@ -4,6 +4,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Hero } from '@/components/home/Hero';
 import { BusinessCategories } from '@/components/home/BusinessCategories';
+import { ProductServiceCarousel } from '@/components/home/ProductServiceCarousel';
 import { CommunityStats } from '@/components/home/CommunityStats';
 import { CallToAction } from '@/components/home/CallToAction';
 import { OnboardingCheck } from '@/components/OnboardingCheck';
@@ -109,6 +110,7 @@ const Index = () => {
          {/* <ApiTester />
          <DataDebugger /> */}
          <BusinessCategories />
+         <ProductServiceCarousel />
          <CommunityStats />
          <CallToAction />
        </main>

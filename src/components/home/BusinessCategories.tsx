@@ -23,7 +23,9 @@ import {
   Scissors,
   Music,
   Users,
-  PawPrint
+  PawPrint,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useBusiness } from "@/contexts/BusinessContext";
@@ -81,6 +83,9 @@ export const BusinessCategories = () => {
   const { isAuthenticated, isBusinessUser } = useAuth();
   const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
 
   const handleOpenAuthModal = () => {
     setIsAuthModalOpen(true);
@@ -95,6 +100,44 @@ export const BusinessCategories = () => {
       handleOpenAuthModal();
     }
   };
+
+  const scrollLeft = () => {
+    const container = document.getElementById('categories-scroll');
+    if (container) {
+      container.scrollBy({ left: -300, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    const container = document.getElementById('categories-scroll');
+    if (container) {
+      container.scrollBy({ left: 300, behavior: 'smooth' });
+    }
+  };
+
+  const handleScroll = () => {
+    const container = document.getElementById('categories-scroll');
+    if (container) {
+      const { scrollLeft, scrollWidth, clientWidth } = container;
+      setScrollPosition(scrollLeft);
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  // Add scroll event listener when component mounts
+  React.useEffect(() => {
+    const container = document.getElementById('categories-scroll');
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      // Initial check
+      handleScroll();
+      
+      return () => {
+        container.removeEventListener('scroll', handleScroll);
+      };
+    }
+  }, []);
 
   // Calculate business count for each category
   const getCategoryStats = () => {
@@ -232,34 +275,61 @@ export const BusinessCategories = () => {
         
         {categoryStats.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {categoryStats.map((category, index) => (
-                <Link 
-                  key={category.id}
-                  to={`/directory?category=${category.slug}`}
-                  className="block"
-                >
-                  <Card className="hover-card-effect cursor-pointer transition-all duration-300 hover:shadow-lg">
-                    <CardContent className="p-6 text-center">
-                      <div className={`mx-auto w-12 h-12 mb-4 flex items-center justify-center rounded-lg bg-gray-50 ${category.color}`}>
-                        {React.createElement(category.icon, { className: "w-6 h-6" })}
-                      </div>
-                      <h3 className="font-semibold text-fem-navy mb-2">{category.name}</h3>
-                      <p className="text-sm text-fem-darkgray mb-2">
-                        {category.count} {category.count === 1 ? 'business' : 'businesses'}
-                      </p>
-                      {category.description && (
-                        <p className="text-xs text-gray-500 line-clamp-2">
-                          {category.description}
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
+            {/* Scrollable Categories Section */}
+            <div className="relative mb-8">
+              {/* Left Scroll Button */}
+              <button
+                onClick={scrollLeft}
+                className={`absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-white/90 hover:bg-white border border-gray-200 rounded-full p-2 shadow-lg transition-all duration-200 hover:shadow-xl ${
+                  canScrollLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                }`}
+              >
+                <ChevronLeft className="w-5 h-5 text-gray-600" />
+              </button>
+
+              {/* Right Scroll Button */}
+              <button
+                onClick={scrollRight}
+                className={`absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-white/90 hover:bg-white border border-gray-200 rounded-full p-2 shadow-lg transition-all duration-200 hover:shadow-xl ${
+                  canScrollRight ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                }`}
+              >
+                <ChevronRight className="w-5 h-5 text-gray-600" />
+              </button>
+
+              {/* Scrollable Container */}
+              <div 
+                id="categories-scroll"
+                className="flex gap-6 overflow-x-auto scrollbar-hide pb-4 px-2"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                {categoryStats.map((category) => (
+                  <div key={category.id} className="flex-shrink-0 w-64">
+                    <Link 
+                      to={`/directory?category=${category.slug}`}
+                      className="block"
+                    >
+                      <Card className="hover-card-effect cursor-pointer transition-all duration-300 hover:shadow-lg h-full">
+                        <CardContent className="p-6 text-center h-full flex flex-col justify-between">
+                          <div>
+                            <div className={`mx-auto w-12 h-12 mb-4 flex items-center justify-center rounded-lg bg-gray-50 ${category.color}`}>
+                              {React.createElement(category.icon, { className: "w-6 h-6" })}
+                            </div>
+                            <h3 className="font-semibold text-fem-navy mb-2">{category.name}</h3>
+                            <p className="text-sm text-fem-darkgray mb-2">
+                              {category.count} {category.count === 1 ? 'business' : 'businesses'}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  </div>
+                ))}
+              </div>
             </div>
             
-            <div className="text-center mt-8">
+            {/* View All Categories Button */}
+            <div className="text-center">
               <Link to="/directory">
                 <button className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white px-6 py-3 rounded-lg font-medium transition-colors">
                   View All Categories

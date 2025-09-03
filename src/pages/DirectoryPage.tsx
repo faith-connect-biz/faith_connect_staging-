@@ -47,6 +47,9 @@ export const DirectoryPage: React.FC = () => {
     sortBy: 'name'
   });
 
+  // Session-based randomization key
+  const [sessionKey] = useState(() => Math.random().toString(36).substring(7));
+
   // Handle URL parameters for search from landing page
   useEffect(() => {
     const urlSearchTerm = searchParams.get('search');
@@ -65,13 +68,23 @@ export const DirectoryPage: React.FC = () => {
   useEffect(() => {
     setFilters(prev => ({ ...prev, searchTerm }));
     
-    // Update URL parameters when search term changes
+    // Update URL parameters when search term changes, but preserve category
+    const currentCategory = searchParams.get('category');
     if (searchTerm) {
-      setSearchParams({ search: searchTerm }, { replace: true });
+      const newParams = { search: searchTerm };
+      if (currentCategory) {
+        newParams.category = currentCategory;
+      }
+      setSearchParams(newParams, { replace: true });
     } else {
-      setSearchParams({}, { replace: true });
+      // Only clear search, keep category if it exists
+      if (currentCategory) {
+        setSearchParams({ category: currentCategory }, { replace: true });
+      } else {
+        setSearchParams({}, { replace: true });
+      }
     }
-  }, [searchTerm, setSearchParams]);
+  }, [searchTerm, setSearchParams, searchParams]);
 
   // Handle search input changes
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,7 +94,13 @@ export const DirectoryPage: React.FC = () => {
   // Clear search
   const clearSearch = () => {
     setSearchTerm('');
-    setSearchParams({}, { replace: true });
+    // Preserve category when clearing search
+    const currentCategory = searchParams.get('category');
+    if (currentCategory) {
+      setSearchParams({ category: currentCategory }, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
+    }
   };
 
   // Load initial data
@@ -92,13 +111,22 @@ export const DirectoryPage: React.FC = () => {
     fetchCategories();
   }, [fetchBusinesses, fetchServices, fetchProducts, fetchCategories]);
 
+  // Shuffle data based on session key for consistent randomization per session
+  const shuffledBusinesses = useMemo(() => {
+    if (!Array.isArray(businesses)) return [];
+    return [...businesses].sort(() => {
+      // Use session key to create consistent but random ordering
+      return 0.5 - (parseInt(sessionKey, 36) % 100) / 100;
+    });
+  }, [businesses, sessionKey]);
+
   // Calculate statistics
-  const verifiedBusinesses = Array.isArray(businesses) ? businesses.filter(b => b.is_verified).length : 0;
+  const verifiedBusinesses = shuffledBusinesses.filter(b => b.is_verified).length;
   
   const averageRating = (() => {
-    if (!Array.isArray(businesses) || businesses.length === 0) return "0.0";
+    if (shuffledBusinesses.length === 0) return "0.0";
     
-    const businessesWithRatings = businesses.filter(b => 
+    const businessesWithRatings = shuffledBusinesses.filter(b => 
       b.rating && Number(b.rating) > 0 && !isNaN(Number(b.rating))
     );
     
@@ -112,7 +140,7 @@ export const DirectoryPage: React.FC = () => {
     return (totalRating / businessesWithRatings.length).toFixed(1);
   })();
   
-  const totalReviews = Array.isArray(businesses) ? businesses.reduce((sum, b) => sum + (b.review_count || 0), 0) : 0;
+  const totalReviews = shuffledBusinesses.reduce((sum, b) => sum + (b.review_count || 0), 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex flex-col">
@@ -169,6 +197,32 @@ export const DirectoryPage: React.FC = () => {
 
           {/* Search and Filters Section */}
           <div className="mb-8">
+            {/* Category Indicator */}
+            {filters.category && (
+              <div className="max-w-4xl mx-auto mb-4">
+                <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-blue-800 font-medium">Filtering by category:</span>
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-300">
+                      {filters.category}
+                    </Badge>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setFilters(prev => ({ ...prev, category: '' }));
+                      setSearchParams({}, { replace: true });
+                    }}
+                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Clear Category
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Search Bar */}
             <div className="max-w-4xl mx-auto mb-6">
               <div className="relative">

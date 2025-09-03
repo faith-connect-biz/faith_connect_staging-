@@ -876,13 +876,20 @@ const BusinessDetailPage = () => {
             </div>
             
             <div className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-xl overflow-hidden">
-              <div className="relative h-48 sm:h-56 md:h-64 lg:h-72 xl:h-80">
+              <div className="relative h-48 sm:h-56 md:h-64 lg:h-72 xl:h-80 overflow-hidden flex items-center justify-center">
                 <img 
                   src={getBusinessImageUrl(business) || getBusinessLogoUrl(business) || "/placeholder.svg"} 
                   alt={business.business_name}
                   className={`w-full h-full ${
                     getBusinessImageUrl(business) ? 'object-cover' : 'object-contain'
                   } ${!getBusinessImageUrl(business) && getBusinessLogoUrl(business) ? 'bg-white' : ''}`}
+                  style={{
+                    objectPosition: 'center',
+                    minHeight: '100%',
+                    minWidth: '100%',
+                    maxWidth: '100%',
+                    maxHeight: '100%'
+                  }}
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.src = "/placeholder.svg";
@@ -969,7 +976,7 @@ const BusinessDetailPage = () => {
                 </CardHeader>
                 <CardContent className="p-6">
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 bg-gray-100/50 backdrop-blur-sm overflow-x-auto">
+                    <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 bg-gray-100/50 backdrop-blur-sm">
                       <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-3 py-2 whitespace-nowrap">Overview</TabsTrigger>
                       <TabsTrigger value="services" className="text-xs sm:text-sm px-2 sm:px-3 py-2 whitespace-nowrap">Services ({services.length}/20)</TabsTrigger>
                       <TabsTrigger value="products" className="text-xs sm:text-sm px-2 sm:px-3 py-2 whitespace-nowrap">Products ({business.products ? business.products.length : 0}/20)</TabsTrigger>
@@ -984,7 +991,7 @@ const BusinessDetailPage = () => {
                         {user && user.user_type === 'business' && isBusinessOwner && (
                           <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
                             <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-semibold text-fem-navy flex items-center gap-2">
+                              <h3 className="text-xl font-semibold text-fem-navy flex items-center gap-2">
                                 <Camera className="w-5 h-5 text-fem-terracotta" />
                                 Business Profile Image
                               </h3>
@@ -1032,15 +1039,15 @@ const BusinessDetailPage = () => {
                           </div>
                         )}
 
-                        <div>
-                          <h3 className="text-xl font-semibold text-fem-navy mb-3">About</h3>
+                        <div className="mb-6">
+                          <h3 className="text-2xl font-bold text-fem-navy mb-4">About</h3>
                           <p className="text-gray-600 leading-relaxed">
                             {business.description || business.long_description || "No description available."}
                           </p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
+                          <div className="mb-4">
                             <h4 className="font-semibold text-fem-navy mb-3">Contact Information</h4>
                             <div className="space-y-2">
                               <ProtectedContactInfo 
@@ -1063,26 +1070,10 @@ const BusinessDetailPage = () => {
                             </div>
                           </div>
 
-                          <div>
+                          <div className="mb-4">
                             <h4 className="font-semibold text-fem-navy mb-3">Business Information</h4>
                             <div className="space-y-2">
-                              {/* Business Logo Display */}
-                              {business.business_logo_url && (
-                                <div className="flex items-center gap-2 text-gray-600">
-                                  <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200 bg-white flex items-center justify-center">
-                                    <img 
-                                      src={business.business_logo_url || business.business_image_url || "/placeholder.svg"}
-                                      alt={`${business.business_name} logo`}
-                                      className="w-full h-full object-contain"
-                                      onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.src = "/placeholder.svg";
-                                      }}
-                                    />
-                                  </div>
-                                  <span className="text-sm text-gray-500">Business Logo</span>
-                                </div>
-                              )}
+
                               <div className="flex items-center gap-2 text-gray-600">
                                 <Package className="w-4 h-4 text-fem-terracotta" />
                                 <span>Category: {business.category?.name}</span>
@@ -1103,8 +1094,8 @@ const BusinessDetailPage = () => {
                     
                     <TabsContent value="services" className="mt-6">
                       <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-xl font-semibold text-fem-navy">Services</h3>
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-2xl font-bold text-fem-navy">Services</h3>
                           {user && user.user_type === 'business' && isBusinessOwner && (
                             <div className="flex items-center gap-3">
                               {services.length >= 20 ? (
@@ -1114,7 +1105,7 @@ const BusinessDetailPage = () => {
                               ) : (
                                 <Button
                                   onClick={handleAddService}
-                                  className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                                  className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white px-6 py-2"
                                 >
                                   <Settings className="w-4 h-4 mr-2" />
                                   Add Service ({services.length}/20)
@@ -1141,7 +1132,15 @@ const BusinessDetailPage = () => {
                                 <div className="relative">
                                   {/* Service Image */}
                                   <img 
-                                    src={service.service_image_url || service.images?.[0] || business.business_logo_url || business.business_image_url || "/placeholder.svg"} 
+                                    src={(() => {
+                                      // Filter out placeholder URLs and prioritize real images
+                                      const realServiceImage = service.service_image_url && !service.service_image_url.includes('via.placeholder.com') ? service.service_image_url : null;
+                                      const realImages = service.images?.filter((img: string) => !img.includes('via.placeholder.com')) || [];
+                                      const realBusinessLogo = business.business_logo_url && !business.business_logo_url.includes('via.placeholder.com') ? business.business_logo_url : null;
+                                      const realBusinessImage = business.business_image_url && !business.business_image_url.includes('via.placeholder.com') ? business.business_image_url : null;
+                                      
+                                      return realServiceImage || realImages[0] || realBusinessLogo || realBusinessImage || "/placeholder.svg";
+                                    })()}
                                     alt={service.name}
                                     className="w-full h-48 sm:h-40 md:h-48 object-cover rounded-t-lg hover:opacity-90 transition-opacity"
                                     onError={(e) => {
@@ -1280,8 +1279,8 @@ const BusinessDetailPage = () => {
                     
                     <TabsContent value="products" className="mt-6">
                       <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-xl font-semibold text-fem-navy">Products</h3>
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-2xl font-bold text-fem-navy">Products</h3>
                           {user && user.user_type === 'business' && isBusinessOwner && (
                             <div className="flex items-center gap-3">
                               {business.products && business.products.length >= 20 ? (
@@ -1291,7 +1290,7 @@ const BusinessDetailPage = () => {
                               ) : (
                                 <Button
                                   onClick={handleAddProduct}
-                                  className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                                  className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white px-6 py-2"
                                 >
                                   <Package className="w-4 h-4 mr-2" />
                                   Add Product ({business.products ? business.products.length : 0}/20)
@@ -1314,7 +1313,15 @@ const BusinessDetailPage = () => {
                                   {/* Main Product Image with Hover Effects */}
                                   <div className="aspect-square bg-gray-50 rounded-t-lg overflow-hidden">
                                     <img 
-                                      src={product.product_image_url || product.images?.[0] || business.business_logo_url || business.business_image_url || "/placeholder.svg"} 
+                                      src={(() => {
+                                        // Filter out placeholder URLs and prioritize real images
+                                        const realProductImage = product.product_image_url && !product.product_image_url.includes('via.placeholder.com') ? product.product_image_url : null;
+                                        const realImages = product.images?.filter((img: string) => !img.includes('via.placeholder.com')) || [];
+                                        const realBusinessLogo = business.business_logo_url && !business.business_logo_url.includes('via.placeholder.com') ? business.business_logo_url : null;
+                                        const realBusinessImage = business.business_image_url && !business.business_image_url.includes('via.placeholder.com') ? business.business_image_url : null;
+                                        
+                                        return realProductImage || realImages[0] || realBusinessLogo || realBusinessImage || "/placeholder.svg";
+                                      })()}
                                       alt={product.name}
                                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                       onError={(e) => {
@@ -1461,12 +1468,12 @@ const BusinessDetailPage = () => {
                     
                     <TabsContent value="reviews" className="mt-6">
                       <div ref={reviewsRef} className="space-y-6">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-xl font-semibold text-fem-navy">Customer Reviews</h3>
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-2xl font-bold text-fem-navy">Customer Reviews</h3>
                           {user && !userReviewData && !isBusinessOwner && (
                             <Button
                               onClick={() => !isBusinessOwner && setShowReviewForm(true)}
-                              className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                              className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white px-6 py-2"
                             >
                               Write Review
                             </Button>
@@ -1476,14 +1483,14 @@ const BusinessDetailPage = () => {
                               <Button
                                 onClick={() => !isBusinessOwner && setShowReviewForm(true)}
                                 variant="outline"
-                                className="border-fem-gold text-fem-gold hover:bg-fem-gold hover:text-white"
+                                className="border-fem-gold text-fem-gold hover:bg-fem-gold hover:text-white px-6 py-2"
                               >
                                 Edit Review
                               </Button>
                               <Button
                                 onClick={handleDeleteReview}
                                 variant="outline"
-                                className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+                                className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white px-6 py-2"
                               >
                                 Delete Review
                               </Button>

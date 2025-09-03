@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import LikeButton from "@/components/LikeButton";
 import ShareModal from "@/components/ui/ShareModal";
 import { type ShareData } from "@/utils/sharing";
-import { getServiceImageUrl } from '@/utils/imageUtils';
+import { getServiceImageUrl, getServiceImages } from '@/utils/imageUtils';
 
 interface ServiceListProps {
   filters: {
@@ -43,13 +43,25 @@ export const ServiceList: React.FC<ServiceListProps> = ({
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [currentShareData, setCurrentShareData] = useState<ShareData | null>(null);
 
+  // Shuffle function to randomize order and prevent bias
+  const shuffleArray = (array: any[]) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
   // Apply client-side filtering - instant search
   const filteredServices = useMemo(() => {
     if (!Array.isArray(services)) return [];
     
+    let filtered = services;
+    
     if (filters.searchTerm && filters.searchTerm.trim()) {
       const searchLower = filters.searchTerm.toLowerCase().trim();
-      return services.filter(service => {
+      filtered = filtered.filter(service => {
         const serviceName = service.name?.toLowerCase() || '';
         const serviceDescription = service.description?.toLowerCase() || '';
         const businessName = (typeof service.business === 'object' ? service.business.business_name : '')?.toLowerCase() || '';
@@ -60,7 +72,8 @@ export const ServiceList: React.FC<ServiceListProps> = ({
       });
     }
     
-    return services;
+    // Randomize the order to prevent bias
+    return shuffleArray(filtered);
   }, [services, filters.searchTerm]);
 
   // Update pagination
@@ -129,17 +142,64 @@ export const ServiceList: React.FC<ServiceListProps> = ({
         className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer hover:scale-[1.02] rounded-2xl"
         onClick={() => handleServiceClick(service)}
       >
-        {/* Service Image */}
+        {/* Service Image Gallery */}
         <div className="relative h-48 overflow-hidden">
-          <img
-            src={getServiceImageUrl(service, business)}
-            alt={service.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = "/placeholder.svg";
-            }}
-          />
+          {(() => {
+            const serviceImages = getServiceImages(service, business);
+            if (serviceImages.length > 0) {
+              return (
+                <>
+                  {/* Main Image */}
+                  <img
+                    src={serviceImages[0]}
+                    alt={service.name}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "/placeholder.svg";
+                    }}
+                  />
+                  
+                  {/* Multiple Images Indicator */}
+                  {serviceImages.length > 1 && (
+                    <div className="absolute top-2 left-2">
+                      <Badge className="bg-black/80 text-white text-xs font-medium px-2 py-1 rounded-full border border-white/20 shadow-lg">
+                        {serviceImages.length} images
+                      </Badge>
+                    </div>
+                  )}
+                  
+                  {/* Image Gallery Preview */}
+                  {serviceImages.length > 1 && (
+                    <div className="absolute bottom-2 left-2 right-2">
+                      <div className="flex space-x-1">
+                        {serviceImages.slice(0, 4).map((imageUrl: string, index: number) => (
+                          <img
+                            key={index}
+                            src={imageUrl}
+                            alt={`${service.name} view ${index + 1}`}
+                            className="w-8 h-8 object-cover rounded border border-white shadow-sm"
+                          />
+                        ))}
+                        {serviceImages.length > 4 && (
+                          <div className="w-8 h-8 bg-black/70 rounded border border-white shadow-sm flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">+{serviceImages.length - 4}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            } else {
+              // Fallback when no images
+              return (
+                <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                  <Settings className="w-16 h-16 text-gray-400" />
+                </div>
+              );
+            }
+          })()}
           
           {/* Hover Overlay with Action Buttons */}
           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-end p-3">

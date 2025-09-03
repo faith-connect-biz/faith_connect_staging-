@@ -88,6 +88,16 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   //   }
   // }, [businesses]);
 
+  // Shuffle function to randomize order and prevent bias
+  const shuffleArray = (array: any[]) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
   // Remove debug logging that causes spam
   // console.log('BusinessContext - businesses:', businesses);
   // console.log('BusinessContext - computedServices:', services);
@@ -141,7 +151,9 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       if (response && response.results && Array.isArray(response.results)) {
         console.log('fetchBusinesses - Using response.results:', response.results);
         console.log('fetchBusinesses - Setting businesses to:', response.results);
-        setBusinesses(response.results);
+        // Randomize the order to prevent bias
+        const shuffledBusinesses = shuffleArray(response.results);
+        setBusinesses(shuffledBusinesses);
         setTotalCount(response.count || 0);
         setCurrentPage(page);
         setHasNextPage(!!response.next);
@@ -162,7 +174,9 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
         }
       } else if (Array.isArray(response)) {
         console.log('fetchBusinesses - Using direct response array:', response);
-        setBusinesses(response);
+        // Randomize the order to prevent bias
+        const shuffledBusinesses = shuffleArray(response);
+        setBusinesses(shuffledBusinesses);
         setTotalCount(response.length);
         setCurrentPage(1);
         setHasNextPage(false);
@@ -198,11 +212,15 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       
       if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
         console.log('fetchCategories: Using paginated response, setting categories to:', response.results);
-        setCategories(response.results);
+        // Randomize the order to prevent bias
+        const shuffledCategories = shuffleArray(response.results);
+        setCategories(shuffledCategories);
       } else if (Array.isArray(response)) {
         // Handle direct array response
         console.log('fetchCategories: Using direct array response, setting categories to:', response);
-        setCategories(response);
+        // Randomize the order to prevent bias
+        const shuffledCategories = shuffleArray(response);
+        setCategories(shuffledCategories);
       } else {
         console.error('Categories API returned unexpected response format:', response);
         setCategories([]);
@@ -267,7 +285,9 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
           searchTerm: params.search,
           page
         });
-        setProducts(response.results);
+        // Randomize the order to prevent bias
+        const shuffledProducts = shuffleArray(response.results);
+        setProducts(shuffledProducts);
         setTotalProductsCount(response.count || 0);
         console.log('fetchProducts - Setting totalProductsCount to:', response.count || 0);
         setCurrentPage(page);
@@ -293,7 +313,9 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
           }).catch(() => {});
         }
       } else if (Array.isArray(response)) {
-        setProducts(response);
+        // Randomize the order to prevent bias
+        const shuffledProducts = shuffleArray(response);
+        setProducts(shuffledProducts);
         setTotalProductsCount(response.length);
         setCurrentPage(1);
         setHasNextPage(false);
@@ -372,7 +394,9 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
           searchTerm: params.search,
           page
         });
-        setServices(response.results);
+        // Randomize the order to prevent bias
+        const shuffledServices = shuffleArray(response.results);
+        setServices(shuffledServices);
         setTotalServicesCount(response.count || 0);
         console.log('fetchServices - Setting totalServicesCount to:', response.count || 0);
         setCurrentPage(page);
@@ -398,7 +422,9 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
           }).catch(() => {});
         }
       } else if (Array.isArray(response)) {
-        setServices(response);
+        // Randomize the order to prevent bias
+        const shuffledServices = shuffleArray(response);
+        setServices(shuffledServices);
         setTotalServicesCount(response.length);
         setCurrentPage(1);
         setHasNextPage(false);

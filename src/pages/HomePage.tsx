@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/services/api';
 import { Hero } from '@/components/home/Hero';
 import { BusinessCategories } from '@/components/home/BusinessCategories';
+import { ProductServiceCarousel } from '@/components/home/ProductServiceCarousel';
 import { HowItWorks } from '@/components/home/HowItWorks';
 import { CommunityStats } from '@/components/home/CommunityStats';
 import { Testimonials } from '@/components/home/Testimonials';
@@ -50,7 +51,7 @@ const HomePage: React.FC = () => {
             </button>
           </Link>
           <Link to="/register-business" className="group">
-            <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+            <button className="btn-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
               <div className="flex items-center gap-3">
                 <Building2 className="w-6 h-6" />
                 <span className="font-mont font-semibold tracking-wide">List Your Business</span>
@@ -76,7 +77,7 @@ const HomePage: React.FC = () => {
               </button>
             </Link>
             <Link to="/directory" className="group">
-              <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+              <button className="btn-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
                 <div className="flex items-center gap-3">
                   <Search className="w-6 h-6" />
                   <span className="font-mont font-semibold tracking-wide">Browse Directory</span>
@@ -90,7 +91,7 @@ const HomePage: React.FC = () => {
         return (
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <Link to="/register-business" className="group">
-              <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+              <button className="btn-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
                 <div className="flex items-center gap-3">
                   <Building2 className="w-6 h-6" />
                   <span className="font-mont font-semibold tracking-wide">List Your Business</span>
@@ -116,7 +117,7 @@ const HomePage: React.FC = () => {
             </button>
           </Link>
           <Link to="/profile" className="group">
-            <button className="btn-outline-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
+            <button className="btn-modern group-hover:scale-110 transition-transform duration-300 text-lg px-8 py-4">
               <div className="flex items-center gap-3">
                 <Users className="w-6 h-6" />
                 <span className="font-mont font-semibold tracking-wide">View Profile</span>
@@ -193,6 +194,7 @@ const HomePage: React.FC = () => {
       <Hero actionButtons={renderActionButtons()} />
       {renderCommunityUserInfo()}
       <BusinessCategories />
+      <ProductServiceCarousel />
       <HowItWorks />
       <CommunityStats />
       <Testimonials />

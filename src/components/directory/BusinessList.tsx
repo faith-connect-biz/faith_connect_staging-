@@ -42,13 +42,39 @@ export const BusinessList: React.FC<BusinessListProps> = ({
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [currentShareData, setCurrentShareData] = useState<ShareData | null>(null);
 
+  // Shuffle function to randomize order and prevent bias
+  const shuffleArray = (array: any[]) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
   // Apply client-side filtering - instant search
   const filteredBusinesses = useMemo(() => {
     if (!Array.isArray(businesses)) return [];
     
+    let filtered = businesses;
+    
+    // Apply category filter
+    if (filters.category && filters.category.trim()) {
+      filtered = filtered.filter(business => {
+        const businessCategory = business.category;
+        if (typeof businessCategory === 'object' && businessCategory?.slug) {
+          return businessCategory.slug === filters.category;
+        } else if (typeof businessCategory === 'string') {
+          return businessCategory === filters.category;
+        }
+        return false;
+      });
+    }
+    
+    // Apply search filter
     if (filters.searchTerm && filters.searchTerm.trim()) {
       const searchLower = filters.searchTerm.toLowerCase().trim();
-      return businesses.filter(business => {
+      filtered = filtered.filter(business => {
         const businessName = business.business_name?.toLowerCase() || '';
         const businessDescription = business.description?.toLowerCase() || '';
         const businessCategory = business.category?.name?.toLowerCase() || '';
@@ -59,8 +85,9 @@ export const BusinessList: React.FC<BusinessListProps> = ({
       });
     }
     
-    return businesses;
-  }, [businesses, filters.searchTerm]);
+    // Randomize the order to prevent bias
+    return shuffleArray(filtered);
+  }, [businesses, filters.category, filters.searchTerm]);
 
   // Update pagination
   useEffect(() => {
