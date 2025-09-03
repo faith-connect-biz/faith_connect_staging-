@@ -84,7 +84,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
 
   // Fetch services from API - only once on mount
   useEffect(() => {
-    fetchServices({ page: 1, limit: 100 }); // Fetch more items for client-side filtering
+    fetchServices({ page: 1, limit: 20 }); // Use unified limit for consistent performance
   }, [fetchServices]);
 
   // Paginate filtered services

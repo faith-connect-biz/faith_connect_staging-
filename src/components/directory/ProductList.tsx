@@ -84,7 +84,7 @@ export const ProductList: React.FC<ProductListProps> = ({
 
   // Fetch products from API - only once on mount
   useEffect(() => {
-    fetchProducts({ page: 1, limit: 100 }); // Fetch more items for client-side filtering
+    fetchProducts({ page: 1, limit: 20 }); // Use unified limit for consistent performance
   }, [fetchProducts]);
 
   // Paginate filtered products

@@ -97,7 +97,7 @@ export const BusinessList: React.FC<BusinessListProps> = ({
 
   // Fetch businesses from API - only once on mount
   useEffect(() => {
-    fetchBusinesses({ page: 1, limit: 100 }); // Fetch more items for client-side filtering
+    fetchBusinesses({ page: 1, limit: 20 }); // Use unified limit for consistent performance
   }, [fetchBusinesses]);
 
   // Paginate filtered businesses

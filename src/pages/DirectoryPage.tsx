@@ -118,7 +118,9 @@ export const DirectoryPage: React.FC = () => {
   // Load initial data with optimized loading strategy
   useEffect(() => {
     // Load with smaller initial batch size for faster initial render
-    const initialLimit = 20; // Reduced from 100 to 20 for faster loading
+    const initialLimit = 20; // Use the unified limit constant
+    
+    console.log('🔍 DirectoryPage - Loading initial data with limit:', initialLimit);
     
     // Load all data in parallel instead of sequentially
     Promise.all([
