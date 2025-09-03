@@ -293,7 +293,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const fetchBusinesses = useCallback(async (params?: any) => {
     await fetchWithCache(
       'businesses',
-      apiService.getBusinesses,
+      apiService.getBusinesses.bind(apiService),
       params,
       businessesCache,
       setBusinesses,
@@ -308,7 +308,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const fetchServices = useCallback(async (params?: any) => {
     await fetchWithCache(
       'services',
-      apiService.getAllServices,
+      apiService.getAllServices.bind(apiService),
       params,
       servicesCache,
       setServices,
@@ -323,7 +323,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const fetchProducts = useCallback(async (params?: any) => {
     await fetchWithCache(
       'products',
-      apiService.getAllProducts,
+      apiService.getAllProducts.bind(apiService),
       params,
       productsCache,
       setProducts,
