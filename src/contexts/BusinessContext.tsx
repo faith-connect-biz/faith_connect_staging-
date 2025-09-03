@@ -121,13 +121,16 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       setError(null);
       
       const page = params?.page || 1;
-      const limit = params?.limit || 15;
+      const limit = params?.limit || 20; // Fixed: Use 20 instead of 15 for consistency
       
       // Serve from cache immediately to avoid blank UI
       if (businessesCache[page]) {
+        console.log('🔍 BusinessContext - Serving businesses from cache for page:', page);
         setBusinesses(businessesCache[page]);
         setCurrentPage(page);
         setIsLoadingBusinesses(true); // show subtle loader while refreshing
+      } else {
+        console.log('🔍 BusinessContext - No businesses cache for page:', page, 'Cache keys:', Object.keys(businessesCache));
       }
       
       // Cancel any in-flight request
@@ -350,16 +353,16 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   }) => {
     try {
       const page = params?.page || 1;
-      const limit = params?.limit || 15;
+      const limit = params?.limit || 20; // Fixed: Use 20 instead of 15 for consistency
 
       // Serve from cache immediately to avoid blank UI, but not for search queries
       if (servicesCache[page] && !params.search) {
-        console.log('🔍 BusinessContext - Serving from cache for page:', page);
+        console.log('🔍 BusinessContext - Serving services from cache for page:', page);
         setServices(servicesCache[page]);
         setCurrentPage(page);
         setIsLoading(true); // show subtle loader while refreshing
       } else {
-        console.log('🔍 BusinessContext - Not serving from cache (search or no cache)');
+        console.log('🔍 BusinessContext - Not serving services from cache (search or no cache)');
         setIsLoading(true);
       }
       setError(null);
@@ -377,10 +380,6 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
       apiParams.limit = limit;
       
       const response = await apiService.getAllServices(apiParams);
-      // Remove excessive debug logging
-      // console.log('fetchServices - API response:', response);
-      // console.log('fetchServices - response.count:', response?.count);
-      // console.log('fetchServices - response.results length:', response?.results?.length);
       
       if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
         console.log('🔍 BusinessContext - Setting services:', {
@@ -393,7 +392,6 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
         const shuffledServices = shuffleArray(response.results);
         setServices(shuffledServices);
         setTotalServicesCount(response.count || 0);
-        console.log('fetchServices - Setting totalServicesCount to:', response.count || 0);
         setCurrentPage(page);
         setHasNextPage(!!response.next);
         setHasPreviousPage(!!response.previous);
