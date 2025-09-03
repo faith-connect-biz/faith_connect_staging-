@@ -34,7 +34,7 @@ export const ProductList: React.FC<ProductListProps> = ({
   filters, 
   itemsPerPage = 15
 }) => {
-  const { products, businesses, isLoading, fetchProducts, totalProductsCount } = useBusiness();
+  const { products, businesses, isLoadingProducts, fetchProducts, totalProductsCount } = useBusiness();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -55,6 +55,13 @@ export const ProductList: React.FC<ProductListProps> = ({
 
   // Apply client-side filtering - instant search
   const filteredProducts = useMemo(() => {
+    console.log('🔍 ProductList - Current products state:', {
+      products,
+      productsType: typeof products,
+      isArray: Array.isArray(products),
+      length: products?.length || 0
+    });
+    
     if (!Array.isArray(products)) return [];
     
     let filtered = products;
@@ -134,7 +141,19 @@ export const ProductList: React.FC<ProductListProps> = ({
       business = product.business;
     }
 
-    if (!business) return null;
+    console.log('🔍 ProductCard - Product and business data:', {
+      productId: product.id,
+      productName: product.name,
+      productBusiness: product.business,
+      businessType: typeof product.business,
+      foundBusiness: business,
+      businessesLength: businesses?.length || 0
+    });
+
+    if (!business) {
+      console.log('🔍 ProductCard - No business found for product:', product.id);
+      return null;
+    }
 
     return (
       <Card 
@@ -315,7 +334,7 @@ export const ProductList: React.FC<ProductListProps> = ({
   return (
     <div className="space-y-6">
       {/* Loading State */}
-      {isLoading && (
+      {isLoadingProducts && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="space-y-4">
@@ -331,7 +350,7 @@ export const ProductList: React.FC<ProductListProps> = ({
       )}
 
       {/* Products Grid */}
-      {!isLoading && paginatedProducts.length > 0 && (
+      {!isLoadingProducts && paginatedProducts.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {paginatedProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
@@ -340,7 +359,7 @@ export const ProductList: React.FC<ProductListProps> = ({
       )}
 
       {/* No Products Found */}
-      {!isLoading && paginatedProducts.length === 0 && (
+      {!isLoadingProducts && paginatedProducts.length === 0 && (
         <div className="text-center py-12">
           <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>

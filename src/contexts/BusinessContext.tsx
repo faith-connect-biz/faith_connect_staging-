@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { apiService } from '@/services/api';
 
 // Constants for consistent limits across the entire app
@@ -150,6 +150,30 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   
+  // Debug state changes
+  useEffect(() => {
+    console.log('🔍 BusinessContext - Services state changed:', {
+      servicesLength: services?.length || 0,
+      sampleServices: services?.slice(0, 2),
+      businessFieldType: services?.[0]?.business ? typeof services[0].business : 'undefined'
+    });
+  }, [services]);
+  
+  useEffect(() => {
+    console.log('🔍 BusinessContext - Products state changed:', {
+      productsLength: products?.length || 0,
+      sampleProducts: products?.slice(0, 2),
+      businessFieldType: products?.[0]?.business ? typeof products[0].business : 'undefined'
+    });
+  }, [products]);
+  
+  useEffect(() => {
+    console.log('🔍 BusinessContext - Businesses state changed:', {
+      businessesLength: businesses?.length || 0,
+      sampleBusinesses: businesses?.slice(0, 2)
+    });
+  }, [businesses]);
+  
   // Loading states
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingBusinesses, setIsLoadingBusinesses] = useState(false);
@@ -187,7 +211,13 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
         return result;
       }, {});
-    return `${type}:${JSON.stringify(sortedParams)}`;
+    const cacheKey = `${type}:${JSON.stringify(sortedParams)}`;
+    console.log(`🔍 BusinessContext - Generated cache key for ${type}:`, {
+      params,
+      sortedParams,
+      cacheKey
+    });
+    return cacheKey;
   };
 
   // Unified fetch function with caching
@@ -203,22 +233,44 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setNext: (next: boolean) => void,
     setPrev: (prev: boolean) => void
   ): Promise<void> => {
-    try {
-      const cacheKey = generateCacheKey(type, params);
+    const cacheKey = generateCacheKey(type, params);
+    
+    // Check cache first
+    const cachedData = cache.get(cacheKey);
+    if (cachedData && !params.search) {
+      console.log(`🔍 BusinessContext - Serving ${type} from cache:`, {
+        cacheKey,
+        cachedDataLength: cachedData.data?.length || 0,
+        cachedData: cachedData.data,
+        sampleCachedData: cachedData.data?.slice(0, 2),
+        hasBusinessData: cachedData.data?.[0]?.business,
+        businessFieldType: typeof cachedData.data?.[0]?.business,
+        firstItemKeys: cachedData.data?.[0] ? Object.keys(cachedData.data[0]) : [],
+        businessFieldValue: cachedData.data?.[0]?.business
+      });
       
-      // Check cache first
-      const cachedData = cache.get(cacheKey);
-      if (cachedData && !params.search) {
-        console.log(`🔍 BusinessContext - Serving ${type} from cache:`, cacheKey);
-        setData(cachedData.data);
-        setTotal(cachedData.total);
-        setPage(cachedData.page);
-        setNext(cachedData.hasNext);
-        setPrev(cachedData.hasPrev);
-        setLoading(false);
-        return;
-      }
+      // Store the raw data from cache - computed values will handle business relationships
+      setData(cachedData.data);
+      setTotal(cachedData.total);
+      setPage(cachedData.page);
+      setNext(cachedData.hasNext);
+      setPrev(cachedData.hasPrev);
+      setLoading(false);
+      console.log(`🔍 BusinessContext - Cache served for ${type}, loading set to false`);
+      
+      // Debug: Log what was set
+      console.log(`🔍 BusinessContext - After setting ${type} data:`, {
+        type,
+        dataLength: cachedData.data?.length || 0,
+        sampleData: cachedData.data?.slice(0, 2),
+        businessFieldType: typeof cachedData.data?.[0]?.business,
+        businessFieldValue: cachedData.data?.[0]?.business
+      });
+      
+      return;
+    }
 
+    try {
       // Cancel any in-flight request
       const abortRef = type === 'businesses' ? businessesAbortRef : 
                       type === 'services' ? servicesAbortRef : productsAbortRef;
@@ -229,6 +281,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const controller = new AbortController();
       abortRef.current = controller;
       
+      console.log(`🔍 BusinessContext - Setting loading to true for ${type}`);
       setLoading(true);
       setError(null);
 
@@ -245,6 +298,11 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
         const shuffledData = shuffleArray(response.results);
+        console.log(`🔍 BusinessContext - Setting ${type} data:`, {
+          type,
+          dataLength: shuffledData.length,
+          sampleData: shuffledData.slice(0, 2)
+        });
         setData(shuffledData);
         setTotal(response.count || 0);
         setPage(apiParams.page || 1);
@@ -252,13 +310,19 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setPrev(!!response.previous);
 
         // Cache the result
-        cache.set(cacheKey, {
+        const cacheData = {
           data: shuffledData,
           total: response.count || 0,
           page: apiParams.page || 1,
           hasNext: !!response.next,
           hasPrev: !!response.previous
+        };
+        console.log(`🔍 BusinessContext - Caching ${type} data:`, {
+          cacheKey,
+          cacheDataLength: shuffledData.length,
+          cacheData
         });
+        cache.set(cacheKey, cacheData);
 
         console.log(`🔍 BusinessContext - ${type} fetched and cached:`, {
           count: response.count || 0,
@@ -286,6 +350,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setError(errorMessage);
       console.error(`Failed to fetch ${type}:`, err);
     } finally {
+      console.log(`🔍 BusinessContext - Setting loading to false for ${type} in finally block`);
       setLoading(false);
     }
   };
@@ -367,19 +432,109 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     console.log('🔍 BusinessContext - All caches cleared');
   }, []);
 
-  // Computed values
+  // Computed values - FIXED: Handle both string IDs and business objects
   const computedServices = useMemo(() => {
-    return services.map(service => ({
-      ...service,
-      business: businesses.find(b => b.id === service.business)
-    }));
+    console.log('🔍 BusinessContext - Computing services:', {
+      servicesLength: services?.length || 0,
+      servicesType: typeof services,
+      isArray: Array.isArray(services),
+      servicesData: services?.slice(0, 2),
+      businessesLength: businesses?.length || 0,
+      businessesData: businesses?.slice(0, 2),
+      firstServiceKeys: services?.[0] ? Object.keys(services[0]) : [],
+      firstServiceBusinessField: services?.[0]?.business,
+      firstServiceBusinessFieldType: typeof services?.[0]?.business,
+      servicesReference: services,
+      businessesReference: businesses
+    });
+    
+    if (!Array.isArray(services) || services.length === 0) {
+      console.log('🔍 BusinessContext - No services to compute');
+      return [];
+    }
+    
+    if (!Array.isArray(businesses) || businesses.length === 0) {
+      console.log('🔍 BusinessContext - No businesses available for services computation');
+      return services; // Return services without business data if businesses not loaded
+    }
+    
+    const computed = services.map(service => {
+      // Handle both string IDs and business objects
+      let business;
+      if (typeof service.business === 'string') {
+        business = businesses.find(b => b.id === service.business);
+      } else if (service.business && typeof service.business === 'object') {
+        // If business is already an object, use it directly
+        business = service.business;
+      } else {
+        // Try to find business by business_id if business field is undefined
+        business = businesses.find(b => b.id === (service as any).business_id);
+      }
+      
+      return {
+        ...service,
+        business: business || null // Ensure business is never undefined
+      };
+    });
+    
+    console.log('🔍 BusinessContext - Computed services result:', {
+      computedLength: computed.length,
+      sampleComputed: computed.slice(0, 2),
+      sampleComputedBusiness: computed.slice(0, 2).map(c => ({ id: c.id, business: c.business }))
+    });
+    
+    return computed;
   }, [services, businesses]);
 
   const computedProducts = useMemo(() => {
-    return products.map(product => ({
-      ...product,
-      business: businesses.find(b => b.id === product.business)
-    }));
+    console.log('🔍 BusinessContext - Computing products:', {
+      productsLength: products?.length || 0,
+      productsType: typeof products,
+      isArray: Array.isArray(products),
+      productsData: products?.slice(0, 2),
+      businessesLength: businesses?.length || 0,
+      businessesData: businesses?.slice(0, 2),
+      firstProductKeys: products?.[0] ? Object.keys(products[0]) : [],
+      firstProductBusinessField: products?.[0]?.business,
+      firstProductBusinessFieldType: typeof products?.[0]?.business
+    });
+    
+    if (!Array.isArray(products) || products.length === 0) {
+      console.log('🔍 BusinessContext - No products to compute');
+      return [];
+    }
+    
+    if (!Array.isArray(businesses) || businesses.length === 0) {
+      console.log('🔍 BusinessContext - No businesses available for products computation');
+      return products; // Return products without business data if businesses not loaded
+    }
+    
+    const computed = products.map(product => {
+      // Handle both string IDs and business objects
+      let business;
+      if (typeof product.business === 'string') {
+        business = businesses.find(b => b.id === product.business);
+      } else if (product.business && typeof product.business === 'object') {
+        // If business is already an object, use it directly
+        business = product.business;
+      } else {
+        // Try to find business by business_id if business field is undefined
+        business = businesses.find(b => b.id === (product as any).business_id);
+      }
+      
+      return {
+        ...product,
+        business: business || null // Ensure business is never undefined
+      };
+    });
+    
+    console.log('🔍 BusinessContext - Computed products result:', {
+      computedLength: computed.length,
+      sampleComputed: computed.slice(0, 2),
+      sampleComputedBusiness: computed.slice(0, 2).map(c => ({ id: c.id, business: c.business }))
+    });
+    
+    return computed;
   }, [products, businesses]);
 
   const value: BusinessContextType = {
@@ -415,6 +570,18 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Cache management
     clearCache
   };
+
+  // Debug logging for the context value
+  console.log('🔍 BusinessContext - Context value being provided:', {
+    businessesLength: businesses?.length || 0,
+    servicesLength: computedServices?.length || 0,
+    productsLength: computedProducts?.length || 0,
+    isLoadingBusinesses,
+    isLoadingServices,
+    isLoadingProducts,
+    sampleServices: computedServices?.slice(0, 2),
+    sampleProducts: computedProducts?.slice(0, 2)
+  });
 
   return (
     <BusinessContext.Provider value={value}>

@@ -34,7 +34,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
   filters, 
   itemsPerPage = 15
 }) => {
-  const { services, businesses, isLoading, fetchServices, totalServicesCount } = useBusiness();
+  const { services, businesses, isLoadingServices, fetchServices, totalServicesCount } = useBusiness();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -55,6 +55,13 @@ export const ServiceList: React.FC<ServiceListProps> = ({
 
   // Apply client-side filtering - instant search
   const filteredServices = useMemo(() => {
+    console.log('🔍 ServiceList - Current services state:', {
+      services,
+      servicesType: typeof services,
+      isArray: Array.isArray(services),
+      length: services?.length || 0
+    });
+    
     if (!Array.isArray(services)) return [];
     
     let filtered = services;
@@ -134,7 +141,19 @@ export const ServiceList: React.FC<ServiceListProps> = ({
       business = service.business;
     }
 
-    if (!business) return null;
+    console.log('🔍 ServiceCard - Service and business data:', {
+      serviceId: service.id,
+      serviceName: service.name,
+      serviceBusiness: service.business,
+      businessType: typeof service.business,
+      foundBusiness: business,
+      businessesLength: businesses?.length || 0
+    });
+
+    if (!business) {
+      console.log('🔍 ServiceCard - No business found for service:', service.id);
+      return null;
+    }
 
     return (
       <Card 
@@ -316,7 +335,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
   return (
     <div className="space-y-6">
       {/* Loading State */}
-      {isLoading && (
+      {isLoadingServices && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="space-y-4">
@@ -332,7 +351,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
       )}
 
       {/* Services Grid */}
-      {!isLoading && paginatedServices.length > 0 && (
+      {!isLoadingServices && paginatedServices.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {paginatedServices.map((service) => (
             <ServiceCard key={service.id} service={service} />
@@ -341,7 +360,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
       )}
 
       {/* No Services Found */}
-      {!isLoading && paginatedServices.length === 0 && (
+      {!isLoadingServices && paginatedServices.length === 0 && (
         <div className="text-center py-12">
           <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No services found</h3>
