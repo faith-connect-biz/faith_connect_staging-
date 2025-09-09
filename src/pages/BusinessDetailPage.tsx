@@ -61,6 +61,7 @@ import LikeButton from "@/components/LikeButton";
 import ShareModal from "@/components/ui/ShareModal";
 import { type ShareData } from "@/utils/sharing";
 import { ProtectedContactInfo } from "@/components/ui/ProtectedContactInfo";
+import { formatToBritishDate } from '@/utils/dateUtils';
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
@@ -633,7 +634,7 @@ const BusinessDetailPage = () => {
           <div className="space-y-2">
             <p className="text-gray-600">{product.description}</p>
             <p className="text-lg font-bold text-fem-terracotta">
-              KSH {product.price.toLocaleString()}
+              KSh {product.price.toLocaleString()}
             </p>
           </div>
         </motion.div>
@@ -921,8 +922,13 @@ const BusinessDetailPage = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm">
                     <div className="flex items-center gap-1">
                       <Star className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400 fill-current" />
-                      <span className="font-medium">{business.rating}</span>
-                      <span className="text-gray-300">({business.review_count} reviews)</span>
+                      <span className="font-medium">
+                        {business.rating && !isNaN(Number(business.rating)) 
+                          ? Number(business.rating).toFixed(1) 
+                          : '0.0'
+                        }
+                      </span>
+                      <span className="text-gray-300">({business.review_count || 0} reviews)</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -1039,56 +1045,37 @@ const BusinessDetailPage = () => {
                           </div>
                         )}
 
-                        <div className="mb-6">
-                          <h3 className="text-2xl font-bold text-fem-navy mb-4">About</h3>
-                          <p className="text-gray-600 leading-relaxed">
-                            {business.description || business.long_description || "No description available."}
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="mb-4">
-                            <h4 className="font-semibold text-fem-navy mb-3">Contact Information</h4>
-                            <div className="space-y-2">
-                              <ProtectedContactInfo 
-                                phone={business.phone}
-                                email={business.email}
-                                variant="inline"
-                              />
-                              {business.website && (
-                                <div className="flex items-center gap-2 text-gray-600">
-                                  <Globe className="w-4 h-4 text-fem-terracotta" />
-                                  <a href={business.website} target="_blank" rel="noopener noreferrer" className="text-fem-terracotta hover:underline">
-                                    Visit Website
-                                  </a>
+                        {/* About Section */}
+                        <MotionWrapper
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.6, delay: 0.2 }}
+                        >
+                          <GlassmorphismCard className="bg-gradient-to-br from-white/95 to-white/90 backdrop-blur-sm border-0 shadow-xl relative overflow-hidden">
+                            {/* Decorative elements */}
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-fem-navy/5 to-transparent rounded-full blur-2xl" />
+                            <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-fem-terracotta/5 to-transparent rounded-full blur-xl" />
+                            
+                            <CardHeader className="relative z-10">
+                              <CardTitle className="flex items-center gap-3 text-2xl">
+                                <div className="p-3 rounded-xl bg-gradient-to-br from-fem-navy to-fem-terracotta text-white shadow-lg">
+                                  <Package className="w-6 h-6" />
                                 </div>
-                              )}
-                              <div className="flex items-center gap-2 text-gray-600">
-                                <MapPin className="w-4 h-4 text-fem-terracotta" />
-                                <span>{business.address}</span>
+                                <span className="bg-gradient-to-r from-fem-navy to-fem-terracotta bg-clip-text text-transparent font-bold">
+                                  About {business.business_name}
+                                </span>
+                              </CardTitle>
+                            </CardHeader>
+                            
+                            <CardContent className="relative z-10 space-y-6">
+                              <div className="prose prose-gray max-w-none">
+                                <p className="text-gray-700 leading-relaxed text-lg">
+                                  {business.description || business.long_description || "This business hasn't added a description yet. Contact them directly to learn more about their services and offerings."}
+                                </p>
                               </div>
-                            </div>
-                          </div>
-
-                          <div className="mb-4">
-                            <h4 className="font-semibold text-fem-navy mb-3">Business Information</h4>
-                            <div className="space-y-2">
-
-                              <div className="flex items-center gap-2 text-gray-600">
-                                <Package className="w-4 h-4 text-fem-terracotta" />
-                                <span>Category: {business.category?.name}</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-gray-600">
-                                <Users className="w-4 h-4 text-fem-terracotta" />
-                                <span>Member since: {new Date(business.created_at).toLocaleDateString()}</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-gray-600">
-                                <Star className="w-4 h-4 text-fem-terracotta" />
-                                <span>Rating: {business.rating} ({business.review_count} reviews)</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                            </CardContent>
+                          </GlassmorphismCard>
+                        </MotionWrapper>
                       </div>
                     </TabsContent>
                     
@@ -1548,7 +1535,7 @@ const BusinessDetailPage = () => {
                                 {/* Review Actions */}
                                 <div className="flex items-center justify-between mt-3">
                                   <div className="text-xs text-gray-500">
-                                    {new Date(review.created_at).toLocaleDateString()}
+                                    {formatToBritishDate(review.created_at)}
                                   </div>
                                   
                                   {/* Like Button - Only show if user doesn't own the review */}
@@ -1629,34 +1616,71 @@ const BusinessDetailPage = () => {
                   </CardContent>
                 </Card>
 
-                {/* Business Stats */}
-                <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl">
-                  <CardHeader className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white rounded-t-lg">
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5" />
-                      Business Stats
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Rating</span>
-                        <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                          <span className="font-semibold">{business.rating}</span>
+                {/* Business Summary - Redesigned from Business Details */}
+                <MotionWrapper
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                >
+                  <GlassmorphismCard className="backdrop-blur-md bg-gradient-to-br from-white/95 to-white/85 border-0 shadow-2xl relative overflow-hidden">
+                    {/* Decorative Background */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-fem-navy/10 via-fem-terracotta/5 to-fem-gold/10" />
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-fem-terracotta/20 to-transparent rounded-full blur-xl" />
+                    <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-to-tr from-fem-navy/15 to-transparent rounded-full blur-lg" />
+                    
+                    <CardHeader className="relative z-10 pb-3">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-fem-navy to-fem-terracotta text-white shadow-md">
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                        <span className="bg-gradient-to-r from-fem-navy to-fem-terracotta bg-clip-text text-transparent font-bold">
+                          Business Summary
+                        </span>
+                      </CardTitle>
+                    </CardHeader>
+                    
+                    <CardContent className="relative z-10 pt-0 space-y-4">
+                      {/* Category */}
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-purple-50/80 to-indigo-50/80 border border-purple-200/30">
+                        <div className="p-2 rounded-md bg-gradient-to-br from-purple-500 to-indigo-500 text-white">
+                          <Package className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-gray-500">Category</div>
+                          <div className="text-base font-bold text-purple-700">
+                            {business.category?.name || 'General Business'}
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Reviews</span>
-                        <span className="font-semibold">{business.review_count}</span>
+
+                      {/* Member Since */}
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-green-50/80 to-emerald-50/80 border border-green-200/30">
+                        <div className="p-2 rounded-md bg-gradient-to-br from-green-500 to-emerald-500 text-white">
+                          <Calendar className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-gray-500">Member Since</div>
+                          <div className="text-base font-bold text-green-700">
+                            {formatToBritishDate(business.created_at)}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Member Since</span>
-                        <span className="font-semibold">{new Date(business.created_at).getFullYear()}</span>
+
+                      {/* Community */}
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-blue-50/80 to-cyan-50/80 border border-blue-200/30">
+                        <div className="p-2 rounded-md bg-gradient-to-br from-blue-500 to-cyan-500 text-white">
+                          <Users className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-gray-500">Community</div>
+                          <div className="text-base font-bold text-blue-700">
+                            FEM Family Business
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </GlassmorphismCard>
+                </MotionWrapper>
               </div>
             </div>
           </div>
@@ -1800,7 +1824,7 @@ const BusinessDetailPage = () => {
                   <div className="flex items-center justify-between gap-2 text-gray-600 text-sm">
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-fem-terracotta" />
-                      <span>Added: {selectedProductDetail.created_at ? new Date(selectedProductDetail.created_at).toLocaleDateString() : 'N/A'}</span>
+                      <span>Added: {selectedProductDetail.created_at ? formatToBritishDate(selectedProductDetail.created_at) : 'N/A'}</span>
                     </div>
                     {/* Review Product Button - Moved here beside the date */}
                       <Button

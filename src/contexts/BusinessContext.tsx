@@ -56,6 +56,10 @@ interface Category {
   name: string;
   slug: string;
   description?: string;
+  subcategories?: string[];
+  icon?: string;
+  is_active?: boolean;
+  sort_order?: number;
 }
 
 interface BusinessContextType {

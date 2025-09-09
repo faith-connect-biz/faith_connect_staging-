@@ -331,9 +331,9 @@ export const DirectoryPage: React.FC = () => {
                       className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white/80 backdrop-blur-sm"
                     >
                       <option value="0-10000">Any Price</option>
-                      <option value="0-1000">Under $1,000</option>
-                      <option value="1000-5000">$1,000 - $5,000</option>
-                      <option value="5000-10000">$5,000+</option>
+                      <option value="0-1000">Under KSh 1,000</option>
+                      <option value="1000-5000">KSh 1,000 - KSh 5,000</option>
+                      <option value="5000-10000">KSh 5,000+</option>
                     </select>
                   </div>
                 </div>

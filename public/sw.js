@@ -77,6 +77,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip chrome-extension and other unsupported schemes
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return;
+  }
+
   // Handle API requests
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(handleApiRequest(request));
@@ -165,6 +170,13 @@ async function handleStaticRequest(request) {
 // Handle external requests (images, fonts, etc.)
 async function handleExternalRequest(request) {
   try {
+    const url = new URL(request.url);
+    
+    // Skip unsupported schemes
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return fetch(request);
+    }
+    
     // Try network first
     const networkResponse = await fetch(request);
     

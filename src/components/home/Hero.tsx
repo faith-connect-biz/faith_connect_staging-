@@ -10,11 +10,29 @@ interface HeroProps {
   actionButtons?: React.ReactNode;
 }
 
+interface PlatformStats {
+  total_businesses: number;
+  total_users: number;
+  average_rating: number;
+  counties_covered: number;
+  business_logos?: Array<{
+    name: string;
+    logo_url: string;
+    id: string;
+  }>;
+}
+
+interface BusinessLogo {
+  name: string;
+  logo_url: string;
+  id: string;
+}
+
 export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [stats, setStats] = useState<any>(null);
-  const [businessLogos, setBusinessLogos] = useState<any[]>([]);
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [businessLogos, setBusinessLogos] = useState<BusinessLogo[]>([]);
   const [hasBusiness, setHasBusiness] = useState(false);
   const [isCheckingBusiness, setIsCheckingBusiness] = useState(false);
   const { user, isAuthenticated, isBusiness, isCommunity } = useAuth();
@@ -57,8 +75,16 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        console.log('Fetching stats from:', `${import.meta.env.VITE_API_BASE_URL}/business/stats/`);
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/business/stats/`);
+        const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/business/stats/`;
+        console.log('Fetching stats from:', apiUrl);
+        
+        const response = await fetch(apiUrl, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          // Add timeout to prevent hanging requests
+          signal: AbortSignal.timeout(10000) // 10 second timeout
+        });
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -73,16 +99,25 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
           console.log('Business logos set:', data.data.business_logos);
         } else {
           console.warn('Stats API returned success: false');
+          throw new Error('API returned success: false');
         }
       } catch (error) {
         console.error('Error fetching stats:', error);
         // Set fallback stats to prevent UI from breaking
-        setStats({
+        const fallbackStats = {
           total_businesses: 1000,
           total_users: 500,
           average_rating: 4.8,
-          counties_covered: 15
-        });
+          counties_covered: 15,
+          business_logos: []
+        };
+        setStats(fallbackStats);
+        setBusinessLogos([]);
+        
+        // Only show user-friendly error if it's a network issue
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+          console.warn('Network connectivity issue - using fallback data');
+        }
       }
     };
 

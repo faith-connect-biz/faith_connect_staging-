@@ -386,7 +386,7 @@ class BusinessSerializer(serializers.ModelSerializer):
                         name=name.strip(),
                         description=product.get('description', '').strip(),
                         price=str(price),
-                        price_currency='KES',
+                        price_currency='KSH',
                         product_image_url=product.get('photo', ''),
                         is_active=product.get('is_available', True),
                         in_stock=True

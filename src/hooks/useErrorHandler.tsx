@@ -13,7 +13,7 @@ export const useErrorHandler = (options: UseErrorHandlerOptions = {}) => {
   const { toast } = useToast();
   const { context, showRetry = true, onRetry, onAction } = options;
 
-  const handleError = useCallback((error: any, customContext?: string) => {
+  const handleError = useCallback((error: unknown, customContext?: string) => {
     const errorContext = customContext || context;
     const userFriendlyError = ErrorHandler.getUserFriendlyError(error, errorContext);
 
@@ -41,7 +41,7 @@ export const useErrorHandler = (options: UseErrorHandlerOptions = {}) => {
     return userFriendlyError;
   }, [toast, context]);
 
-  const handleErrorWithRetry = useCallback((error: any, retryFunction: () => void, customContext?: string) => {
+  const handleErrorWithRetry = useCallback((error: unknown, retryFunction: () => void, customContext?: string) => {
     const userFriendlyError = handleError(error, customContext);
     
     // If error is retryable and retry function is provided, show retry option

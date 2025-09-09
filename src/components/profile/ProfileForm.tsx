@@ -5,21 +5,46 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { useAutoSave, useAutoSaveStatus } from '@/utils/autoSaveUtils';
 
 export const ProfileForm = () => {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [churchMembership, setChurchMembership] = useState("");
-  const [membershipNumber, setMembershipNumber] = useState("");
-  const [bio, setBio] = useState("");
-  const [skills, setSkills] = useState("");
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    churchMembership: "",
+    membershipNumber: "",
+    bio: "",
+    skills: ""
+  });
   const [photo, setPhoto] = useState<File | null>(null);
   const [resume, setResume] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { toast } = useToast();
+  
+  // Auto-save functionality
+  const { clearSavedData } = useAutoSave(
+    'profile_form',
+    formData,
+    setFormData,
+    undefined, // No user ID needed
+    {
+      delay: 2000,
+      showToast: true,
+      excludeFields: [] // Save all text fields
+    }
+  );
+  
+  const { statusText } = useAutoSaveStatus('profile_form');
+  
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
   
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -41,6 +66,9 @@ export const ProfileForm = () => {
     setTimeout(() => {
       setIsSubmitting(false);
       
+      // Clear auto-save data after successful submission
+      clearSavedData();
+      
       toast({
         title: "Profile Created!",
         description: "Your profile has been successfully created.",
@@ -50,7 +78,10 @@ export const ProfileForm = () => {
   
   return (
     <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md border border-gray-100 p-6">
-      <h2 className="text-2xl font-bold text-fem-navy mb-6">Create Your Profile</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-fem-navy">Create Your Profile</h2>
+        <span className="text-xs text-gray-400 italic">{statusText}</span>
+      </div>
       
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -58,8 +89,8 @@ export const ProfileForm = () => {
             <Label htmlFor="firstName" className="text-fem-navy">First Name*</Label>
             <Input
               id="firstName"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
+              value={formData.firstName}
+              onChange={(e) => handleInputChange("firstName", e.target.value)}
               required
               className="mt-1"
             />
@@ -69,8 +100,8 @@ export const ProfileForm = () => {
             <Label htmlFor="lastName" className="text-fem-navy">Last Name*</Label>
             <Input
               id="lastName"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
+              value={formData.lastName}
+              onChange={(e) => handleInputChange("lastName", e.target.value)}
               required
               className="mt-1"
             />
@@ -81,8 +112,8 @@ export const ProfileForm = () => {
             <Input
               id="email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={formData.email}
+              onChange={(e) => handleInputChange("email", e.target.value)}
               required
               className="mt-1"
             />
@@ -92,8 +123,8 @@ export const ProfileForm = () => {
             <Label htmlFor="phone" className="text-fem-navy">Phone Number*</Label>
             <Input
               id="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              value={formData.phone}
+              onChange={(e) => handleInputChange("phone", e.target.value)}
               required
               className="mt-1"
             />
@@ -110,8 +141,8 @@ export const ProfileForm = () => {
               <Label htmlFor="churchMembership" className="text-fem-navy">Faith Connect Branch*</Label>
               <Input
                 id="churchMembership"
-                value={churchMembership}
-                onChange={(e) => setChurchMembership(e.target.value)}
+                value={formData.churchMembership}
+                onChange={(e) => handleInputChange("churchMembership", e.target.value)}
                 placeholder="e.g. Faith Connect - Atlanta"
                 className="mt-1"
               />
@@ -135,8 +166,8 @@ export const ProfileForm = () => {
               </Label>
               <Textarea
                 id="bio"
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
+                value={formData.bio}
+                onChange={(e) => handleInputChange("bio", e.target.value)}
                 placeholder="Share a brief description of your professional background, experience, and career goals..."
                 required
                 className="mt-1 min-h-32"
@@ -152,8 +183,8 @@ export const ProfileForm = () => {
               </Label>
               <Textarea
                 id="skills"
-                value={skills}
-                onChange={(e) => setSkills(e.target.value)}
+                value={formData.skills}
+                onChange={(e) => handleInputChange("skills", e.target.value)}
                 placeholder="e.g. Painting, Drywall Repair, Customer Service"
                 required
                 className="mt-1"

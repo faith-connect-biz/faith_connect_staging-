@@ -10,9 +10,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { X, Mail, Phone, ArrowLeft, Loader2, Eye, EyeOff } from 'lucide-react';
+import { X, Mail, Phone, ArrowLeft, Loader2, Eye, EyeOff, Clock } from 'lucide-react';
 import { OTPInput } from '@/components/otp/OTPInput';
 import { apiService } from '@/services/api';
+import { useAutoSave, useAutoSaveStatus } from '@/utils/autoSaveUtils';
 
 // Password strength checking functions
 const getPasswordStrength = (password: string): 'weak' | 'medium' | 'strong' => {
@@ -83,8 +84,29 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login', hideT
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Auto-save functionality - only for signup form and only when actively filling the form
+  const shouldAutoSave = activeTab === 'signup' && signupStep === 'form' && !forgotOpen;
+  const autoSaveFormId = 'auth_signup_form';
+  
+  const { clearSavedData } = useAutoSave(
+    autoSaveFormId,
+    signupData,
+    setSignupData,
+    undefined, // No user ID since user isn't authenticated yet
+    {
+      delay: 2000, // 2 seconds for signup form
+      showToast: false, // Don't show toasts in modal to avoid clutter
+      excludeFields: ['password', 'confirmPassword'] // Don't save passwords for security
+    }
+  );
+  
+  const { statusText } = useAutoSaveStatus(autoSaveFormId, undefined);
+
   // Enhanced close handler that resets all states
   const handleClose = () => {
+    // Clear auto-save data only if signup was successful (handled in handleSignup)
+    // Otherwise preserve the data for when user reopens the modal
+    
     // Reset all states before closing
     setActiveTab(defaultTab);
     setSignupStep('form');
@@ -95,16 +117,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login', hideT
     setNewPassword('');
     setConfirmNewPassword('');
     setForgotMethod('phone');
-    setSignupData({
-      email: '',
-      phone: '',
-      password: '',
-      confirmPassword: '',
-      firstName: '',
-      lastName: '',
-      userType: 'community',
-      partnershipNumber: ''
-    });
+    // Don't reset signupData here - let auto-save handle persistence
     setAuthMethod('phone');
     setUsePhone(true);
     setShowPassword(false);
@@ -135,7 +148,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login', hideT
   // Reset all states when modal opens to ensure clean state
   useEffect(() => {
     if (isOpen) {
-      // Reset all form states
+      // Reset non-form states
       setActiveTab(defaultTab);
       setSignupStep('form');
       setForgotOpen(false);
@@ -145,22 +158,29 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login', hideT
       setNewPassword('');
       setConfirmNewPassword('');
       setForgotMethod('phone');
-      setSignupData({
-        email: '',
-        phone: '',
-        password: '',
-        confirmPassword: '',
-        firstName: '',
-        lastName: '',
-        userType: 'community',
-        partnershipNumber: ''
-      });
+      
+      // Only reset signup form data if there's no auto-saved data
+      // The auto-save hook will handle loading saved data automatically
+      const savedData = localStorage.getItem(`autosave_${autoSaveFormId}`);
+      if (!savedData) {
+        setSignupData({
+          email: '',
+          phone: '',
+          password: '',
+          confirmPassword: '',
+          firstName: '',
+          lastName: '',
+          userType: 'community',
+          partnershipNumber: ''
+        });
+      }
+      
       setAuthMethod('phone');
       setUsePhone(true);
       setShowPassword(false);
       setShowConfirmPassword(false);
     }
-  }, [isOpen]);
+  }, [isOpen, defaultTab, autoSaveFormId]);
 
   // Send OTP to phone number when phone is selected
   const sendPhoneOTP = async (phoneNumber: string) => {
@@ -187,39 +207,16 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login', hideT
     }
   };
 
-  // Reset form when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      // Always reset to form step when modal opens
-      setSignupStep('form');
-      setActiveTab(defaultTab); // Use the defaultTab prop
-      setSignupData({
-        email: '',
-        phone: '',
-        password: '',
-        confirmPassword: '',
-        firstName: '',
-        lastName: '',
-        userType: 'community',
-        partnershipNumber: ''
-      });
-      setAuthMethod('phone'); // Force phone for now
-      setUsePhone(true); // Reset toggle to phone
-    }
-  }, [isOpen]);
-
   // Update toggle when switching between login and signup tabs
   useEffect(() => {
     if (activeTab === 'signup') {
       // Set default to phone for signup
       setUsePhone(true);
       setAuthMethod('phone');
-      setSignupData(prev => ({ ...prev, email: '' }));
     } else {
       // Set default to phone for login (email now enabled)
       setUsePhone(true);
       setAuthMethod('phone');
-      setSignupData(prev => ({ ...prev, phone: '' }));
     }
   }, [activeTab]);
 
@@ -303,6 +300,9 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login', hideT
       });
       
       if (response.success) {
+        // Clear auto-save data after successful registration
+        clearSavedData();
+        
         toast({
           title: "Account Created!",
           description: "Please verify your account with the code we sent.",
@@ -327,6 +327,9 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login', hideT
       const response = await verifyRegistrationOTP(otp);
 
       if (response.success) {
+          // Clear any remaining auto-save data after successful verification
+          clearSavedData();
+          
           toast({
           title: "Account Verified!",
           description: "Your account has been successfully created and verified.",
@@ -377,9 +380,18 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login', hideT
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md border border-fem-terracotta/10 max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center p-6 border-b bg-[#faf9f8]">
-          <h2 className="text-xl font-semibold text-fem-navy">
-            {signupStep === 'otp' ? 'Verify Your Account' : 'Welcome to FaithConnect'}
-          </h2>
+          <div className="flex-1">
+            <h2 className="text-xl font-semibold text-fem-navy">
+              {signupStep === 'otp' ? 'Verify Your Account' : 'Welcome to FaithConnect'}
+            </h2>
+            {/* Auto-save status indicator - only show for signup form */}
+            {shouldAutoSave && statusText && (
+              <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
+                <Clock className="w-3 h-3" />
+                <span>{statusText}</span>
+              </div>
+            )}
+          </div>
           <button
             onClick={handleClose}
             className="text-fem-navy/50 hover:text-fem-terracotta"

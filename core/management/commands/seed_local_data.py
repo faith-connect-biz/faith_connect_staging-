@@ -295,7 +295,7 @@ class Command(BaseCommand):
                     name=f"{name} - {business.business_name}",
                     description=description,
                     price=price,
-                    price_currency='KES',
+                    price_currency='KSH',
                     in_stock=random.choice([True, False])
                 )
         

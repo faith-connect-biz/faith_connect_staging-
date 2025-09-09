@@ -199,7 +199,7 @@ The UAT will test all major functionalities including user authentication, busin
    - Name: Test Product
    - Description: Test product description
    - Price: 100.00
-   - Currency: USD
+   - Currency: KSH
    - Image URL: https://example.com/image.jpg
    - Stock Status: In Stock
 5. Submit form

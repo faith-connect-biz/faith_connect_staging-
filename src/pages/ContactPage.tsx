@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Mail, Phone, MapPin, Clock, MessageCircle, Heart, Zap, Users, ChevronUp, CheckCircle, AlertCircle } from "lucide-react";
 import { motion, useScroll, useTransform } from "framer-motion";
+import { useAutoSave, useAutoSaveStatus } from '@/utils/autoSaveUtils';
 
 const ContactPage = () => {
   const { isAuthenticated, isBusinessUser } = useAuth();
@@ -21,6 +22,20 @@ const ContactPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [submitMessage, setSubmitMessage] = useState('');
+
+  // Auto-save functionality
+  const { clearSavedData } = useAutoSave(
+    'contact_form',
+    formData,
+    setFormData,
+    undefined, // No user ID for contact form
+    {
+      delay: 2000,
+      showToast: true
+    }
+  );
+  
+  const { statusText } = useAutoSaveStatus('contact_form');
 
   const handleOpenAuthModal = () => {
     setIsAuthModalOpen(true);
@@ -91,6 +106,9 @@ const ContactPage = () => {
           subject: "",
           message: ""
         });
+        
+        // Clear auto-save data after successful submission
+        clearSavedData();
       } else {
         throw new Error(data.message || 'Failed to send message');
       }
@@ -230,7 +248,10 @@ const ContactPage = () => {
               {/* Right Column - Contact Form */}
               <div className="animate-slide-in-right">
                 <div className="bg-white p-8 rounded-2xl shadow-xl">
-                  <h3 className="text-2xl font-bold text-fem-navy mb-2">Contact Form</h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-2xl font-bold text-fem-navy">Contact Form</h3>
+                    <span className="text-xs text-gray-400 italic">{statusText}</span>
+                  </div>
                   <p className="text-gray-600 mb-6">We'll get back to you within 24 hours</p>
                   
                   {/* Status Message */}

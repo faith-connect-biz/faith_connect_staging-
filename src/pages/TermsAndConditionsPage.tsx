@@ -2,6 +2,7 @@ import React from 'react';
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { FileText, Shield, Users, Handshake, Scale, CheckCircle } from "lucide-react";
+import { getCurrentBritishDate } from '@/utils/dateUtils';
 
 const TermsAndConditionsPage = () => {
   return (
@@ -37,7 +38,7 @@ const TermsAndConditionsPage = () => {
               <div className="prose prose-lg max-w-none">
                 <div className="bg-gray-50 p-6 rounded-lg mb-8">
                   <p className="text-gray-700 text-center">
-                    <strong>Last updated:</strong> {new Date().toLocaleDateString()}
+                    <strong>Last updated:</strong> {getCurrentBritishDate()}
                   </p>
                 </div>
 

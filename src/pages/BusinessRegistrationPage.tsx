@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
-import { Business, Category } from '@/services/api';
+import { Business, Category, FEMChurch } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
@@ -20,6 +20,7 @@ import { MultiImageUpload } from '@/components/ui/MultiImageUpload';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import HelpButton from '@/components/onboarding/HelpButton';
 import ScrollToTop from '@/components/ui/ScrollToTop';
+import { useAutoSave, useAutoSaveStatus } from '@/utils/autoSaveUtils';
 import { 
   Building2, 
   MapPin, 
@@ -60,6 +61,20 @@ const isValidUrl = (string: string): boolean => {
   }
 };
 
+// Helper type for axios error handling
+type AxiosErrorType = {
+  response?: {
+    data?: {
+      message?: string;
+      detail?: string;
+      errors?: Record<string, string[]>;
+    };
+    status?: number;
+    headers?: Record<string, string>;
+  };
+  message?: string;
+};
+
 const BusinessRegistrationPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -73,6 +88,7 @@ const BusinessRegistrationPage = () => {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [femChurches, setFemChurches] = useState<FEMChurch[]>([]);
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -81,8 +97,9 @@ const BusinessRegistrationPage = () => {
   
   const [formData, setFormData] = useState({
     business_name: '',
-    category: null as number | null,
-
+    category: '' as string, // Changed from number | null to string
+    sector: '' as string,
+    subcategory: '' as string,
     description: '',
     long_description: '',
     phone: '',
@@ -93,9 +110,10 @@ const BusinessRegistrationPage = () => {
     twitter_url: '',
     youtube_url: '',
     address: '',
+    office_address: '',
+    country: 'Kenya',
     city: '',
-    county: '',
-    zipCode: '',
+    fem_church_id: null as number | null,
     businessType: 'both' as 'products' | 'services' | 'both',
     hours: {
       monday: { open: '08:00', close: '17:00', closed: false },
@@ -115,17 +133,139 @@ const BusinessRegistrationPage = () => {
   const [newService, setNewService] = useState("");
   const [newProduct, setNewProduct] = useState({ name: "", price: "", description: "" });
 
+  // Auto-save functionality
+  const autoSaveFormId = isEditMode ? `business_edit_${businessId}` : 'business_registration';
+  const { manualSave, clearSavedData } = useAutoSave(
+    autoSaveFormId,
+    formData,
+    setFormData,
+    user?.id,
+    {
+      delay: 3000, // 3 second delay for complex forms
+      showToast: true,
+      excludeFields: ['features'] // Exclude dynamic fields that might cause issues
+    }
+  );
+  
+  const { statusText } = useAutoSaveStatus(autoSaveFormId, user?.id);
+
+  // Static business categories with emojis
+  const businessCategories = [
+    'Agriculture & Farming 🌱',
+    'Manufacturing & Production 🏭',
+    'Retail & Wholesale 🛒',
+    'Hospitality & Tourism 🏨',
+    'Technology & IT 💻',
+    'Finance & Insurance 💰',
+    'Healthcare & Wellness 🏥',
+    'Real Estate & Construction 🏗️',
+    'Transportation & Logistics 🚚',
+    'Professional Services 📑',
+    'Education & Training 📚',
+    'Energy & Utilities ⚡',
+    'Creative Industries 🎨',
+    'Automotive 🚗',
+    'Baking & Food Services 🥐',
+    'Beauty & Personal Care 💅',
+    'Construction 🏚️',
+    'Education 🎓',
+    'Entertainment 🎭',
+    'Financial Services 💳',
+    'Health & Wellness 🧘',
+    'Home & Garden 🏡',
+    'Legal Services ⚖️',
+    'Non-Profit 🤝',
+    'Restaurant 🍴',
+    'Retail 🛍️',
+    'Services 🛠️',
+    'Transportation 🚛'
+  ];
+
+  // Mapping from string categories to numeric IDs for backend compatibility
+  const categoryToIdMapping = {
+    'Agriculture & Farming 🌱': 1,
+    'Manufacturing & Production 🏭': 2,
+    'Retail & Wholesale 🛒': 3,
+    'Hospitality & Tourism 🏨': 4,
+    'Technology & IT 💻': 5,
+    'Finance & Insurance 💰': 6,
+    'Healthcare & Wellness 🏥': 7,
+    'Real Estate & Construction 🏗️': 8,
+    'Transportation & Logistics 🚚': 9,
+    'Professional Services 📑': 10,
+    'Education & Training 📚': 11,
+    'Energy & Utilities ⚡': 12,
+    'Creative Industries 🎨': 13,
+    'Automotive 🚗': 16, // Automotive Services
+    'Baking & Food Services 🥐': 14, // Food & Beverage
+    'Beauty & Personal Care 💅': 15,
+    'Construction 🏚️': 8, // Real Estate & Construction
+    'Education 🎓': 11, // Education & Training
+    'Entertainment 🎭': 18, // Entertainment & Media
+    'Financial Services 💳': 6, // Finance & Insurance
+    'Health & Wellness 🧘': 7, // Healthcare & Wellness
+    'Home & Garden 🏡': 17,
+    'Legal Services ⚖️': 10, // Professional Services
+    'Non-Profit 🤝': 19, // Non-Profit & Community
+    'Restaurant 🍴': 14, // Food & Beverage
+    'Retail 🛍️': 3, // Retail & Wholesale
+    'Services 🛠️': 10, // Professional Services
+    'Transportation 🚛': 9 // Transportation & Logistics
+  } as Record<string, number>;
+
+  // Sector mapping based on business categories
+  const sectorMapping = {
+    'Agriculture & Farming 🌱': ['Crops', 'Livestock', 'Agro-Processing', 'Organic Products'],
+    'Manufacturing & Production 🏭': ['Clothing & Textiles', 'Food & Beverages', 'Electronics', 'Machinery'],
+    'Retail & Wholesale 🛒': ['Supermarkets', 'E-Commerce', 'Wholesale Distributors', 'Boutiques'],
+    'Hospitality & Tourism 🏨': ['Hotels', 'Restaurants', 'Travel Agencies', 'Entertainment Venues'],
+    'Technology & IT 💻': ['Software Development', 'Cybersecurity', 'Cloud Services', 'AI & Data Science'],
+    'Finance & Insurance 💰': ['Banking', 'Fintech', 'Credit Unions', 'Insurance Services'],
+    'Healthcare & Wellness 🏥': ['Hospitals', 'Clinics', 'Fitness Centers', 'Pharmacies'],
+    'Real Estate & Construction 🏗️': ['Property Development', 'Rentals', 'Housing', 'Engineering Firms'],
+    'Transportation & Logistics 🚚': ['Delivery Services', 'Ride-Hailing', 'Freight', 'Warehousing'],
+    'Professional Services 📑': ['Legal', 'Consulting', 'Accounting', 'Design Agencies'],
+    'Education & Training 📚': ['Schools', 'Online Learning', 'Vocational Training', 'Tutoring'],
+    'Energy & Utilities ⚡': ['Oil & Gas', 'Renewable Energy', 'Water Services', 'Electricity Providers'],
+    'Creative Industries 🎨': ['Media', 'Film', 'Advertising', 'Design & Arts'],
+    'Automotive 🚗': ['Car Dealerships', 'Auto Repair', 'Spare Parts', 'Car Wash'],
+    'Baking & Food Services 🥐': ['Bakeries', 'Catering', 'Street Food', 'Specialty Foods'],
+    'Beauty & Personal Care 💅': ['Salons', 'Barbershops', 'Cosmetics', 'Spas'],
+    'Construction 🏚️': ['Contractors', 'Builders', 'Renovation Services', 'Hardware Supply'],
+    'Education 🎓': ['Schools', 'Colleges', 'E-Learning', 'Tutoring'],
+    'Entertainment 🎭': ['Music', 'Film', 'Events', 'Gaming'],
+    'Financial Services 💳': ['Microfinance', 'Lending', 'Investment', 'Accounting'],
+    'Health & Wellness 🧘': ['Gyms', 'Nutrition', 'Counseling', 'Alternative Medicine'],
+    'Home & Garden 🏡': ['Interior Design', 'Furniture', 'Landscaping', 'Cleaning Services'],
+    'Legal Services ⚖️': ['Law Firms', 'Notaries', 'Legal Consulting'],
+    'Non-Profit 🤝': ['NGOs', 'Charity Organizations', 'Faith-Based Groups', 'Community Services'],
+    'Restaurant 🍴': ['Cafes', 'Fast Food', 'Fine Dining', 'Catering'],
+    'Retail 🛍️': ['Fashion', 'Electronics', 'Household Items', 'Bookstores'],
+    'Services 🛠️': ['Maintenance', 'Printing', 'Marketing', 'Freelance Services'],
+    'Transportation 🚛': ['Logistics', 'Public Transport', 'Courier', 'Ride-Hailing']
+  } as Record<string, string[]>;
+
+  // Get sectors for selected category
+  const getAvailableSectors = useMemo(() => {
+    if (!formData.category) return [];
+    return sectorMapping[formData.category] || [];
+  }, [formData.category]);
 
 
-  // Debug logging for step progression
+
+  // Debug logging for step progression - throttled
+  const stepChangeCountRef = useRef(0);
   useEffect(() => {
-    console.log('Step changed - currentStep:', currentStep, 'businessType:', formData.businessType);
+    stepChangeCountRef.current += 1;
+    if (stepChangeCountRef.current % 5 === 0 || stepChangeCountRef.current === 1) {
+      console.log('Step changed - currentStep:', currentStep, 'businessType:', formData.businessType);
+    }
   }, [currentStep, formData.businessType]);
 
-  // Debug logging for form submission attempts
-  useEffect(() => {
-    console.log('Form component rendered/updated - currentStep:', currentStep);
-  });
+  // Remove the debug logging that causes infinite re-rendering
+  // useEffect(() => {
+  //   console.log('Form component rendered/updated - currentStep:', currentStep);
+  // });
 
   // Check if user is authenticated and is a business user
   useEffect(() => {
@@ -202,11 +342,17 @@ const BusinessRegistrationPage = () => {
       console.log('BusinessRegistrationPage: Business data fetched from API:', business);
       
       if (business) {
+        // Find the category string from the ID
+        const categoryString = Object.keys(categoryToIdMapping).find(
+          key => categoryToIdMapping[key] === business.category?.id
+        ) || '';
+        
         // Transform API data to match our form structure
         const transformedData = {
           business_name: business.business_name,
-          category: business.category?.id || null,
-    
+          category: categoryString, // Convert numeric ID back to string
+          sector: business.sector || '',
+          subcategory: business.subcategory || '',
           description: business.description || '',
           long_description: business.long_description || '',
           businessType: 'both' as "products" | "services" | "both", // Will be determined below
@@ -216,11 +362,12 @@ const BusinessRegistrationPage = () => {
           facebook_url: business.facebook_url || '',
           instagram_url: business.instagram_url || '',
           twitter_url: business.twitter_url || '',
-                youtube_url: business.youtube_url || '',
+          youtube_url: business.youtube_url || '',
           address: business.address || '',
+          office_address: business.office_address || '',
+          country: business.country || 'Kenya',
           city: business.city || '',
-          county: business.county || '',
-          zipCode: business.zip_code || '',
+          fem_church_id: business.fem_church?.id || null,
           hours: business.hours && business.hours.length > 0 ? 
             // Transform API hours back to form format
             business.hours.reduce((acc, hour) => {
@@ -279,7 +426,7 @@ const BusinessRegistrationPage = () => {
           const transformedProducts = productsData.map(product => ({
             name: product.name,
             description: product.description || '',
-            price: product.price || '0.00',
+            price: product.price ? product.price.toString() : '0.00',
             photos: product.images || []
           }));
           
@@ -353,23 +500,43 @@ const BusinessRegistrationPage = () => {
     { id: 17, name: 'Home & Garden 🏡', slug: 'home-garden' },
     { id: 18, name: 'Entertainment & Media 🎭', slug: 'entertainment-media' },
     { id: 19, name: 'Non-Profit & Community 🤝', slug: 'non-profit-community' },
-    { id: 20, name: 'Pet Services & Veterinary 🐾', slug: 'pet-services-veterinary' }
+    { id: 20, name: 'Pet Services & Veterinary 🐾', slug: 'pet-services-veterinary' },
+    { id: 21, name: 'Sports & Recreation 🏃', slug: 'sports-recreation' },
+    { id: 22, name: 'Mining & Natural Resources ⛏️', slug: 'mining-natural-resources' },
+    { id: 23, name: 'Textiles & Fashion 👗', slug: 'textiles-fashion' },
+    { id: 24, name: 'Government & Public Services 🏛️', slug: 'government-public-services' },
+    { id: 25, name: 'Import & Export Trade 🚢', slug: 'import-export-trade' }
   ];
 
-  // Fetch categories from API instead of using hardcoded values
+  // Get subcategories for selected category
+  const getSubcategories = useMemo(() => {
+    if (!formData.category) return [];
+    // Convert the category string back to numeric ID for comparison
+    const categoryId = categoryToIdMapping[formData.category];
+    const selectedCategory = categories.find(cat => cat.id === categoryId);
+    return selectedCategory?.subcategories || [];
+  }, [formData.category, categories]);
+
+  // Fetch categories and FEM churches from API
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchData = async () => {
       try {
-        const response = await apiService.getCategories();
-        setCategories(response.results);
+        // Fetch categories
+        const categoriesResponse = await apiService.getCategories();
+        setCategories(categoriesResponse.results);
+        
+        // Fetch FEM churches
+        const churchesResponse = await apiService.getFEMChurches();
+        setFemChurches(churchesResponse.results);
       } catch (error) {
-        console.error('Error fetching categories:', error);
+        console.error('Error fetching data:', error);
         // Fallback to hardcoded categories if API fails
         setCategories(hardcodedCategories);
+        setFemChurches([]); // Empty array if churches fetch fails
       }
     };
     
-    fetchCategories();
+    fetchData();
   }, []);
 
   const availableServices = [
@@ -422,17 +589,28 @@ const BusinessRegistrationPage = () => {
   };
 
   // Clear field error when user starts typing
-  const handleInputChange = useCallback((field: string, value: any) => {
-    // Convert category value to number if it's a string
-    if (field === 'category' && typeof value === 'string') {
-      if (value === '') {
-        value = null;
-      } else {
-        value = parseInt(value, 10);
-      }
+  const handleInputChange = useCallback((field: string, value: string | number | boolean | null) => {
+    // Handle subcategory "none" value
+    if (field === 'subcategory' && value === 'none') {
+      value = '';
     }
     
-    setFormData(prev => ({ ...prev, [field]: value }));
+    // Handle sector "none" value
+    if (field === 'sector' && value === 'none') {
+      value = '';
+    }
+    
+    // Handle fem_church_id "none" value
+    if (field === 'fem_church_id' && value === 'none') {
+      value = null;
+    }
+    
+    // Clear sector when category changes (since sectors are category-dependent)
+    if (field === 'category') {
+      setFormData(prev => ({ ...prev, category: value as string, sector: '' }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
     
     // Clear only the error for this specific field, not all errors
     if (formErrors.length > 0) {
@@ -440,6 +618,7 @@ const BusinessRegistrationPage = () => {
         error.toLowerCase().includes(field.toLowerCase()) ||
         error.toLowerCase().includes('business name') && field === 'business_name' ||
         error.toLowerCase().includes('category') && field === 'category' ||
+        error.toLowerCase().includes('sector') && field === 'sector' ||
         error.toLowerCase().includes('description') && field === 'description' ||
         error.toLowerCase().includes('listing') && field === 'businessType' ||
         error.toLowerCase().includes('phone') && field === 'phone' ||
@@ -599,7 +778,7 @@ const BusinessRegistrationPage = () => {
         if (!formData.business_name.trim()) {
           errors.push("Business name is required");
         }
-        if (formData.category === null || formData.category === undefined) {
+        if (!formData.category || formData.category === '') {
           errors.push("Business category is required");
         }
         if (!formData.description.trim()) {
@@ -628,7 +807,7 @@ const BusinessRegistrationPage = () => {
     }
     
     return errors.length === 0;
-  }, [formData.business_name, formData.category, formData.description, formData.address]);
+  }, [formData.business_name, formData.category, formData.description, formData.phone, formData.email, formData.address]);
 
   // Simplified 2-step process
   const totalSteps = 2;
@@ -651,7 +830,7 @@ const BusinessRegistrationPage = () => {
             if (!formData.business_name.trim()) {
               stepErrors.push("Business name is required");
             }
-            if (formData.category === null || formData.category === undefined) {
+            if (!formData.category || formData.category === '') {
               stepErrors.push("Business category is required");
             }
             if (!formData.description.trim()) {
@@ -710,7 +889,7 @@ const BusinessRegistrationPage = () => {
       errors.push("Business name must be at least 2 characters long");
     }
 
-    if (formData.category === null || formData.category === undefined) {
+    if (!formData.category || formData.category === '') {
       errors.push("Business category is required");
     }
 
@@ -728,7 +907,7 @@ const BusinessRegistrationPage = () => {
 
     if (!formData.phone.trim()) {
       errors.push("Phone number is required");
-    } else if (!/^\+?[\d\s\-\(\)]+$/.test(formData.phone.trim())) {
+    } else if (!/^\+?[\d\s\-()]+$/.test(formData.phone.trim())) {
       errors.push("Please enter a valid phone number");
     }
 
@@ -915,7 +1094,9 @@ const BusinessRegistrationPage = () => {
     // Clean and prepare the data
     const businessData = {
       business_name: formData.business_name.trim(),
-      category_id: formData.category as number,
+      category_id: categoryToIdMapping[formData.category] || null, // Convert string category to numeric ID
+      sector: formData.sector?.trim() || null,
+      subcategory: formData.subcategory?.trim() || null,
       description: formData.description.trim(),
       long_description: formData.long_description.trim(),
       phone: formData.phone.trim(),
@@ -926,9 +1107,10 @@ const BusinessRegistrationPage = () => {
       twitter_url: formData.twitter_url?.trim() || null,
       youtube_url: formData.youtube_url?.trim() || null,
       address: formData.address.trim(),
+      office_address: formData.office_address?.trim() || null,
+      country: formData.country.trim(),
       city: formData.city.trim(),
-      county: formData.county.trim(),
-      zip_code: formData.zipCode?.trim() || null,
+      fem_church_id: formData.fem_church_id,
       hours: hours,
       services_data: services,
       products_data: products,
@@ -1051,18 +1233,21 @@ const BusinessRegistrationPage = () => {
             
             const result = await apiService.updateBusinessHours(businessIdToUse, businessData.hours);
             console.log('Business hours updated successfully:', result);
-          } catch (error: any) {
+          } catch (error: unknown) {
             console.error('Error updating business hours:', error);
-            console.error('Error response data:', error.response?.data);
-            console.error('Error response status:', error.response?.status);
-            console.error('Error response headers:', error.response?.headers);
+            
+            // Type guard for axios error
+            const axiosError = error as AxiosErrorType;
+            console.error('Error response data:', axiosError.response?.data);
+            console.error('Error response status:', axiosError.response?.status);
+            console.error('Error response headers:', axiosError.response?.headers);
             
             // Show more specific error message
             let errorMessage = "Business hours could not be saved";
-            if (error.response?.data?.message) {
-              errorMessage = error.response.data.message;
-            } else if (error.response?.data?.detail) {
-              errorMessage = error.response.data.detail;
+            if (axiosError.response?.data?.message) {
+              errorMessage = axiosError.response.data.message;
+            } else if (axiosError.response?.data?.detail) {
+              errorMessage = axiosError.response.data.detail;
             }
             
             toast({
@@ -1080,21 +1265,28 @@ const BusinessRegistrationPage = () => {
            newlyCreated: !isEditMode 
          } 
        });
-         } catch (error: any) {
+       
+       // Clear auto-save data after successful submission
+       clearSavedData();
+         } catch (error: unknown) {
        console.error('Business registration failed:', error);
-       console.error('Error response data:', error.response?.data);
-       console.error('Error response status:', error.response?.status);
+       
+       // Type guard for axios error  
+       const axiosError = error as AxiosErrorType;
+       console.error('Error response data:', axiosError.response?.data);
+       console.error('Error response status:', axiosError.response?.status);
        
        let errorMessage = "Failed to register business. Please try again.";
        
-       if (error.response?.data?.errors) {
-         const errors = error.response.data.errors;
-         errorMessage = Object.values(errors).join(', ');
-         setFormErrors(Object.values(errors));
-       } else if (error.response?.data?.message) {
-         errorMessage = error.response.data.message;
-       } else if (error.message) {
-         errorMessage = error.message;
+       if (axiosError.response?.data?.errors) {
+         const errors = axiosError.response.data.errors;
+         const errorMessages = Object.values(errors).flat();
+         errorMessage = errorMessages.join(', ');
+         setFormErrors(errorMessages);
+       } else if (axiosError.response?.data?.message) {
+         errorMessage = axiosError.response.data.message;
+       } else if (axiosError.message) {
+         errorMessage = axiosError.message;
        }
 
       toast({
@@ -1152,24 +1344,107 @@ const BusinessRegistrationPage = () => {
         <Label htmlFor="category">
           Business Category <span className="text-red-500">*</span>
         </Label>
-        <Select value={formData.category?.toString() || ""} onValueChange={(value) => handleInputChange("category", value)}>
-          <SelectTrigger className={`mt-1 ${getFieldError("category") ? 'border-red-500 focus:border-red-500' : ''}`}>
+        <Select 
+          value={formData.category || ""} 
+          onValueChange={(value) => {
+            handleInputChange("category", value);
+            // Reset sector when category changes
+            if (value !== formData.category) {
+              handleInputChange("sector", "");
+            }
+          }}
+        >
+          <SelectTrigger 
+            className={`mt-1 rounded-xl border-2 border-gray-200 hover:border-gray-300 focus:border-fem-terracotta transition-all duration-200 shadow-sm hover:shadow-md ${
+              getFieldError("category") ? 'border-red-500 focus:border-red-500' : ''
+            }`}
+          >
             <SelectValue placeholder="Select a business category" />
           </SelectTrigger>
-          <SelectContent>
-            {categories && categories.length > 0 ? (
-              categories.map((category) => (
-                <SelectItem key={category.id} value={category.id.toString()}>{category.name}</SelectItem>
-              ))
-            ) : (
-              <SelectItem value="no-categories" disabled>No categories found.</SelectItem>
-            )}
+          <SelectContent className="rounded-xl border-2 border-gray-100 shadow-lg">
+            {businessCategories.map((category) => (
+              <SelectItem 
+                key={category} 
+                value={category}
+                className="hover:bg-fem-terracotta/10 focus:bg-fem-terracotta/10 rounded-lg mx-1 my-0.5 transition-colors duration-150"
+              >
+                {category}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         {getFieldError("category") && (
           <p className="text-sm text-red-500 mt-1">{getFieldError("category")}</p>
         )}
       </motion.div>
+
+      {/* Sector Selection */}
+      {formData.category && getAvailableSectors.length > 0 && (
+        <motion.div 
+          variants={itemVariants}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+        >
+          <Label htmlFor="sector">
+            Sector <span className="text-gray-400">(Optional)</span>
+          </Label>
+          <Select 
+            value={formData.sector || ""} 
+            onValueChange={(value) => handleInputChange("sector", value)}
+          >
+            <SelectTrigger 
+              className="mt-1 rounded-xl border-2 border-gray-200 hover:border-gray-300 focus:border-fem-terracotta transition-all duration-200 shadow-sm hover:shadow-md"
+            >
+              <SelectValue placeholder="Select a sector (optional)" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-2 border-gray-100 shadow-lg">
+              <SelectItem 
+                value="none"
+                className="hover:bg-gray-100 focus:bg-gray-100 rounded-lg mx-1 my-0.5 transition-colors duration-150"
+              >
+                None selected
+              </SelectItem>
+              {getAvailableSectors.map((sector: string) => (
+                <SelectItem 
+                  key={sector} 
+                  value={sector}
+                  className="hover:bg-fem-terracotta/10 focus:bg-fem-terracotta/10 rounded-lg mx-1 my-0.5 transition-colors duration-150"
+                >
+                  {sector}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
+            <span className="w-1 h-1 bg-fem-terracotta rounded-full"></span>
+            Choose a specific sector within your business category
+          </p>
+        </motion.div>
+      )}
+
+      {/* Subcategory Selection */}
+      {formData.category && getSubcategories.length > 0 && (
+        <motion.div variants={itemVariants}>
+          <Label htmlFor="subcategory">
+            Subcategory (Optional)
+          </Label>
+          <Select value={formData.subcategory || ""} onValueChange={(value) => handleInputChange("subcategory", value)}>
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select a subcategory (optional)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None selected</SelectItem>
+              {getSubcategories.map((subcategory: string) => (
+                <SelectItem key={subcategory} value={subcategory}>{subcategory}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-gray-500 mt-1">
+            Choose a more specific category for your business
+          </p>
+        </motion.div>
+      )}
 
 
 
@@ -1226,6 +1501,7 @@ const BusinessRegistrationPage = () => {
               checked={formData.businessType === 'products'}
               onChange={(e) => handleInputChange("businessType", e.target.value)}
               className="w-4 h-4 text-fem-terracotta bg-gray-100 border-gray-300 focus:ring-fem-terracotta focus:ring-2"
+              aria-label="Products only"
             />
             <Label htmlFor="businessType-products" className="text-sm font-normal cursor-pointer">
               Products only
@@ -1240,6 +1516,7 @@ const BusinessRegistrationPage = () => {
               checked={formData.businessType === 'services'}
               onChange={(e) => handleInputChange("businessType", e.target.value)}
               className="w-4 h-4 text-fem-terracotta bg-gray-100 border-gray-300 focus:ring-fem-terracotta focus:ring-2"
+              aria-label="Services only"
             />
             <Label htmlFor="businessType-services" className="text-sm font-normal cursor-pointer">
               Services only
@@ -1254,6 +1531,7 @@ const BusinessRegistrationPage = () => {
               checked={formData.businessType === 'both'}
               onChange={(e) => handleInputChange("businessType", e.target.value)}
               className="w-4 h-4 text-fem-terracotta bg-gray-100 border-gray-300 focus:ring-fem-terracotta focus:ring-2"
+              aria-label="Both products and services"
             />
             <Label htmlFor="businessType-both" className="text-sm font-normal cursor-pointer">
               Both products and services
@@ -1344,19 +1622,51 @@ const BusinessRegistrationPage = () => {
           </Label>
           <Textarea id="address" value={formData.address} onChange={(e) => handleInputChange("address", e.target.value)} placeholder="Enter your business address" className={`mt-1 ${getFieldError("address") ? 'border-red-500 focus:border-red-500' : ''}`} rows={2} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <Label htmlFor="office_address">
+            Office/Shop Address (Optional)
+          </Label>
+          <Textarea id="office_address" value={formData.office_address} onChange={(e) => handleInputChange("office_address", e.target.value)} placeholder="Enter separate office or shop address if different from main address" className="mt-1" rows={2} />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="country">Country</Label>
+            <Input id="country" value={formData.country} onChange={(e) => handleInputChange("country", e.target.value)} placeholder="Kenya" className="mt-1" />
+          </div>
           <div>
             <Label htmlFor="city">City (Optional)</Label>
             <Input id="city" value={formData.city} onChange={(e) => handleInputChange("city", e.target.value)} placeholder="Nairobi" className="mt-1" />
           </div>
-          <div>
-            <Label htmlFor="county">County (Optional)</Label>
-            <Input id="county" value={formData.county} onChange={(e) => handleInputChange("county", e.target.value)} placeholder="Nairobi" className="mt-1" />
-          </div>
-          <div>
-            <Label htmlFor="zipCode">ZIP Code (Optional)</Label>
-            <Input id="zipCode" value={formData.zipCode} onChange={(e) => handleInputChange("zipCode", e.target.value)} placeholder="00100" className="mt-1" />
-          </div>
+        </div>
+      </motion.div>
+
+      {/* FEM Church Affiliation */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <Label className="text-lg font-semibold">FEM Church Affiliation</Label>
+        <div>
+          <Label htmlFor="fem_church_id">
+            FEM Church/Branch (Optional)
+          </Label>
+          <Select value={formData.fem_church_id?.toString() || "none"} onValueChange={(value) => handleInputChange("fem_church_id", value === "none" ? null : parseInt(value))}>
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select your affiliated FEM Church or Branch" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None selected</SelectItem>
+              {femChurches && femChurches.length > 0 ? (
+                femChurches.map((church) => (
+                  <SelectItem key={church.id} value={church.id.toString()}>
+                    {church.name} {church.city && `- ${church.city}`}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="no-churches" disabled>No FEM churches found.</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-gray-500 mt-1">
+            Select your affiliated FEM Church or Branch for better community engagement
+          </p>
         </div>
       </motion.div>
 
@@ -1564,7 +1874,10 @@ const BusinessRegistrationPage = () => {
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Progress</h2>
-              <span className="text-sm text-gray-500">Step {currentStep} of 2</span>
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-gray-500">Step {currentStep} of 2</span>
+                <span className="text-xs text-gray-400 italic">{statusText}</span>
+              </div>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <motion.div

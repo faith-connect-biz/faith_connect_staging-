@@ -123,14 +123,14 @@ Business 3: "Test Health Clinic"
 ### Sample Products
 ```
 Product 1: "Test Product A"
-- Price: $50.00
-- Currency: USD
+- Price: KSh 50,000
+- Currency: KSH
 - Description: A test product for UAT
 - Stock: In Stock
 
 Product 2: "Test Product B"
-- Price: $75.00
-- Currency: USD
+- Price: KSh 75,000
+- Currency: KSH
 - Description: Another test product for UAT
 - Stock: In Stock
 ```

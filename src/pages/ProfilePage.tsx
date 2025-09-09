@@ -48,6 +48,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { apiService } from "@/services/api";
+import { useAutoSave, useAutoSaveStatus } from '@/utils/autoSaveUtils';
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
@@ -69,6 +70,20 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  
+  // Auto-save functionality - only active when editing
+  const { clearSavedData } = useAutoSave(
+    `user_profile_${user?.id}`,
+    profileData,
+    setProfileData,
+    user?.id,
+    {
+      delay: 3000, // 3 seconds for profile editing
+      showToast: true
+    }
+  );
+  
+  const { statusText } = useAutoSaveStatus(`user_profile_${user?.id}`, user?.id);
   const [userStats, setUserStats] = useState({
     favorites: 0,
     reviewsGiven: 0,
@@ -281,6 +296,10 @@ const ProfilePage = () => {
         updateUser(updatedUser);
         
         setIsEditing(false);
+        
+        // Clear auto-save data after successful update
+        clearSavedData();
+        
         toast({
           title: "Profile Updated",
           description: response.message || "Your profile has been updated successfully!",
@@ -640,11 +659,20 @@ const ProfilePage = () => {
                         <Settings className="w-6 h-6" />
                         Profile Settings
                       </CardTitle>
-                      <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
-                        <Shield className="w-4 h-4" />
-                        <span className="text-sm font-medium">
-                          {user.is_verified ? "Verified Account" : "Unverified Account"}
-                        </span>
+                      <div className="flex items-center gap-4">
+                        {/* Auto-save status indicator */}
+                        {isEditing && statusText && (
+                          <div className="flex items-center gap-2 bg-white/20 px-3 py-2 rounded-full text-sm">
+                            <Clock className="w-4 h-4" />
+                            <span>{statusText}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
+                          <Shield className="w-4 h-4" />
+                          <span className="text-sm font-medium">
+                            {user.is_verified ? "Verified Account" : "Unverified Account"}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </CardHeader>

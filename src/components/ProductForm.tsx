@@ -36,7 +36,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     name: '',
     description: '',
     price: 0,
-    price_currency: 'KES',
+    price_currency: 'KSH',
     product_image_url: '',
     images: [],
     in_stock: true,
@@ -70,7 +70,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         name: '',
         description: '',
         price: 0,
-        price_currency: 'KES',
+        price_currency: 'KSH',
         product_image_url: '',
         images: [],
         in_stock: true,
@@ -375,13 +375,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="KES">KES (KSh)</SelectItem>
-                  <SelectItem value="USD">USD ($)</SelectItem>
-                  <SelectItem value="EUR">EUR (€)</SelectItem>
-                  <SelectItem value="GBP">GBP (£)</SelectItem>
-                  <SelectItem value="NGN">NGN (₦)</SelectItem>
-                  <SelectItem value="GHS">GHS (₵)</SelectItem>
-                  <SelectItem value="ZAR">ZAR (R)</SelectItem>
+                  <SelectItem value="KSH">KSH (KSh)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

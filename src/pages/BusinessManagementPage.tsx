@@ -38,11 +38,13 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { toast } from '@/hooks/use-toast';
-import { apiService, Service, Product } from '@/services/api';
+import { apiService, Service, Product, ProfessionalServiceRequest } from '@/services/api';
 import { ServiceForm } from '@/components/ServiceForm';
 import { ProductForm } from '@/components/ProductForm';
 import { Label } from '@/components/ui/label';
 import { PhotoRequestModal } from '@/components/PhotoRequestModal';
+import { BusinessSupportSection } from '@/components/support/BusinessSupportSection';
+import { formatToBritishDate } from '@/utils/dateUtils';
 import HelpButton from '@/components/onboarding/HelpButton';
 import ScrollToTop from '@/components/ui/ScrollToTop';
 import { ProtectedContactInfo } from '@/components/ui/ProtectedContactInfo';
@@ -100,6 +102,7 @@ export const BusinessManagementPage: React.FC = () => {
   const [businessData, setBusinessData] = useState<BusinessData | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [products, setProducts] = useState<LocalProduct[]>([]);
+  const [professionalServiceRequests, setProfessionalServiceRequests] = useState<ProfessionalServiceRequest[]>([]);
   const [businessHours, setBusinessHours] = useState<Array<{
     day_of_week: number;
     open_time: string | null;
@@ -200,61 +203,18 @@ export const BusinessManagementPage: React.FC = () => {
 
             console.log('Transformed business data:', transformedBusinessData);
             setBusinessData(transformedBusinessData);
-
-            // Fetch services, products, and hours for the business
-            try {
-              console.log('BusinessManagementPage: Fetching business details for business ID (from state):', business.id);
-              
-              const [servicesData, productsData, hoursData, analyticsData] = await Promise.all([
-                apiService.getBusinessServices(business.id),
-                apiService.getBusinessProducts(business.id),
-                apiService.getBusinessHours(business.id),
-                apiService.getBusinessAnalytics(business.id)
-              ]);
-
-              console.log('BusinessManagementPage: Services data received (from state):', servicesData);
-              console.log('BusinessManagementPage: Products data received (from state):', productsData);
-              console.log('BusinessManagementPage: Hours data received (from state):', hoursData);
-              console.log('BusinessManagementPage: Analytics data received (from state):', analyticsData);
-
-              setServices(servicesData);
-              // Transform products to match LocalProduct interface
-              const transformedProducts: LocalProduct[] = productsData.map(product => ({
-                id: product.id,
-                name: product.name,
-                description: product.description || '',
-                price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
-                price_currency: product.price_currency || 'KES',
-                product_image_url: product.product_image_url,
-                images: product.images || [],
-                is_active: product.is_active,
-                in_stock: product.in_stock,
-                created_at: product.created_at,
-                business: typeof product.business === 'string' ? product.business : product.business?.id || ''
-              }));
-              setProducts(transformedProducts);
-              setBusinessHours(hoursData);
-              setAnalytics(analyticsData);
-              
-              // Clear the location state to avoid issues on subsequent renders
-              if (location.state?.businessId) {
-                navigate(location.pathname, { replace: true });
-              }
-              
-              return; // Exit early since we successfully loaded the business
-            } catch (error) {
-              console.error('Error fetching business details:', error);
-              // Set empty arrays as fallback
-              setServices([]);
-              setProducts([]);
-              setBusinessHours([]);
-              setAnalytics(null);
-            }
             
+            // Load additional data
+            await Promise.all([
+              loadBusinessServices(),
+              loadBusinessProducts(),
+              loadProfessionalServiceRequests()
+            ]);
+            
+            return;
           }
         } catch (error) {
-          console.error('Error loading business from ID:', error);
-          // Fall back to the original method
+          console.error('Error loading business by ID:', error);
         }
       }
       
@@ -339,7 +299,7 @@ export const BusinessManagementPage: React.FC = () => {
             name: product.name,
             description: product.description || '',
             price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
-            price_currency: product.price_currency || 'KES',
+            price_currency: product.price_currency || 'KSH',
             product_image_url: product.product_image_url,
             images: product.images || [],
             is_active: product.is_active,
@@ -399,7 +359,7 @@ export const BusinessManagementPage: React.FC = () => {
         name: product.name,
         description: product.description || '',
         price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
-        price_currency: product.price_currency || 'KES',
+        price_currency: product.price_currency || 'KSH',
         product_image_url: product.product_image_url,
         images: product.images || [],
         is_active: product.is_active,
@@ -423,6 +383,17 @@ export const BusinessManagementPage: React.FC = () => {
     } catch (error) {
       console.error('Error fetching business hours:', error);
       setBusinessHours([]);
+    }
+  };
+
+  const loadProfessionalServiceRequests = async () => {
+    try {
+      const requests = await apiService.getProfessionalServiceRequests();
+      console.log('Loaded professional service requests:', requests);
+      setProfessionalServiceRequests(requests);
+    } catch (error) {
+      console.error('Error fetching professional service requests:', error);
+      setProfessionalServiceRequests([]);
     }
   };
 
@@ -747,10 +718,11 @@ export const BusinessManagementPage: React.FC = () => {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="services">Services</TabsTrigger>
               <TabsTrigger value="products">Products</TabsTrigger>
+              <TabsTrigger value="support">Business Support</TabsTrigger>
               <TabsTrigger value="analytics">Analytics</TabsTrigger>
             </TabsList>
 
@@ -965,14 +937,6 @@ export const BusinessManagementPage: React.FC = () => {
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">Your Services</h2>
                 <div className="flex items-center gap-3">
-                  <Button 
-                    onClick={() => setShowPhotoRequestModal(true)}
-                    variant="outline"
-                    className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
-                  >
-                    <Camera className="h-4 w-4 mr-2" />
-                    Request Photos
-                  </Button>
                   <Button onClick={handleAddService} className="bg-fem-terracotta hover:bg-fem-terracotta/90">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Service
@@ -980,33 +944,7 @@ export const BusinessManagementPage: React.FC = () => {
                 </div>
               </div>
               
-              {/* Photo Request Information */}
-              <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-                <CardContent className="p-6">
-                  <div className="flex items-start space-x-4">
-                    <div className="flex-shrink-0">
-                      <Camera className="h-8 w-8 text-fem-terracotta" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        Need Professional Photos for Your Services?
-                      </h3>
-                      <p className="text-gray-600 mb-3">
-                        High-quality photos can significantly improve your service listings and attract more customers. 
-                        Request professional photography services to showcase your work in the best light.
-                      </p>
-                      <Button 
-                        onClick={() => setShowPhotoRequestModal(true)}
-                        size="sm"
-                        className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white"
-                      >
-                        <Camera className="h-4 w-4 mr-2" />
-                        Request Photography Services
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+
               
               {services.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1089,14 +1027,6 @@ export const BusinessManagementPage: React.FC = () => {
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">Your Products</h2>
                 <div className="flex items-center gap-3">
-                  <Button 
-                    onClick={() => setShowPhotoRequestModal(true)}
-                    variant="outline"
-                    className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
-                  >
-                    <Camera className="h-4 w-4 mr-2" />
-                    Request Photos
-                  </Button>
                   <Button onClick={handleAddProduct} className="bg-fem-terracotta hover:bg-fem-terracotta/90">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Product
@@ -1104,33 +1034,7 @@ export const BusinessManagementPage: React.FC = () => {
                 </div>
               </div>
               
-              {/* Photo Request Information */}
-              <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
-                <CardContent className="p-6">
-                  <div className="flex items-start space-x-4">
-                    <div className="flex-shrink-0">
-                      <Camera className="h-8 w-8 text-fem-terracotta" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        Need Professional Photos for Your Products?
-                      </h3>
-                      <p className="text-gray-600 mb-3">
-                        Professional product photography can dramatically increase sales and customer engagement. 
-                        Request photography services to showcase your products with stunning visuals.
-                      </p>
-                      <Button 
-                        onClick={() => setShowPhotoRequestModal(true)}
-                        size="sm"
-                        className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white"
-                      >
-                        <Camera className="h-4 w-4 mr-2" />
-                        Request Photography Services
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+
               
               {products.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1219,6 +1123,15 @@ export const BusinessManagementPage: React.FC = () => {
                   </CardContent>
                 </Card>
               )}
+            </TabsContent>
+
+            {/* Business Support Tab */}
+            <TabsContent value="support" className="space-y-6">
+              <BusinessSupportSection 
+                businessId={businessData?.id || ''}
+                businessName={businessData?.business_name || ''}
+                requests={professionalServiceRequests}
+              />
             </TabsContent>
 
             {/* Analytics Tab */}
@@ -1331,7 +1244,7 @@ export const BusinessManagementPage: React.FC = () => {
                                   )}
                                 </div>
                                 <span className="text-sm text-gray-500">
-                                  {new Date(review.created_at).toLocaleDateString()}
+                                  {formatToBritishDate(review.created_at)}
                                 </span>
                               </div>
                               {review.review_text && (
@@ -1528,7 +1441,7 @@ export const BusinessManagementPage: React.FC = () => {
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-gray-500">Added</label>
                       <p className="text-sm text-gray-600">
-                        {new Date(selectedProduct.created_at).toLocaleDateString()}
+                        {formatToBritishDate(selectedProduct.created_at)}
                       </p>
                     </div>
                   )}
@@ -1680,7 +1593,7 @@ export const BusinessManagementPage: React.FC = () => {
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-gray-500">Added</label>
                       <p className="text-sm text-gray-600">
-                        {new Date(selectedService.created_at).toLocaleDateString()}
+                        {formatToBritishDate(selectedService.created_at)}
                       </p>
                     </div>
                   )}

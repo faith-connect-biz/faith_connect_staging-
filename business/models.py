@@ -13,15 +13,47 @@ User = get_user_model()
 from django.db import models
 from django.utils.text import slugify
 
+class FEMChurch(models.Model):
+    """
+    Model to represent FEM Churches/Branches for user affiliation tracking
+    """
+    name = models.CharField(max_length=200, unique=True, help_text="Name of the FEM Church or Branch")
+    location = models.CharField(max_length=200, blank=True, null=True, help_text="Location of the church")
+    country = models.CharField(max_length=100, default='Kenya', help_text="Country where the church is located")
+    city = models.CharField(max_length=100, blank=True, null=True, help_text="City where the church is located")
+    pastor_name = models.CharField(max_length=200, blank=True, null=True, help_text="Name of the pastor")
+    contact_phone = models.CharField(max_length=20, blank=True, null=True, help_text="Church contact phone")
+    contact_email = models.EmailField(blank=True, null=True, help_text="Church contact email")
+    is_active = models.BooleanField(default=True, help_text="Whether this church is active")
+    sort_order = models.IntegerField(default=0, help_text="Order for displaying churches in dropdowns")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "FEM Church"
+        verbose_name_plural = "FEM Churches"
+        ordering = ['sort_order', 'name']
+    
+    def __str__(self):
+        return f"{self.name} - {self.city or self.location or 'Location TBD'}"
+
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(unique=True, blank=True)
     description = models.TextField(blank=True, null=True, help_text="Brief description of what this category includes")
+    subcategories = models.JSONField(default=list, blank=True, help_text="List of subcategories for this main category")
+    icon = models.CharField(max_length=10, blank=True, null=True, help_text="Emoji icon for the category")
+    is_active = models.BooleanField(default=True)
+    sort_order = models.IntegerField(default=0, help_text="Order for displaying categories")
 
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name_plural = "Categories"
+        ordering = ['sort_order', 'name']
 
     def __str__(self):
         return self.name
@@ -31,6 +63,7 @@ class Business(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='businesses')
     business_name = models.CharField(max_length=255)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name="businesses")
+    subcategory = models.CharField(max_length=100, blank=True, null=True, help_text="Specific subcategory within the main category")
     description = models.TextField(blank=True, null=True)
     long_description = models.TextField(blank=True, null=True)
 
@@ -38,11 +71,21 @@ class Business(models.Model):
     email = models.EmailField(max_length=255, blank=True, null=True)
     website = models.URLField(max_length=500, blank=True, null=True)
 
-    address = models.TextField()
-    city = models.CharField(max_length=100, blank=True, null=True)
-    county = models.CharField(max_length=100, blank=True, null=True)
-    state = models.CharField(max_length=100, blank=True, null=True)
-    zip_code = models.CharField(max_length=20, blank=True, null=True)
+    # Address fields - simplified according to requirements
+    address = models.TextField(help_text="Street address or physical location")
+    office_address = models.TextField(blank=True, null=True, help_text="Optional separate office or shop address")
+    country = models.CharField(max_length=100, default='Kenya', help_text="Country")
+    city = models.CharField(max_length=100, blank=True, null=True, help_text="City")
+    
+    # Church affiliation
+    fem_church = models.ForeignKey(
+        FEMChurch, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name="businesses",
+        help_text="FEM Church or Branch affiliation"
+    )
 
     latitude = models.DecimalField(max_digits=10, decimal_places=8, blank=True, null=True)
     longitude = models.DecimalField(max_digits=11, decimal_places=8, blank=True, null=True)
@@ -217,7 +260,7 @@ class Product(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    price_currency = models.CharField(max_length=3, default='KES')
+    price_currency = models.CharField(max_length=3, default='KSH')
     product_image_url = models.URLField(max_length=500, blank=True, null=True)  # Main product image
     images = models.JSONField(default=list, blank=True)  # Multiple product images (up to 10)
     is_active = models.BooleanField(default=True)

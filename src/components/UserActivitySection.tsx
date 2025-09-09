@@ -6,6 +6,7 @@ import { Heart, Star, Bookmark, MessageSquare, Building2 } from 'lucide-react';
 import { apiService, UserActivity } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { formatRelativeDate } from '@/utils/dateUtils';
 
 export const UserActivitySection: React.FC = () => {
   const { user } = useAuth();
@@ -79,21 +80,8 @@ export const UserActivitySection: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) {
-      return 'Just now';
-    } else if (diffInHours < 24) {
-      return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
-    } else if (diffInHours < 48) {
-      return 'Yesterday';
-    } else {
-      return date.toLocaleDateString();
-    }
-  };
+  // Use the centralized date formatting utility
+  const formatDate = formatRelativeDate;
 
   const handleBusinessClick = (businessId: string) => {
     navigate(`/business/${businessId}`);

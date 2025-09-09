@@ -28,6 +28,21 @@ export interface User {
   updated_at: string;
 }
 
+export interface FEMChurch {
+  id: number;
+  name: string;
+  location?: string;
+  country: string;
+  city?: string;
+  pastor_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Business {
   id: string;
   user: {
@@ -40,16 +55,18 @@ export interface Business {
   } | null;
   business_name: string;
   category?: Category | null;
+  sector?: string;
+  subcategory?: string;
   description?: string;
   long_description?: string;
   phone?: string;
   email?: string;
   website?: string;
   address: string;
+  office_address?: string;
+  country: string;
   city?: string;
-  county?: string;
-  state?: string;
-  zip_code?: string;
+  fem_church?: FEMChurch | null;
   latitude?: number;
   longitude?: number;
   rating: number | string;
@@ -79,6 +96,11 @@ export interface Category {
   id: number;
   name: string;
   slug: string;
+  description?: string;
+  subcategories?: string[];
+  icon?: string;
+  is_active?: boolean;
+  sort_order?: number;
 }
 
 export interface Service {
@@ -174,16 +196,18 @@ export interface RegisterRequest {
 export interface BusinessCreateRequest {
   business_name: string;
   category_id: number;
+  sector?: string;
+  subcategory?: string;
   description?: string;
   long_description?: string;
   phone?: string;
   email?: string;
   website?: string;
   address: string;
+  office_address?: string;
+  country?: string;
   city?: string;
-  county?: string;
-  state?: string;
-  zip_code?: string;
+  fem_church_id?: number;
   latitude?: number;
   longitude?: number;
   business_image_url?: string;
@@ -259,6 +283,41 @@ export interface PhotoRequest {
   notes?: string;
   business_response?: string;
   completed_date?: string;
+}
+
+export interface ProfessionalServiceRequest {
+  id: string;
+  business: string;
+  user: string;
+  user_name: string;
+  business_name: string;
+  request_type: string;
+  request_type_display: string;
+  title: string;
+  description: string;
+  budget_range?: string;
+  timeline?: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  priority_display: string;
+  status: 'pending' | 'in_review' | 'approved' | 'in_progress' | 'completed' | 'cancelled';
+  status_display: string;
+  internal_notes?: string;
+  admin_response?: string;
+  estimated_cost?: number;
+  assigned_to?: string;
+  request_date: string;
+  updated_at: string;
+  completed_date?: string;
+  is_active: boolean;
+}
+
+export interface CreateProfessionalServiceRequestData {
+  request_type: string;
+  title: string;
+  description: string;
+  budget_range?: string;
+  timeline?: string;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
 }
 
 export interface CreatePhotoRequestData {
@@ -357,6 +416,7 @@ class ApiService {
         const isRestrictedSegment = config.url?.includes('/user-activity/') ||
           config.url?.includes('/favorites/') ||
           config.url?.includes('/like/') ||
+          config.url?.includes('/my-business/') ||  // my-business endpoint requires auth
           config.url?.includes('/photo-request/') ||
           config.url?.includes('/hours/') ||
           config.url?.includes('/analytics/');
@@ -730,28 +790,25 @@ class ApiService {
     return response.data;
   }
 
+  // Create a new business
   async createBusiness(data: BusinessCreateRequest): Promise<Business> {
     try {
-      // Check if user already has a business
-      const existingBusiness = await this.getUserBusiness();
-      if (existingBusiness) {
-        throw new Error('Business owners can only have one business. You already have a registered business.');
-      }
-
       // Prepare the business data for the API
       const businessData = {
         business_name: data.business_name,
         category_id: data.category_id,
+        sector: data.sector,
+        subcategory: data.subcategory,
         description: data.description,
         long_description: data.long_description,
         phone: data.phone,
         email: data.email,
         website: data.website,
         address: data.address,
+        office_address: data.office_address,
+        country: data.country,
         city: data.city,
-        county: data.county,
-        state: data.state,
-        zip_code: data.zip_code,
+        fem_church_id: data.fem_church_id,
         latitude: data.latitude,
         longitude: data.longitude,
         business_image_url: data.business_image_url,
@@ -790,16 +847,18 @@ class ApiService {
       const businessData = {
         business_name: data.business_name,
         category_id: data.category_id,
+        sector: data.sector,
+        subcategory: data.subcategory,
         description: data.description,
         long_description: data.long_description,
         phone: data.phone,
         email: data.email,
         website: data.website,
         address: data.address,
+        office_address: data.office_address,
+        country: data.country,
         city: data.city,
-        county: data.county,
-        state: data.state,
-        zip_code: data.zip_code,
+        fem_church_id: data.fem_church_id,
         latitude: data.latitude,
         longitude: data.longitude,
         business_image_url: data.business_image_url,
@@ -1110,7 +1169,12 @@ class ApiService {
     { id: 17, name: 'Home & Garden 🏡', slug: 'home-garden' },
     { id: 18, name: 'Entertainment & Media 🎭', slug: 'entertainment-media' },
     { id: 19, name: 'Non-Profit & Community 🤝', slug: 'non-profit-community' },
-    { id: 20, name: 'Pet Services & Veterinary 🐾', slug: 'pet-services-veterinary' }
+    { id: 20, name: 'Pet Services & Veterinary 🐾', slug: 'pet-services-veterinary' },
+    { id: 21, name: 'Sports & Recreation 🏃', slug: 'sports-recreation' },
+    { id: 22, name: 'Mining & Natural Resources ⛏️', slug: 'mining-natural-resources' },
+    { id: 23, name: 'Textiles & Fashion 👗', slug: 'textiles-fashion' },
+    { id: 24, name: 'Government & Public Services 🏛️', slug: 'government-public-services' },
+    { id: 25, name: 'Import & Export Trade 🚢', slug: 'import-export-trade' }
   ];
 
   // Get categories from backend API
@@ -1153,6 +1217,109 @@ class ApiService {
       return {
         results: this.hardcodedCategories,
         count: this.hardcodedCategories.length,
+      };
+    }
+  }
+
+  // Get FEM Churches from backend API
+  async getFEMChurches(): Promise<{ results: FEMChurch[]; count: number }> {
+    try {
+      const response = await this.api.get('/business/fem-churches/');
+      const data = response.data;
+
+      let churches: FEMChurch[] = [];
+      let count = 0;
+
+      if (Array.isArray(data)) {
+        churches = data;
+        count = churches.length;
+      } else if (data && typeof data === 'object' && 'results' in data) {
+        churches = data.results || [];
+        count = data.count || churches.length;
+      } else {
+        churches = [];
+        count = 0;
+      }
+
+      return { results: churches, count };
+    } catch (error) {
+      console.log('[API] FEM Churches endpoint not found (404), using fallback data');
+      // Return fallback FEM churches data when API is not available
+      const fallbackChurches: FEMChurch[] = [
+        { 
+          id: 1, 
+          name: 'FEM Church Nairobi Central', 
+          location: 'Nairobi Central',
+          city: 'Nairobi', 
+          country: 'Kenya',
+          pastor_name: 'Pastor John Doe',
+          contact_phone: '+254700123456',
+          contact_email: 'nairobi@fem.or.ke',
+          is_active: true,
+          sort_order: 1,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        { 
+          id: 2, 
+          name: 'FEM Church Mombasa', 
+          location: 'Mombasa Island',
+          city: 'Mombasa', 
+          country: 'Kenya',
+          pastor_name: 'Pastor Jane Smith',
+          contact_phone: '+254700123457',
+          contact_email: 'mombasa@fem.or.ke',
+          is_active: true,
+          sort_order: 2,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        { 
+          id: 3, 
+          name: 'FEM Church Kisumu', 
+          location: 'Kisumu Town',
+          city: 'Kisumu', 
+          country: 'Kenya',
+          pastor_name: 'Pastor David Wilson',
+          contact_phone: '+254700123458',
+          contact_email: 'kisumu@fem.or.ke',
+          is_active: true,
+          sort_order: 3,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        { 
+          id: 4, 
+          name: 'FEM Church Nakuru', 
+          location: 'Nakuru Town',
+          city: 'Nakuru', 
+          country: 'Kenya',
+          pastor_name: 'Pastor Mary Brown',
+          contact_phone: '+254700123459',
+          contact_email: 'nakuru@fem.or.ke',
+          is_active: true,
+          sort_order: 4,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        { 
+          id: 5, 
+          name: 'FEM Church Eldoret', 
+          location: 'Eldoret Town',
+          city: 'Eldoret', 
+          country: 'Kenya',
+          pastor_name: 'Pastor Paul Johnson',
+          contact_phone: '+254700123460',
+          contact_email: 'eldoret@fem.or.ke',
+          is_active: true,
+          sort_order: 5,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ];
+      return {
+        results: fallbackChurches,
+        count: fallbackChurches.length,
       };
     }
   }
@@ -1226,11 +1393,13 @@ class ApiService {
       // Fallback to direct response.data if no nesting
       return response.data;
     } catch (error) {
-      // If user doesn't have a business, return null
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      // If user doesn't have a business or endpoint doesn't exist, return null
+      if (error instanceof AxiosError && (error.response?.status === 404 || error.response?.status === 401)) {
+        console.log('[API] No business found for user (404/401), returning null');
         return null;
       }
-      throw error;
+      console.error('[API] Error checking user business:', error);
+      return null; // Return null for any error to prevent crashes
     }
   }
 
@@ -1670,6 +1839,37 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('Error updating photo request:', error);
+      throw error;
+    }
+  }
+
+  // Professional Service Request Methods
+  async createProfessionalServiceRequest(data: CreateProfessionalServiceRequestData): Promise<ProfessionalServiceRequest> {
+    try {
+      const response = await this.api.post('/business/professional-service-requests/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating professional service request:', error);
+      throw error;
+    }
+  }
+
+  async getProfessionalServiceRequests(): Promise<ProfessionalServiceRequest[]> {
+    try {
+      const response = await this.api.get('/business/my-professional-service-requests/');
+      return response.data.results || response.data;
+    } catch (error) {
+      console.error('Error fetching professional service requests:', error);
+      throw error;
+    }
+  }
+
+  async getProfessionalServiceRequest(id: string): Promise<ProfessionalServiceRequest> {
+    try {
+      const response = await this.api.get(`/business/professional-service-requests/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching professional service request:', error);
       throw error;
     }
   }

@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Star, MessageSquare, Heart, Share2 } from 'lucide-react';
+import { Star, MessageSquare, Heart, Share2, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService, Review } from '@/services/api';
 import LikeButton from './LikeButton';
+import { formatToBritishDate } from '@/utils/dateUtils';
 
 interface ProductServiceReviewsProps {
   type: 'product' | 'service';
@@ -77,11 +78,7 @@ export const ProductServiceReviews: React.FC<ProductServiceReviewsProps> = ({
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return formatToBritishDate(dateString);
   };
 
   // Limit reviews to maxReviews
