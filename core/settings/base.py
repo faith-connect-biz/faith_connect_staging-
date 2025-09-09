@@ -273,6 +273,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS Configuration
+# Temporarily allow all origins for development
+CORS_ALLOW_ALL_ORIGINS = True
+
 CORS_ALLOWED_ORIGINS = [
     "https://www.faithconnect.biz",  # ✅ Add your production domain
     "https://faithconnect.biz",      # ✅ Add without www too
@@ -308,6 +311,14 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+# Additional CORS settings for better compatibility
+CORS_ALLOW_ALL_HEADERS = True
+CORS_EXPOSE_HEADERS = ['*']
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
+
+# Debug CORS issues
+CORS_URLS_REGEX = r'^.*$'  # Allow CORS on all URLs
 
 # Cache Configuration
 # Use database cache as default for reliability
