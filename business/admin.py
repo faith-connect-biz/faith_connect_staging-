@@ -68,10 +68,10 @@ class BusinessAdmin(admin.ModelAdmin):
         'featured_status', 'is_verified', 'is_featured', 'is_active', 'created_date'
     ]
     list_filter = [
-        BusinessStatusFilter, RatingFilter, 'category', 'city', 'county',
+        BusinessStatusFilter, RatingFilter, 'category', 'city',
         'is_verified', 'is_featured', 'is_active', 'created_at'
     ]
-    search_fields = ['business_name', 'description', 'city', 'county', 'phone', 'email']
+    search_fields = ['business_name', 'description', 'city', 'phone', 'email']
     list_editable = ['is_verified', 'is_featured', 'is_active']
     readonly_fields = ['rating', 'review_count', 'created_at', 'updated_at']
     ordering = ['-created_at']
@@ -81,7 +81,7 @@ class BusinessAdmin(admin.ModelAdmin):
             'fields': ('business_name', 'category', 'description', 'user')
         }),
         ('Contact Information', {
-            'fields': ('address', 'city', 'county', 'phone', 'email')
+            'fields': ('address', 'city', 'phone', 'email')
         }),
         ('Business Details', {
             'fields': ('business_image_url', 'website', 'business_logo_url')

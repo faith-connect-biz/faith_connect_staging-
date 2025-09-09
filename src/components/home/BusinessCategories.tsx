@@ -176,11 +176,17 @@ export const BusinessCategories = () => {
 
     // console.log('Category stats before filtering:', categoryStats);
 
-    // Show only top categories with businesses
+    // Show only categories with businesses, sorted by business count
     return categoryStats
       .filter(category => category.count > 0) // Only show categories with businesses
-      .sort((a, b) => b.count - a.count) // Sort by business count
-      .slice(0, 8); // Show top 8 categories
+      .sort((a, b) => {
+        // First sort by business count (descending), then by name
+        if (b.count !== a.count) {
+          return b.count - a.count;
+        }
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, 12); // Show top 12 categories
   };
 
   const getCategoryColor = (categoryName: string): string => {
@@ -317,7 +323,10 @@ export const BusinessCategories = () => {
                             </div>
                             <h3 className="font-semibold text-fem-navy mb-2">{category.name}</h3>
                             <p className="text-sm text-fem-darkgray mb-2">
-                              {category.count} {category.count === 1 ? 'business' : 'businesses'}
+                              {category.count > 0 
+                                ? `${category.count} ${category.count === 1 ? 'business' : 'businesses'}`
+                                : 'No businesses yet'
+                              }
                             </p>
                           </div>
                         </CardContent>
@@ -338,42 +347,10 @@ export const BusinessCategories = () => {
             </div>
           </>
         ) : (
-          // Show default categories when no data is available
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {[
-                { name: "Agriculture & Farming 🌱", icon: "🌱", count: 0, description: "Crops, livestock, agri-processing" },
-                { name: "Technology & IT 💻", icon: "💻", count: 0, description: "Software, hardware, digital services" },
-                { name: "Healthcare & Wellness 🏥", icon: "🏥", count: 0, description: "Hospitals, clinics, fitness, pharmaceuticals" },
-                { name: "Food & Beverage 🍽️", icon: "🍽️", count: 0, description: "Restaurants, cafes, food services, catering" },
-                { name: "Real Estate & Construction 🏗️", icon: "🏗️", count: 0, description: "Property development, rentals, housing" },
-                { name: "Professional Services 📑", icon: "📑", count: 0, description: "Legal, consulting, accounting, design" },
-                { name: "Transportation & Logistics 🚚", icon: "🚚", count: 0, description: "Delivery, ride-hailing, freight, warehousing" },
-                { name: "Creative Industries 🎨", icon: "🎨", count: 0, description: "Media, film, advertising, design" }
-              ].map((category, index) => (
-                <div key={category.name} className="stagger-item tilt-3d magnetic neon-glow bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer">
-                  <div className="text-4xl mb-4">{category.icon}</div>
-                  <h3 className="text-xl font-semibold text-fem-navy mb-2">{category.name}</h3>
-                  <p className="text-sm text-gray-500 mb-2">No businesses yet</p>
-                  {category.description && (
-                    <p className="text-xs text-gray-400 line-clamp-2">
-                      {category.description}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-            
-            <div className="text-center mt-8">
-              <p className="text-sm text-gray-500 mb-4">No businesses registered yet - be the first to join our community!</p>
-              <Button 
-                onClick={handleRegisterBusinessClick}
-                className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-              >
-                Register Your Business
-              </Button>
-            </div>
-          </>
+          // Show message when no categories are available
+          <div className="text-center py-12">
+            <p className="text-gray-500 mb-4">Loading categories...</p>
+          </div>
         )}
       </div>
       

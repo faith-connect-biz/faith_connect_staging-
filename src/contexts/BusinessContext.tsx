@@ -428,6 +428,19 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
+  // Initialize data on context mount
+  useEffect(() => {
+    // Fetch all data on initial load for the home page
+    Promise.all([
+      fetchCategories(),
+      fetchBusinesses({ page: 1, limit: 20 }),
+      fetchServices({ page: 1, limit: 20 }),
+      fetchProducts({ page: 1, limit: 20 })
+    ]).catch(error => {
+      console.error('Error loading initial data:', error);
+    });
+  }, [fetchCategories, fetchBusinesses, fetchServices, fetchProducts]);
+
   // Cache management functions
   const clearCache = useCallback(() => {
     businessesCache.clear();
