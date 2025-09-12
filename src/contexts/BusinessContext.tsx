@@ -92,6 +92,8 @@ interface BusinessContextType {
   fetchServices: (params?: any) => Promise<void>;
   fetchProducts: (params?: any) => Promise<void>;
   fetchCategories: () => Promise<void>;
+  fetchServicesWithPagination: (params?: any) => Promise<void>;
+  fetchProductsWithPagination: (params?: any) => Promise<void>;
   
   // Cache management
   clearCache: () => void;
@@ -446,18 +448,52 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
+  // Enhanced fetchServices with proper server-side pagination
+  const fetchServicesWithPagination = useCallback(async (params?: any) => {
+    await fetchWithCache(
+      'services',
+      apiService.getAllServices.bind(apiService),
+      params,
+      servicesCache,
+      setServices,
+      setIsLoadingServices,
+      setTotalServicesCount,
+      setCurrentPage,
+      setHasNextPage,
+      setHasPreviousPage,
+      setTotalPages
+    );
+  }, []);
+
+  // Enhanced fetchProducts with proper server-side pagination
+  const fetchProductsWithPagination = useCallback(async (params?: any) => {
+    await fetchWithCache(
+      'products',
+      apiService.getAllProducts.bind(apiService),
+      params,
+      productsCache,
+      setProducts,
+      setIsLoadingProducts,
+      setTotalProductsCount,
+      setCurrentPage,
+      setHasNextPage,
+      setHasPreviousPage,
+      setTotalPages
+    );
+  }, []);
+
   // Initialize data on context mount
   useEffect(() => {
     // Fetch all data on initial load for the home page
     Promise.all([
       fetchCategories(),
-      fetchBusinesses({ page: 1, limit: 20 }),
-      fetchServices({ page: 1, limit: 20 }),
-      fetchProducts({ page: 1, limit: 20 })
+      fetchBusinesses({ page: 1, limit: 20 }), // Server-side pagination
+      fetchServicesWithPagination({ page: 1, limit: 20 }), // Server-side pagination
+      fetchProductsWithPagination({ page: 1, limit: 20 })  // Server-side pagination
     ]).catch(error => {
       console.error('Error loading initial data:', error);
     });
-  }, [fetchCategories, fetchBusinesses, fetchServices, fetchProducts]);
+  }, [fetchCategories, fetchBusinesses, fetchServicesWithPagination, fetchProductsWithPagination]);
 
   // Cache management functions
   const clearCache = useCallback(() => {
@@ -689,6 +725,8 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     fetchServices,
     fetchProducts,
     fetchCategories,
+    fetchServicesWithPagination,
+    fetchProductsWithPagination,
     
     // Cache management
     clearCache,
