@@ -138,27 +138,14 @@ async function handleApiRequest(request) {
 // Handle static file requests with cache-first strategy
 async function handleStaticRequest(request) {
   try {
-    // Skip service worker for critical assets during initial load
     const url = new URL(request.url);
+    
+    // Skip service worker for critical assets during initial load
     if (url.pathname.includes('/assets/') && 
         (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'))) {
-      // For critical assets, try network first to avoid caching issues
-      try {
-        const networkResponse = await fetch(request);
-        if (networkResponse.ok) {
-          // Cache successful responses
-          const cache = await caches.open(DYNAMIC_CACHE);
-          cache.put(request, networkResponse.clone());
-        }
-        return networkResponse;
-      } catch (error) {
-        // Fallback to cache if network fails
-        const cachedResponse = await caches.match(request);
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        throw error;
-      }
+      // For critical assets, bypass service worker entirely during initial load
+      // This prevents caching issues that cause MIME type problems
+      return fetch(request);
     }
     
     // For other static files, use cache-first strategy

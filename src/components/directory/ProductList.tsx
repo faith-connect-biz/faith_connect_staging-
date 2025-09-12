@@ -53,7 +53,7 @@ export const ProductList: React.FC<ProductListProps> = ({
     return shuffled;
   };
 
-  // Apply client-side filtering - instant search
+  // Use products directly from server (server-side filtering)
   const filteredProducts = useMemo(() => {
     console.log('🔍 ProductList - Current products state:', {
       products,
@@ -64,24 +64,9 @@ export const ProductList: React.FC<ProductListProps> = ({
     
     if (!Array.isArray(products)) return [];
     
-    let filtered = products;
-    
-    if (filters.searchTerm && filters.searchTerm.trim()) {
-      const searchLower = filters.searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(product => {
-        const productName = product.name?.toLowerCase() || '';
-        const productDescription = product.description?.toLowerCase() || '';
-        const businessName = (typeof product.business === 'object' ? product.business.business_name : '')?.toLowerCase() || '';
-        
-        return productName.includes(searchLower) || 
-               productDescription.includes(searchLower) || 
-               businessName.includes(searchLower);
-      });
-    }
-    
     // Randomize the order to prevent bias
-    return shuffleArray(filtered);
-  }, [products, filters.searchTerm]);
+    return shuffleArray(products);
+  }, [products]);
 
   // Update pagination from context (server-side pagination)
   useEffect(() => {
@@ -90,18 +75,31 @@ export const ProductList: React.FC<ProductListProps> = ({
     setCurrentPage(contextCurrentPage || 1);
   }, [totalProductsCount, contextTotalPages, contextCurrentPage]);
 
-  // Fetch products from API with server-side pagination
+  // Fetch products from API with server-side pagination and search
   useEffect(() => {
-    fetchProductsWithPagination({ page: currentPage, limit: itemsPerPage });
-  }, [fetchProductsWithPagination, currentPage, itemsPerPage]);
+    const searchParams: any = { page: currentPage, limit: itemsPerPage };
+    
+    // Add search term if provided
+    if (filters.searchTerm && filters.searchTerm.trim()) {
+      searchParams.search = filters.searchTerm.trim();
+    }
+    
+    fetchProductsWithPagination(searchParams);
+  }, [fetchProductsWithPagination, currentPage, itemsPerPage, filters.searchTerm]);
 
   // Use filtered products directly (no client-side pagination)
   const paginatedProducts = filteredProducts;
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    // Fetch new page data
-    fetchProductsWithPagination({ page, limit: itemsPerPage });
+    // Fetch new page data with current filters
+    const searchParams: any = { page, limit: itemsPerPage };
+    
+    if (filters.searchTerm && filters.searchTerm.trim()) {
+      searchParams.search = filters.searchTerm.trim();
+    }
+    
+    fetchProductsWithPagination(searchParams);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

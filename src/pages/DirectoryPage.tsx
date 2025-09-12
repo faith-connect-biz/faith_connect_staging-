@@ -38,6 +38,7 @@ export const DirectoryPage: React.FC = () => {
     fetchCategories,
     fetchServicesWithPagination,
     fetchProductsWithPagination,
+    fetchBusinessesWithSearch,
     businesses, 
     totalServicesCount, 
     totalProductsCount,
@@ -141,14 +142,14 @@ export const DirectoryPage: React.FC = () => {
     
     // Load all data in parallel instead of sequentially
     Promise.all([
-      fetchBusinesses({ page: 1, limit: initialLimit }), // Server-side pagination
+      fetchBusinessesWithSearch({ page: 1, limit: initialLimit }), // Server-side pagination with search
       fetchServicesWithPagination({ page: 1, limit: initialLimit }), // Server-side pagination
       fetchProductsWithPagination({ page: 1, limit: initialLimit }), // Server-side pagination
       fetchCategories()
     ]).catch(error => {
       console.error('Error loading initial data:', error);
     });
-  }, [fetchBusinesses, fetchServicesWithPagination, fetchProductsWithPagination, fetchCategories]);
+  }, [fetchBusinessesWithSearch, fetchServicesWithPagination, fetchProductsWithPagination, fetchCategories]);
 
   // Shuffle data based on session key for consistent randomization per session
   const shuffledBusinesses = useMemo(() => {

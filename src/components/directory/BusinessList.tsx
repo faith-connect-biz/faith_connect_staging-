@@ -33,7 +33,7 @@ export const BusinessList: React.FC<BusinessListProps> = ({
   filters, 
   itemsPerPage = 15
 }) => {
-  const { businesses, isLoading, fetchBusinesses, totalCount, currentPage: contextCurrentPage, totalPages: contextTotalPages } = useBusiness();
+  const { businesses, isLoading, fetchBusinessesWithSearch, totalCount, currentPage: contextCurrentPage, totalPages: contextTotalPages } = useBusiness();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -52,44 +52,13 @@ export const BusinessList: React.FC<BusinessListProps> = ({
     return shuffled;
   };
 
-  // Apply client-side filtering for search and category (for instant feedback)
+  // Use businesses directly from server (server-side filtering)
   const filteredBusinesses = useMemo(() => {
     if (!Array.isArray(businesses)) return [];
     
-    let filtered = businesses;
-    
-    // Apply category filter
-    if (filters.category && filters.category.trim()) {
-      filtered = filtered.filter(business => {
-        const businessCategory = business.category;
-        if (typeof businessCategory === 'object' && businessCategory && 'slug' in businessCategory) {
-          return (businessCategory as any).slug === filters.category;
-        } else if (typeof businessCategory === 'string') {
-          return businessCategory === filters.category;
-        }
-        return false;
-      });
-    }
-    
-    // Apply search filter
-    if (filters.searchTerm && filters.searchTerm.trim()) {
-      const searchLower = filters.searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(business => {
-        const businessName = business.business_name?.toLowerCase() || '';
-        const businessDescription = business.description?.toLowerCase() || '';
-        const businessCategory = typeof business.category === 'object' && business.category && 'name' in business.category 
-          ? (business.category as any).name?.toLowerCase() || '' 
-          : '';
-        
-        return businessName.includes(searchLower) || 
-               businessDescription.includes(searchLower) || 
-               businessCategory.includes(searchLower);
-      });
-    }
-    
     // Randomize the order to prevent bias
-    return shuffleArray(filtered);
-  }, [businesses, filters.category, filters.searchTerm]);
+    return shuffleArray(businesses);
+  }, [businesses]);
 
   // Update pagination from context (server-side pagination)
   useEffect(() => {
@@ -98,18 +67,40 @@ export const BusinessList: React.FC<BusinessListProps> = ({
     setCurrentPage(contextCurrentPage || 1);
   }, [totalCount, contextTotalPages, contextCurrentPage]);
 
-  // Fetch businesses from API with server-side pagination
+  // Fetch businesses from API with server-side pagination and search
   useEffect(() => {
-    fetchBusinesses({ page: currentPage, limit: itemsPerPage });
-  }, [fetchBusinesses, currentPage, itemsPerPage]);
+    const searchParams: any = { page: currentPage, limit: itemsPerPage };
+    
+    // Add search term if provided
+    if (filters.searchTerm && filters.searchTerm.trim()) {
+      searchParams.search = filters.searchTerm.trim();
+    }
+    
+    // Add category filter if provided
+    if (filters.category && filters.category.trim()) {
+      searchParams.category = filters.category;
+    }
+    
+    fetchBusinessesWithSearch(searchParams);
+  }, [fetchBusinessesWithSearch, currentPage, itemsPerPage, filters.searchTerm, filters.category]);
 
   // Use filtered businesses directly (no client-side pagination)
   const paginatedBusinesses = filteredBusinesses;
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    // Fetch new page data
-    fetchBusinesses({ page, limit: itemsPerPage });
+    // Fetch new page data with current filters
+    const searchParams: any = { page, limit: itemsPerPage };
+    
+    if (filters.searchTerm && filters.searchTerm.trim()) {
+      searchParams.search = filters.searchTerm.trim();
+    }
+    
+    if (filters.category && filters.category.trim()) {
+      searchParams.category = filters.category;
+    }
+    
+    fetchBusinessesWithSearch(searchParams);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

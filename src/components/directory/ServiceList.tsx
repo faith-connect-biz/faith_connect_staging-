@@ -53,7 +53,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
     return shuffled;
   };
 
-  // Apply client-side filtering - instant search
+  // Use services directly from server (server-side filtering)
   const filteredServices = useMemo(() => {
     console.log('🔍 ServiceList - Current services state:', {
       services,
@@ -64,24 +64,9 @@ export const ServiceList: React.FC<ServiceListProps> = ({
     
     if (!Array.isArray(services)) return [];
     
-    let filtered = services;
-    
-    if (filters.searchTerm && filters.searchTerm.trim()) {
-      const searchLower = filters.searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(service => {
-        const serviceName = service.name?.toLowerCase() || '';
-        const serviceDescription = service.description?.toLowerCase() || '';
-        const businessName = (typeof service.business === 'object' ? service.business.business_name : '')?.toLowerCase() || '';
-        
-        return serviceName.includes(searchLower) || 
-               serviceDescription.includes(searchLower) || 
-               businessName.includes(searchLower);
-      });
-    }
-    
     // Randomize the order to prevent bias
-    return shuffleArray(filtered);
-  }, [services, filters.searchTerm]);
+    return shuffleArray(services);
+  }, [services]);
 
   // Update pagination from context (server-side pagination)
   useEffect(() => {
@@ -90,18 +75,31 @@ export const ServiceList: React.FC<ServiceListProps> = ({
     setCurrentPage(contextCurrentPage || 1);
   }, [totalServicesCount, contextTotalPages, contextCurrentPage]);
 
-  // Fetch services from API with server-side pagination
+  // Fetch services from API with server-side pagination and search
   useEffect(() => {
-    fetchServicesWithPagination({ page: currentPage, limit: itemsPerPage });
-  }, [fetchServicesWithPagination, currentPage, itemsPerPage]);
+    const searchParams: any = { page: currentPage, limit: itemsPerPage };
+    
+    // Add search term if provided
+    if (filters.searchTerm && filters.searchTerm.trim()) {
+      searchParams.search = filters.searchTerm.trim();
+    }
+    
+    fetchServicesWithPagination(searchParams);
+  }, [fetchServicesWithPagination, currentPage, itemsPerPage, filters.searchTerm]);
 
   // Use filtered services directly (no client-side pagination)
   const paginatedServices = filteredServices;
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    // Fetch new page data
-    fetchServicesWithPagination({ page, limit: itemsPerPage });
+    // Fetch new page data with current filters
+    const searchParams: any = { page, limit: itemsPerPage };
+    
+    if (filters.searchTerm && filters.searchTerm.trim()) {
+      searchParams.search = filters.searchTerm.trim();
+    }
+    
+    fetchServicesWithPagination(searchParams);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

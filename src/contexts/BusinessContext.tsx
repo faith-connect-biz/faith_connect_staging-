@@ -94,6 +94,7 @@ interface BusinessContextType {
   fetchCategories: () => Promise<void>;
   fetchServicesWithPagination: (params?: any) => Promise<void>;
   fetchProductsWithPagination: (params?: any) => Promise<void>;
+  fetchBusinessesWithSearch: (params?: any) => Promise<void>;
   
   // Cache management
   clearCache: () => void;
@@ -448,7 +449,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
-  // Enhanced fetchServices with proper server-side pagination
+  // Enhanced fetchServices with proper server-side pagination and search
   const fetchServicesWithPagination = useCallback(async (params?: any) => {
     await fetchWithCache(
       'services',
@@ -465,7 +466,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
   }, []);
 
-  // Enhanced fetchProducts with proper server-side pagination
+  // Enhanced fetchProducts with proper server-side pagination and search
   const fetchProductsWithPagination = useCallback(async (params?: any) => {
     await fetchWithCache(
       'products',
@@ -475,6 +476,23 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setProducts,
       setIsLoadingProducts,
       setTotalProductsCount,
+      setCurrentPage,
+      setHasNextPage,
+      setHasPreviousPage,
+      setTotalPages
+    );
+  }, []);
+
+  // Enhanced fetchBusinesses with search support
+  const fetchBusinessesWithSearch = useCallback(async (params?: any) => {
+    await fetchWithCache(
+      'businesses',
+      apiService.getBusinesses.bind(apiService),
+      params,
+      businessesCache,
+      setBusinesses,
+      setIsLoadingBusinesses,
+      setTotalCount,
       setCurrentPage,
       setHasNextPage,
       setHasPreviousPage,
@@ -727,6 +745,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     fetchCategories,
     fetchServicesWithPagination,
     fetchProductsWithPagination,
+    fetchBusinessesWithSearch,
     
     // Cache management
     clearCache,
