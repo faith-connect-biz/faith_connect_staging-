@@ -233,7 +233,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // Unified fetch function with caching
-  const fetchWithCache = async (
+  const fetchWithCache = useCallback(async (
     type: string,
     fetchFunction: (params: any) => Promise<any>,
     params: any,
@@ -247,6 +247,14 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setTotalPages?: (totalPages: number) => void
   ): Promise<void> => {
     const cacheKey = generateCacheKey(type, params);
+    
+    console.log(`🔍 BusinessContext - fetchWithCache called:`, {
+      type,
+      params,
+      cacheKey,
+      timestamp: new Date().toISOString(),
+      functionId: Math.random().toString(36).substring(7)
+    });
     
     // Check cache first
     const cachedData = cache.get(cacheKey);
@@ -377,7 +385,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.log(`🔍 BusinessContext - Setting loading to false for ${type} in finally block`);
       setLoading(false);
     }
-  };
+  }, [businessesCache, servicesCache, productsCache]); // Memoize fetchWithCache
 
   const fetchBusinesses = useCallback(async (params?: any) => {
     await fetchWithCache(
@@ -393,7 +401,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setHasPreviousPage,
       setTotalPages
     );
-  }, []);
+  }, [fetchWithCache, businessesCache]);
 
   const fetchServices = useCallback(async (params?: any) => {
     await fetchWithCache(
@@ -406,9 +414,10 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setTotalServicesCount,
       setCurrentPage,
       setHasNextPage,
-      setHasPreviousPage
+      setHasPreviousPage,
+      setTotalPages
     );
-  }, []);
+  }, [fetchWithCache, servicesCache]);
 
   const fetchProducts = useCallback(async (params?: any) => {
     await fetchWithCache(
@@ -421,9 +430,10 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setTotalProductsCount,
       setCurrentPage,
       setHasNextPage,
-      setHasPreviousPage
+      setHasPreviousPage,
+      setTotalPages
     );
-  }, []);
+  }, [fetchWithCache, productsCache]);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -464,7 +474,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setHasPreviousPage,
       setTotalPages
     );
-  }, []);
+  }, [fetchWithCache, servicesCache]);
 
   // Enhanced fetchProducts with proper server-side pagination and search
   const fetchProductsWithPagination = useCallback(async (params?: any) => {
@@ -481,10 +491,16 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setHasPreviousPage,
       setTotalPages
     );
-  }, []);
+  }, [fetchWithCache, productsCache]);
 
   // Enhanced fetchBusinesses with search support
   const fetchBusinessesWithSearch = useCallback(async (params?: any) => {
+    console.log('🔍 BusinessContext - fetchBusinessesWithSearch called:', {
+      params,
+      timestamp: new Date().toISOString(),
+      functionId: Math.random().toString(36).substring(7)
+    });
+    
     await fetchWithCache(
       'businesses',
       apiService.getBusinesses.bind(apiService),
@@ -498,7 +514,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setHasPreviousPage,
       setTotalPages
     );
-  }, []);
+  }, [fetchWithCache, businessesCache]);
 
   // Initialize data on context mount
   useEffect(() => {

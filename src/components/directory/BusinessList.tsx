@@ -33,6 +33,13 @@ export const BusinessList: React.FC<BusinessListProps> = ({
   filters, 
   itemsPerPage = 15
 }) => {
+  console.log('🔍 BusinessList - Component rendered:', {
+    filters,
+    itemsPerPage,
+    timestamp: new Date().toISOString(),
+    renderId: Math.random().toString(36).substring(7)
+  });
+  
   const { businesses, isLoading, fetchBusinessesWithSearch, totalCount, currentPage: contextCurrentPage, totalPages: contextTotalPages } = useBusiness();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
@@ -81,12 +88,25 @@ export const BusinessList: React.FC<BusinessListProps> = ({
       searchParams.category = filters.category;
     }
     
+    console.log('🔍 BusinessList - useEffect triggered:', {
+      currentPage,
+      itemsPerPage,
+      searchTerm: filters.searchTerm,
+      category: filters.category,
+      searchParams,
+      timestamp: new Date().toISOString()
+    });
+    
     // Debounce search to prevent excessive API calls
     const timeoutId = setTimeout(() => {
+      console.log('🔍 BusinessList - Executing fetchBusinessesWithSearch:', searchParams);
       fetchBusinessesWithSearch(searchParams);
     }, filters.searchTerm ? 300 : 0); // 300ms delay for search, immediate for page changes
     
-    return () => clearTimeout(timeoutId);
+    return () => {
+      console.log('🔍 BusinessList - Cleaning up timeout');
+      clearTimeout(timeoutId);
+    };
   }, [currentPage, itemsPerPage, filters.searchTerm, filters.category, fetchBusinessesWithSearch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Use filtered businesses directly (no client-side pagination)
