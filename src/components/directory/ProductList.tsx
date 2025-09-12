@@ -84,8 +84,13 @@ export const ProductList: React.FC<ProductListProps> = ({
       searchParams.search = filters.searchTerm.trim();
     }
     
-    fetchProductsWithPagination(searchParams);
-  }, [fetchProductsWithPagination, currentPage, itemsPerPage, filters.searchTerm]);
+    // Debounce search to prevent excessive API calls
+    const timeoutId = setTimeout(() => {
+      fetchProductsWithPagination(searchParams);
+    }, filters.searchTerm ? 300 : 0); // 300ms delay for search, immediate for page changes
+    
+    return () => clearTimeout(timeoutId);
+  }, [currentPage, itemsPerPage, filters.searchTerm, fetchProductsWithPagination]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Use filtered products directly (no client-side pagination)
   const paginatedProducts = filteredProducts;

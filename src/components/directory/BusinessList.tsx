@@ -81,8 +81,13 @@ export const BusinessList: React.FC<BusinessListProps> = ({
       searchParams.category = filters.category;
     }
     
-    fetchBusinessesWithSearch(searchParams);
-  }, [fetchBusinessesWithSearch, currentPage, itemsPerPage, filters.searchTerm, filters.category]);
+    // Debounce search to prevent excessive API calls
+    const timeoutId = setTimeout(() => {
+      fetchBusinessesWithSearch(searchParams);
+    }, filters.searchTerm ? 300 : 0); // 300ms delay for search, immediate for page changes
+    
+    return () => clearTimeout(timeoutId);
+  }, [currentPage, itemsPerPage, filters.searchTerm, filters.category, fetchBusinessesWithSearch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Use filtered businesses directly (no client-side pagination)
   const paginatedBusinesses = filteredBusinesses;

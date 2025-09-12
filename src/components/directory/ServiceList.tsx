@@ -84,8 +84,13 @@ export const ServiceList: React.FC<ServiceListProps> = ({
       searchParams.search = filters.searchTerm.trim();
     }
     
-    fetchServicesWithPagination(searchParams);
-  }, [fetchServicesWithPagination, currentPage, itemsPerPage, filters.searchTerm]);
+    // Debounce search to prevent excessive API calls
+    const timeoutId = setTimeout(() => {
+      fetchServicesWithPagination(searchParams);
+    }, filters.searchTerm ? 300 : 0); // 300ms delay for search, immediate for page changes
+    
+    return () => clearTimeout(timeoutId);
+  }, [currentPage, itemsPerPage, filters.searchTerm, fetchServicesWithPagination]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Use filtered services directly (no client-side pagination)
   const paginatedServices = filteredServices;
