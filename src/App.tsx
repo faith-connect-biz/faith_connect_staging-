@@ -10,6 +10,7 @@ import { BusinessProvider } from "@/contexts/BusinessContext";
 import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
 import Index from "./pages/Index";
 import DirectoryPage from "./pages/DirectoryPage";
+import EpicSearchPage from "./pages/EpicSearchPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import FavoritesPage from "./pages/FavoritesPage";
@@ -52,6 +53,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/directory" element={<DirectoryPage />} />
+                <Route path="/epic-search" element={<EpicSearchPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/contact" element={<ContactPage />} />

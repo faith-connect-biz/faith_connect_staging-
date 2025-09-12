@@ -40,7 +40,7 @@ export const BusinessList: React.FC<BusinessListProps> = ({
     renderId: Math.random().toString(36).substring(7)
   });
   
-  const { businesses, isLoading, fetchBusinessesWithSearch, totalCount, currentPage: contextCurrentPage, totalPages: contextTotalPages } = useBusiness();
+  const { businesses, isLoading, fetchBusinesses, totalCount, currentPage: contextCurrentPage, totalPages: contextTotalPages } = useBusiness();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -99,15 +99,15 @@ export const BusinessList: React.FC<BusinessListProps> = ({
     
     // Debounce search to prevent excessive API calls
     const timeoutId = setTimeout(() => {
-      console.log('🔍 BusinessList - Executing fetchBusinessesWithSearch:', searchParams);
-      fetchBusinessesWithSearch(searchParams);
+      console.log('🔍 BusinessList - Executing fetchBusinesses:', searchParams);
+      fetchBusinesses(searchParams);
     }, filters.searchTerm ? 300 : 0); // 300ms delay for search, immediate for page changes
     
     return () => {
       console.log('🔍 BusinessList - Cleaning up timeout');
       clearTimeout(timeoutId);
     };
-  }, [currentPage, itemsPerPage, filters.searchTerm, filters.category, fetchBusinessesWithSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentPage, itemsPerPage, filters.searchTerm, filters.category, fetchBusinesses]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Use filtered businesses directly (no client-side pagination)
   const paginatedBusinesses = filteredBusinesses;
@@ -125,7 +125,7 @@ export const BusinessList: React.FC<BusinessListProps> = ({
       searchParams.category = filters.category;
     }
     
-    fetchBusinessesWithSearch(searchParams);
+    fetchBusinesses(searchParams);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

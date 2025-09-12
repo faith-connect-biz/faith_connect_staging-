@@ -379,6 +379,7 @@ class ApiService {
   constructor() {
     this.api = axios.create({
       baseURL: API_BASE_URL,
+      timeout: 10000, // 10 second timeout for all requests
       headers: {
         'Content-Type': 'application/json',
       },
@@ -450,6 +451,26 @@ class ApiService {
       (response) => response,
       async (error: AxiosError) => {
         const originalRequest = error.config;
+        
+        // Handle timeout errors
+        if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          console.error('API request timed out:', {
+            url: originalRequest?.url,
+            method: originalRequest?.method,
+            timeout: originalRequest?.timeout
+          });
+          return Promise.reject(new Error('Request timed out. Please check your internet connection and try again.'));
+        }
+        
+        // Handle network errors
+        if (error.code === 'NETWORK_ERROR' || !error.response) {
+          console.error('Network error:', {
+            url: originalRequest?.url,
+            method: originalRequest?.method,
+            error: error.message
+          });
+          return Promise.reject(new Error('Network error. Please check your internet connection and try again.'));
+        }
         
         if (error.response?.status === 401 && originalRequest && !(originalRequest as ExtendedAxiosRequestConfig)._retry) {
           (originalRequest as ExtendedAxiosRequestConfig)._retry = true;
@@ -1987,6 +2008,23 @@ class ApiService {
     }
   }
 
+  // Simple connectivity test
+  async testConnectivity(): Promise<boolean> {
+    try {
+      console.log('🔧 Testing API connectivity...');
+      const startTime = Date.now();
+      const response = await this.api.get('/business/', { 
+        params: { limit: 1 },
+        timeout: 5000 // 5 second timeout for connectivity test
+      });
+      const endTime = Date.now();
+      console.log(`🔧 API connectivity test successful: ${endTime - startTime}ms`);
+      return true;
+    } catch (error) {
+      console.error('🔧 API connectivity test failed:', error);
+      return false;
+    }
+  }
 
 }
 

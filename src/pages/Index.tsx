@@ -7,6 +7,7 @@ import { BusinessCategories } from '@/components/home/BusinessCategories';
 import { ProductServiceCarousel } from '@/components/home/ProductServiceCarousel';
 import { CommunityStats } from '@/components/home/CommunityStats';
 import { CallToAction } from '@/components/home/CallToAction';
+import { SearchDemo } from '@/components/search/SearchDemo';
 import { OnboardingCheck } from '@/components/OnboardingCheck';
 import HelpButton from '@/components/onboarding/HelpButton';
 import ScrollToTop from '@/components/ui/ScrollToTop';
@@ -110,6 +111,7 @@ const Index = () => {
          {/* <ApiTester />
          <DataDebugger /> */}
          <BusinessCategories />
+         <SearchDemo />
          <ProductServiceCarousel />
          <CommunityStats />
          <CallToAction />

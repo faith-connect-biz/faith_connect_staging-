@@ -94,7 +94,6 @@ interface BusinessContextType {
   fetchCategories: () => Promise<void>;
   fetchServicesWithPagination: (params?: any) => Promise<void>;
   fetchProductsWithPagination: (params?: any) => Promise<void>;
-  fetchBusinessesWithSearch: (params?: any) => Promise<void>;
   
   // Cache management
   clearCache: () => void;
@@ -203,10 +202,10 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Error handling
   const [error, setError] = useState<string | null>(null);
   
-  // Cache instances
-  const businessesCache = new SimpleCache();
-  const servicesCache = new SimpleCache();
-  const productsCache = new SimpleCache();
+  // Cache instances - use useRef to prevent recreation on every render
+  const businessesCacheRef = useRef<SimpleCache>(new SimpleCache());
+  const servicesCacheRef = useRef<SimpleCache>(new SimpleCache());
+  const productsCacheRef = useRef<SimpleCache>(new SimpleCache());
   
   // Abort controllers for request cancellation
   const businessesAbortRef = useRef<AbortController | null>(null);
@@ -237,7 +236,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     type: string,
     fetchFunction: (params: any) => Promise<any>,
     params: any,
-    cache: SimpleCache,
+    cacheRef: React.MutableRefObject<SimpleCache>,
     setData: (data: any[]) => void,
     setLoading: (loading: boolean) => void,
     setTotal: (total: number) => void,
@@ -257,7 +256,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
     
     // Check cache first
-    const cachedData = cache.get(cacheKey);
+    const cachedData = cacheRef.current.get(cacheKey);
     if (cachedData && !params.search) {
       console.log(`🔍 BusinessContext - Serving ${type} from cache:`, {
         cacheKey,
@@ -354,7 +353,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           cacheDataLength: shuffledData.length,
           cacheData
         });
-        cache.set(cacheKey, cacheData);
+        cacheRef.current.set(cacheKey, cacheData);
 
         console.log(`🔍 BusinessContext - ${type} fetched and cached:`, {
           count: response.count || 0,
@@ -385,14 +384,14 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.log(`🔍 BusinessContext - Setting loading to false for ${type} in finally block`);
       setLoading(false);
     }
-  }, [businessesCache, servicesCache, productsCache]); // Memoize fetchWithCache
+  }, []); // Memoize fetchWithCache - no dependencies since cache refs are stable
 
   const fetchBusinesses = useCallback(async (params?: any) => {
     await fetchWithCache(
       'businesses',
       apiService.getBusinesses.bind(apiService),
       params,
-      businessesCache,
+      businessesCacheRef,
       setBusinesses,
       setIsLoadingBusinesses,
       setTotalCount,
@@ -401,14 +400,14 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setHasPreviousPage,
       setTotalPages
     );
-  }, [fetchWithCache, businessesCache]);
+  }, [fetchWithCache]);
 
   const fetchServices = useCallback(async (params?: any) => {
     await fetchWithCache(
       'services',
       apiService.getAllServices.bind(apiService),
       params,
-      servicesCache,
+      servicesCacheRef,
       setServices,
       setIsLoadingServices,
       setTotalServicesCount,
@@ -417,14 +416,14 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setHasPreviousPage,
       setTotalPages
     );
-  }, [fetchWithCache, servicesCache]);
+  }, [fetchWithCache]);
 
   const fetchProducts = useCallback(async (params?: any) => {
     await fetchWithCache(
       'products',
       apiService.getAllProducts.bind(apiService),
       params,
-      productsCache,
+      productsCacheRef,
       setProducts,
       setIsLoadingProducts,
       setTotalProductsCount,
@@ -433,7 +432,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setHasPreviousPage,
       setTotalPages
     );
-  }, [fetchWithCache, productsCache]);
+  }, [fetchWithCache]);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -465,7 +464,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       'services',
       apiService.getAllServices.bind(apiService),
       params,
-      servicesCache,
+      servicesCacheRef,
       setServices,
       setIsLoadingServices,
       setTotalServicesCount,
@@ -474,7 +473,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setHasPreviousPage,
       setTotalPages
     );
-  }, [fetchWithCache, servicesCache]);
+  }, [fetchWithCache]);
 
   // Enhanced fetchProducts with proper server-side pagination and search
   const fetchProductsWithPagination = useCallback(async (params?: any) => {
@@ -482,7 +481,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       'products',
       apiService.getAllProducts.bind(apiService),
       params,
-      productsCache,
+      productsCacheRef,
       setProducts,
       setIsLoadingProducts,
       setTotalProductsCount,
@@ -491,30 +490,8 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setHasPreviousPage,
       setTotalPages
     );
-  }, [fetchWithCache, productsCache]);
+  }, [fetchWithCache]);
 
-  // Enhanced fetchBusinesses with search support
-  const fetchBusinessesWithSearch = useCallback(async (params?: any) => {
-    console.log('🔍 BusinessContext - fetchBusinessesWithSearch called:', {
-      params,
-      timestamp: new Date().toISOString(),
-      functionId: Math.random().toString(36).substring(7)
-    });
-    
-    await fetchWithCache(
-      'businesses',
-      apiService.getBusinesses.bind(apiService),
-      params,
-      businessesCache,
-      setBusinesses,
-      setIsLoadingBusinesses,
-      setTotalCount,
-      setCurrentPage,
-      setHasNextPage,
-      setHasPreviousPage,
-      setTotalPages
-    );
-  }, [fetchWithCache, businessesCache]);
 
   // Initialize data on context mount
   useEffect(() => {
@@ -531,9 +508,9 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Cache management functions
   const clearCache = useCallback(() => {
-    businessesCache.clear();
-    servicesCache.clear();
-    productsCache.clear();
+    businessesCacheRef.current.clear();
+    servicesCacheRef.current.clear();
+    productsCacheRef.current.clear();
     console.log('🔍 BusinessContext - All caches cleared');
   }, []);
 
@@ -761,7 +738,6 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     fetchCategories,
     fetchServicesWithPagination,
     fetchProductsWithPagination,
-    fetchBusinessesWithSearch,
     
     // Cache management
     clearCache,

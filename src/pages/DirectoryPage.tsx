@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { useBusiness } from '@/contexts/BusinessContext';
-import { Search, Filter, X, Building2, Settings, Package, Star, MessageSquare, Sparkles, TrendingUp } from 'lucide-react';
+import { Search, Filter, X, Building2, Settings, Package, Star, MessageSquare, Sparkles, TrendingUp, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,8 @@ import { ServiceList } from '@/components/directory/ServiceList';
 import { ProductList } from '@/components/directory/ProductList';
 import { DirectorySkeleton } from '@/components/directory/DirectorySkeleton';
 import { BusinessCategories } from '@/components/home/BusinessCategories';
+import { EpicSearchBar } from '@/components/search/EpicSearchBar';
+import { AdvancedSearchFilters } from '@/components/search/AdvancedSearchFilters';
 import { toast } from 'sonner';
 
 interface Filters {
@@ -38,7 +40,6 @@ export const DirectoryPage: React.FC = () => {
     fetchCategories,
     fetchServicesWithPagination,
     fetchProductsWithPagination,
-    fetchBusinessesWithSearch,
     businesses, 
     totalServicesCount, 
     totalProductsCount,
@@ -49,6 +50,7 @@ export const DirectoryPage: React.FC = () => {
     getPriceRanges
   } = useBusiness();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('businesses');
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -133,23 +135,7 @@ export const DirectoryPage: React.FC = () => {
     }
   };
 
-  // Load initial data with optimized loading strategy
-  useEffect(() => {
-    // Load with smaller initial batch size for faster initial render
-    const initialLimit = 20; // Use the unified limit constant for businesses only
-    
-    console.log('🔍 DirectoryPage - Loading initial data');
-    
-    // Load all data in parallel instead of sequentially
-    Promise.all([
-      fetchBusinessesWithSearch({ page: 1, limit: initialLimit }), // Server-side pagination with search
-      fetchServicesWithPagination({ page: 1, limit: initialLimit }), // Server-side pagination
-      fetchProductsWithPagination({ page: 1, limit: initialLimit }), // Server-side pagination
-      fetchCategories()
-    ]).catch(error => {
-      console.error('Error loading initial data:', error);
-    });
-  }, [fetchBusinessesWithSearch, fetchServicesWithPagination, fetchProductsWithPagination, fetchCategories]);
+  // Note: Data loading is handled by BusinessContext, no need to duplicate here
 
   // Shuffle data based on session key for consistent randomization per session
   const shuffledBusinesses = useMemo(() => {
@@ -235,7 +221,7 @@ export const DirectoryPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Search and Filters Section */}
+          {/* Epic Search Section */}
           <div className="mb-8">
             {/* Category Indicator */}
             {filters.category && (
@@ -263,100 +249,63 @@ export const DirectoryPage: React.FC = () => {
               </div>
             )}
 
-            {/* Search Bar */}
+            {/* Epic Search Bar */}
             <div className="max-w-4xl mx-auto mb-6">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-600 w-6 h-6 z-10 pointer-events-none" />
-                <Input
-                  type="text"
-                  placeholder="Search businesses, services, and products..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  className="pl-14 pr-12 py-4 text-lg bg-white/80 backdrop-blur-sm border-0 shadow-lg rounded-xl relative z-0"
-                />
-                {searchTerm && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearSearch}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 z-10"
-                  >
-                    <X className="w-5 h-5" />
-                  </Button>
-                )}
-              </div>
+              <EpicSearchBar
+                onSearch={(query, customFilters) => {
+                  setSearchTerm(query);
+                  if (customFilters) {
+                    setFilters(prev => ({ ...prev, ...customFilters }));
+                  }
+                }}
+                placeholder="Search businesses, services, and products with AI-powered suggestions..."
+                showFilters={true}
+                className="w-full"
+              />
             </div>
 
-            {/* Filter Toggle */}
-            <div className="flex justify-center">
+            {/* Epic Search Button */}
+            <div className="flex justify-center gap-4">
               <Button
                 variant="outline"
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center space-x-2 bg-white/80 backdrop-blur-sm border-0 shadow-lg"
+                className="flex items-center space-x-2 bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <Filter className="w-4 h-4" />
-                <span>{showFilters ? 'Hide' : 'Show'} Filters</span>
+                <span>{showFilters ? 'Hide' : 'Show'} Advanced Filters</span>
+              </Button>
+              <Button
+                onClick={() => navigate('/epic-search')}
+                className="flex items-center space-x-2 bg-gradient-to-r from-fem-terracotta to-fem-gold text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <Zap className="w-4 h-4" />
+                <span>Try Epic Search</span>
               </Button>
             </div>
           </div>
 
-          {/* Filters Panel */}
+          {/* Advanced Filters Panel */}
           {showFilters && (
-            <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl mb-8">
-              <CardHeader className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
-                  <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
-                  Filters
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 sm:p-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-fem-navy mb-2">Category</label>
-                    <select
-                      value={filters.category}
-                      onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white/80 backdrop-blur-sm"
-                    >
-                      <option value="">All Categories</option>
-                      <option value="food">Food & Dining</option>
-                      <option value="health">Health & Wellness</option>
-                      <option value="retail">Retail</option>
-                      <option value="services">Professional Services</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-fem-navy mb-2">Sort By</label>
-                    <select
-                      value={filters.sortBy}
-                      onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white/80 backdrop-blur-sm"
-                    >
-                      <option value="name">Name</option>
-                      <option value="rating">Rating</option>
-                      <option value="reviews">Most Reviews</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-fem-navy mb-2">Price Range</label>
-                    <select
-                      value={`${filters.priceRange[0]}-${filters.priceRange[1]}`}
-                      onChange={(e) => {
-                        const [min, max] = e.target.value.split('-').map(Number);
-                        setFilters(prev => ({ ...prev, priceRange: [min, max] }));
-                      }}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white/80 backdrop-blur-sm"
-                    >
-                      {getPriceRanges().map((range, index) => (
-                        <option key={index} value={`${range.value[0]}-${range.value[1]}`}>
-                          {range.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <AdvancedSearchFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              onClearFilters={() => {
+                setFilters({
+                  searchTerm: '',
+                  category: '',
+                  county: '',
+                  rating: [0, 5],
+                  priceRange: [0, 10000],
+                  verifiedOnly: false,
+                  openNow: false,
+                  hasPhotos: false,
+                  sortBy: 'name'
+                });
+                setSearchParams({}, { replace: true });
+              }}
+              isOpen={showFilters}
+              onToggle={() => setShowFilters(!showFilters)}
+            />
           )}
 
           {/* Main Content */}
