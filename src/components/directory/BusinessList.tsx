@@ -33,7 +33,7 @@ export const BusinessList: React.FC<BusinessListProps> = ({
   filters, 
   itemsPerPage = 15
 }) => {
-  const { businesses, isLoading, fetchBusinesses, totalCount } = useBusiness();
+  const { businesses, isLoading, fetchBusinesses, totalCount, currentPage: contextCurrentPage, totalPages: contextTotalPages } = useBusiness();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -52,7 +52,7 @@ export const BusinessList: React.FC<BusinessListProps> = ({
     return shuffled;
   };
 
-  // Apply client-side filtering - instant search
+  // Apply client-side filtering for search and category (for instant feedback)
   const filteredBusinesses = useMemo(() => {
     if (!Array.isArray(businesses)) return [];
     
@@ -62,8 +62,8 @@ export const BusinessList: React.FC<BusinessListProps> = ({
     if (filters.category && filters.category.trim()) {
       filtered = filtered.filter(business => {
         const businessCategory = business.category;
-        if (typeof businessCategory === 'object' && businessCategory?.slug) {
-          return businessCategory.slug === filters.category;
+        if (typeof businessCategory === 'object' && businessCategory && 'slug' in businessCategory) {
+          return (businessCategory as any).slug === filters.category;
         } else if (typeof businessCategory === 'string') {
           return businessCategory === filters.category;
         }
@@ -77,7 +77,9 @@ export const BusinessList: React.FC<BusinessListProps> = ({
       filtered = filtered.filter(business => {
         const businessName = business.business_name?.toLowerCase() || '';
         const businessDescription = business.description?.toLowerCase() || '';
-        const businessCategory = business.category?.name?.toLowerCase() || '';
+        const businessCategory = typeof business.category === 'object' && business.category && 'name' in business.category 
+          ? (business.category as any).name?.toLowerCase() || '' 
+          : '';
         
         return businessName.includes(searchLower) || 
                businessDescription.includes(searchLower) || 
@@ -89,24 +91,25 @@ export const BusinessList: React.FC<BusinessListProps> = ({
     return shuffleArray(filtered);
   }, [businesses, filters.category, filters.searchTerm]);
 
-  // Update pagination
+  // Update pagination from context (server-side pagination)
   useEffect(() => {
-    setTotalItems(filteredBusinesses.length);
-    setTotalPages(Math.ceil(filteredBusinesses.length / itemsPerPage) || 1);
-  }, [filteredBusinesses, itemsPerPage]);
+    setTotalItems(totalCount || 0);
+    setTotalPages(contextTotalPages || 1);
+    setCurrentPage(contextCurrentPage || 1);
+  }, [totalCount, contextTotalPages, contextCurrentPage]);
 
-  // Fetch businesses from API - only once on mount
+  // Fetch businesses from API with server-side pagination
   useEffect(() => {
-    fetchBusinesses({ page: 1, limit: 20 }); // Use unified limit for consistent performance
-  }, [fetchBusinesses]);
+    fetchBusinesses({ page: currentPage, limit: itemsPerPage });
+  }, [fetchBusinesses, currentPage, itemsPerPage]);
 
-  // Paginate filtered businesses
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedBusinesses = filteredBusinesses.slice(startIndex, endIndex);
+  // Use filtered businesses directly (no client-side pagination)
+  const paginatedBusinesses = filteredBusinesses;
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    // Fetch new page data
+    fetchBusinesses({ page, limit: itemsPerPage });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -228,7 +231,7 @@ export const BusinessList: React.FC<BusinessListProps> = ({
           {/* Business Location */}
           <div className="flex items-center text-sm text-gray-600 mb-3">
             <MapPin className="w-4 h-4 mr-1" />
-            {business.city && business.county ? `${business.city}, ${business.county}` : business.address}
+            {business.city && (business as any).county ? `${business.city}, ${(business as any).county}` : business.address}
           </div>
 
           {/* Business Contact Info */}

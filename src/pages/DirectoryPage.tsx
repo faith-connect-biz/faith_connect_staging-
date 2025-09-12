@@ -13,7 +13,7 @@ import { BusinessList } from '@/components/directory/BusinessList';
 import { ServiceList } from '@/components/directory/ServiceList';
 import { ProductList } from '@/components/directory/ProductList';
 import { DirectorySkeleton } from '@/components/directory/DirectorySkeleton';
-import { BusinessCategories } from '@/components/BusinessCategories';
+import { BusinessCategories } from '@/components/home/BusinessCategories';
 import { toast } from 'sonner';
 
 interface Filters {
@@ -42,7 +42,8 @@ export const DirectoryPage: React.FC = () => {
     isLoading,
     isLoadingBusinesses,
     isLoadingServices,
-    isLoadingProducts
+    isLoadingProducts,
+    getPriceRanges
   } = useBusiness();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('businesses');
@@ -63,6 +64,11 @@ export const DirectoryPage: React.FC = () => {
   // Session-based randomization key
   const [sessionKey] = useState(() => Math.random().toString(36).substring(7));
 
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   // Handle URL parameters for search from landing page
   useEffect(() => {
     const urlSearchTerm = searchParams.get('search');
@@ -75,6 +81,9 @@ export const DirectoryPage: React.FC = () => {
     if (urlCategory) {
       setFilters(prev => ({ ...prev, category: decodeURIComponent(urlCategory) }));
     }
+    
+    // Scroll to top when URL parameters change (e.g., category filter from landing page)
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [searchParams]);
 
   // Instant search - update filters immediately when search term changes
@@ -84,7 +93,7 @@ export const DirectoryPage: React.FC = () => {
     // Update URL parameters when search term changes, but preserve category
     const currentCategory = searchParams.get('category');
     if (searchTerm) {
-      const newParams = { search: searchTerm };
+      const newParams: any = { search: searchTerm };
       if (currentCategory) {
         newParams.category = currentCategory;
       }
@@ -98,6 +107,11 @@ export const DirectoryPage: React.FC = () => {
       }
     }
   }, [searchTerm, setSearchParams, searchParams]);
+
+  // Scroll to top when active tab changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
 
   // Handle search input changes
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,7 +158,7 @@ export const DirectoryPage: React.FC = () => {
   }, [businesses, sessionKey]);
 
   // Calculate statistics
-  const verifiedBusinesses = shuffledBusinesses.filter(b => b.is_verified).length;
+  const verifiedBusinesses = shuffledBusinesses.filter(b => (b as any).is_verified).length;
   
   const averageRating = (() => {
     if (shuffledBusinesses.length === 0) return "0.0";
@@ -163,7 +177,7 @@ export const DirectoryPage: React.FC = () => {
     return (totalRating / businessesWithRatings.length).toFixed(1);
   })();
   
-  const totalReviews = shuffledBusinesses.reduce((sum, b) => sum + (b.review_count || 0), 0);
+  const totalReviews = shuffledBusinesses.reduce((sum, b) => sum + ((b as any).review_count || 0), 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex flex-col">
@@ -330,10 +344,11 @@ export const DirectoryPage: React.FC = () => {
                       }}
                       className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white/80 backdrop-blur-sm"
                     >
-                      <option value="0-10000">Any Price</option>
-                      <option value="0-1000">Under KSh 1,000</option>
-                      <option value="1000-5000">KSh 1,000 - KSh 5,000</option>
-                      <option value="5000-10000">KSh 5,000+</option>
+                      {getPriceRanges().map((range, index) => (
+                        <option key={index} value={`${range.value[0]}-${range.value[1]}`}>
+                          {range.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>

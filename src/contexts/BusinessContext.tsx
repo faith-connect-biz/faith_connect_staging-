@@ -33,7 +33,7 @@ interface Service {
   id: string;
   name: string;
   description?: string;
-  price?: number;
+  price_range?: string;
   duration?: string;
   business?: string | Business;
   category?: string;
@@ -78,6 +78,7 @@ interface BusinessContextType {
   // Pagination
   currentPage: number;
   totalCount: number;
+  totalPages: number;
   totalServicesCount: number;
   totalProductsCount: number;
   hasNextPage: boolean;
@@ -94,6 +95,9 @@ interface BusinessContextType {
   
   // Cache management
   clearCache: () => void;
+  
+  // Utility functions
+  getPriceRanges: () => { label: string; value: [number, number] }[];
 }
 
 const BusinessContext = createContext<BusinessContextType | undefined>(undefined);
@@ -187,6 +191,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [totalServicesCount, setTotalServicesCount] = useState(0);
   const [totalProductsCount, setTotalProductsCount] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(false);
@@ -235,7 +240,8 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setTotal: (total: number) => void,
     setPage: (page: number) => void,
     setNext: (next: boolean) => void,
-    setPrev: (prev: boolean) => void
+    setPrev: (prev: boolean) => void,
+    setTotalPages?: (totalPages: number) => void
   ): Promise<void> => {
     const cacheKey = generateCacheKey(type, params);
     
@@ -259,6 +265,9 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setPage(cachedData.page);
       setNext(cachedData.hasNext);
       setPrev(cachedData.hasPrev);
+      if (setTotalPages && cachedData.totalPages) {
+        setTotalPages(cachedData.totalPages);
+      }
       setLoading(false);
       console.log(`🔍 BusinessContext - Cache served for ${type}, loading set to false`);
       
@@ -302,22 +311,30 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
         const shuffledData = shuffleArray(response.results);
+        const limit = apiParams.limit || DEFAULT_LIMITS.STANDARD;
+        const totalPages = Math.ceil((response.count || 0) / limit);
+        
         console.log(`🔍 BusinessContext - Setting ${type} data:`, {
           type,
           dataLength: shuffledData.length,
-          sampleData: shuffledData.slice(0, 2)
+          sampleData: shuffledData.slice(0, 2),
+          totalPages
         });
         setData(shuffledData);
         setTotal(response.count || 0);
         setPage(apiParams.page || 1);
         setNext(!!response.next);
         setPrev(!!response.previous);
+        if (setTotalPages) {
+          setTotalPages(totalPages);
+        }
 
         // Cache the result
         const cacheData = {
           data: shuffledData,
           total: response.count || 0,
           page: apiParams.page || 1,
+          totalPages,
           hasNext: !!response.next,
           hasPrev: !!response.previous
         };
@@ -370,7 +387,8 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setTotalCount,
       setCurrentPage,
       setHasNextPage,
-      setHasPreviousPage
+      setHasPreviousPage,
+      setTotalPages
     );
   }, []);
 
@@ -448,6 +466,93 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     productsCache.clear();
     console.log('🔍 BusinessContext - All caches cleared');
   }, []);
+
+  // Utility function to get dynamic price ranges
+  const getPriceRanges = useCallback(() => {
+    const allPrices: number[] = [];
+    
+    // Extract prices from products
+    if (Array.isArray(products)) {
+      products.forEach(product => {
+        if (product.price && typeof product.price === 'number') {
+          allPrices.push(product.price);
+        }
+      });
+    }
+    
+    // Extract prices from services (parse price_range strings)
+    if (Array.isArray(services)) {
+      services.forEach(service => {
+        if (service.price_range) {
+          // Parse price range strings like "KSh 500 - 1000" or "KSh 1000+"
+          const priceMatch = service.price_range.match(/(\d+(?:,\d{3})*(?:\.\d{2})?)/g);
+          if (priceMatch) {
+            priceMatch.forEach(priceStr => {
+              const price = parseFloat(priceStr.replace(/,/g, ''));
+              if (!isNaN(price)) {
+                allPrices.push(price);
+              }
+            });
+          }
+        }
+      });
+    }
+    
+    if (allPrices.length === 0) {
+      // Return default ranges if no prices found
+      return [
+        { label: 'Any Price', value: [0, 10000] as [number, number] },
+        { label: 'Under KSh 1,000', value: [0, 1000] as [number, number] },
+        { label: 'KSh 1,000 - KSh 5,000', value: [1000, 5000] as [number, number] },
+        { label: 'KSh 5,000+', value: [5000, 10000] as [number, number] }
+      ];
+    }
+    
+    // Sort prices and create dynamic ranges
+    allPrices.sort((a, b) => a - b);
+    const minPrice = allPrices[0];
+    const maxPrice = allPrices[allPrices.length - 1];
+    
+    // Create dynamic ranges based on actual data
+    const ranges = [
+      { label: 'Any Price', value: [0, maxPrice] as [number, number] }
+    ];
+    
+    // Calculate quartiles for better distribution
+    const q1 = allPrices[Math.floor(allPrices.length * 0.25)];
+    const q2 = allPrices[Math.floor(allPrices.length * 0.5)];
+    const q3 = allPrices[Math.floor(allPrices.length * 0.75)];
+    
+    if (minPrice < q1) {
+      ranges.push({ 
+        label: `Under KSh ${Math.round(q1).toLocaleString()}`, 
+        value: [minPrice, q1] as [number, number] 
+      });
+    }
+    
+    if (q1 < q2) {
+      ranges.push({ 
+        label: `KSh ${Math.round(q1).toLocaleString()} - KSh ${Math.round(q2).toLocaleString()}`, 
+        value: [q1, q2] as [number, number] 
+      });
+    }
+    
+    if (q2 < q3) {
+      ranges.push({ 
+        label: `KSh ${Math.round(q2).toLocaleString()} - KSh ${Math.round(q3).toLocaleString()}`, 
+        value: [q2, q3] as [number, number] 
+      });
+    }
+    
+    if (q3 < maxPrice) {
+      ranges.push({ 
+        label: `KSh ${Math.round(q3).toLocaleString()}+`, 
+        value: [q3, maxPrice] as [number, number] 
+      });
+    }
+    
+    return ranges;
+  }, [products, services]);
 
   // Computed values - FIXED: Handle both string IDs and business objects
   const computedServices = useMemo(() => {
@@ -570,6 +675,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Pagination
     currentPage,
     totalCount,
+    totalPages,
     totalServicesCount,
     totalProductsCount,
     hasNextPage,
@@ -585,7 +691,10 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     fetchCategories,
     
     // Cache management
-    clearCache
+    clearCache,
+    
+    // Utility functions
+    getPriceRanges
   };
 
   // Debug logging for the context value

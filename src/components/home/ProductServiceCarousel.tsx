@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Package, Settings, Star, MapPin } from "lucide-react";
@@ -6,62 +6,77 @@ import { Link } from "react-router-dom";
 import { useBusiness } from "@/contexts/BusinessContext";
 
 export const ProductServiceCarousel = () => {
-
-  
   const { services, products } = useBusiness();
   const [scrollPosition, setScrollPosition] = useState(0);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [itemWidth, setItemWidth] = useState(320); // Default width, will be calculated
 
   const scrollLeft = () => {
-    const container = document.getElementById('carousel-scroll');
-    if (container) {
-      // Calculate the width of one item (including gap) and scroll by that amount
-      const itemWidth = 320; // w-80 = 320px
+    if (containerRef.current) {
       const gap = 24; // gap-6 = 24px
       const scrollAmount = itemWidth + gap;
       
-      container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      containerRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
     }
   };
 
   const scrollRight = () => {
-    const container = document.getElementById('carousel-scroll');
-    if (container) {
-      // Calculate the width of one item (including gap) and scroll by that amount
-      const itemWidth = 320; // w-80 = 320px
+    if (containerRef.current) {
       const gap = 24; // gap-6 = 24px
       const scrollAmount = itemWidth + gap;
       
-      container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      containerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
 
   const handleScroll = () => {
-    const container = document.getElementById('carousel-scroll');
-    if (container) {
-      const { scrollLeft, scrollWidth, clientWidth } = container;
+    if (containerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = containerRef.current;
       setScrollPosition(scrollLeft);
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+      setCanScrollLeft(scrollLeft > 10); // Add small threshold to prevent flickering
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
     }
   };
 
+  // Debounced scroll handler to improve performance
+  const debouncedHandleScroll = useMemo(() => {
+    let timeoutId: NodeJS.Timeout;
+    return () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleScroll, 10);
+    };
+  }, []);
+
+  // Calculate item width when component mounts or items change
   useEffect(() => {
-    const container = document.getElementById('carousel-scroll');
-    if (container) {
-      container.addEventListener('scroll', handleScroll);
-      handleScroll();
-      
-      return () => {
-        container.removeEventListener('scroll', handleScroll);
-      };
+    if (containerRef.current) {
+      const firstItem = containerRef.current.querySelector('.carousel-item');
+      if (firstItem) {
+        const rect = firstItem.getBoundingClientRect();
+        setItemWidth(rect.width);
+      }
     }
   }, [services, products]);
 
-  // Combine and shuffle products and services
-  const allItems = [...(services || []), ...(products || [])];
-  const shuffledItems = allItems.sort(() => Math.random() - 0.5).slice(0, 12);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('scroll', debouncedHandleScroll);
+      handleScroll(); // Initial call
+      
+      return () => {
+        container.removeEventListener('scroll', debouncedHandleScroll);
+      };
+    }
+  }, [services, products, debouncedHandleScroll]);
+
+  // Combine and shuffle products and services - memoized to prevent re-shuffling
+  const shuffledItems = useMemo(() => {
+    const allItems = [...(services || []), ...(products || [])];
+    return allItems.sort(() => Math.random() - 0.5).slice(0, 12);
+  }, [services, products]);
 
 
 
@@ -105,7 +120,7 @@ export const ProductServiceCarousel = () => {
 
               {/* Scrollable Container */}
               <div 
-                id="carousel-scroll"
+                ref={containerRef}
                 className="flex gap-6 overflow-x-auto scrollbar-hide pb-4 px-2"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
@@ -154,7 +169,7 @@ export const ProductServiceCarousel = () => {
 
                   
                   return (
-                                         <div key={`${index}-${name}`} className="flex-shrink-0 w-80">
+                    <div key={`${index}-${name}`} className="carousel-item flex-shrink-0 w-80">
                                               {businessId ? (
                          <Link 
                            to={`/business/${businessId}`}

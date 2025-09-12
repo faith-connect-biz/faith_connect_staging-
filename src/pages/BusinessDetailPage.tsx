@@ -84,7 +84,7 @@ const BusinessDetailPage = () => {
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState<string>("overview");
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
 
@@ -268,6 +268,11 @@ const BusinessDetailPage = () => {
       });
     }
   }, [business]);
+
+  // Debug active tab changes
+  useEffect(() => {
+    console.log('Active tab changed to:', activeTab);
+  }, [activeTab]);
 
   const handleToggleFavorite = () => {
     setIsFavorite(!isFavorite);
@@ -981,15 +986,38 @@ const BusinessDetailPage = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                  <Tabs value={activeTab} onValueChange={(value) => {
+                    console.log('Tab changed to:', value);
+                    setActiveTab(value);
+                  }} className="w-full">
                     <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 bg-gray-100/50 backdrop-blur-sm">
-                      <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-3 py-2 whitespace-nowrap">Overview</TabsTrigger>
-                      <TabsTrigger value="services" className="text-xs sm:text-sm px-2 sm:px-3 py-2 whitespace-nowrap">Services ({services.length}/20)</TabsTrigger>
-                      <TabsTrigger value="products" className="text-xs sm:text-sm px-2 sm:px-3 py-2 whitespace-nowrap">Products ({business.products ? business.products.length : 0}/20)</TabsTrigger>
-                      <TabsTrigger value="reviews" className="text-xs sm:text-sm px-2 sm:px-3 py-2 whitespace-nowrap">Reviews</TabsTrigger>
+                      <TabsTrigger 
+                        value="overview" 
+                        className="text-xs sm:text-sm px-2 sm:px-3 py-2 whitespace-nowrap data-[state=active]:bg-fem-terracotta data-[state=active]:text-white"
+                      >
+                        Overview
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="services" 
+                        className="text-xs sm:text-sm px-2 sm:px-3 py-2 whitespace-nowrap data-[state=active]:bg-fem-terracotta data-[state=active]:text-white"
+                      >
+                        Services ({services.length}/20)
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="products" 
+                        className="text-xs sm:text-sm px-2 sm:px-3 py-2 whitespace-nowrap data-[state=active]:bg-fem-terracotta data-[state=active]:text-white"
+                      >
+                        Products ({business.products ? business.products.length : 0}/20)
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="reviews" 
+                        className="text-xs sm:text-sm px-2 sm:px-3 py-2 whitespace-nowrap data-[state=active]:bg-fem-terracotta data-[state=active]:text-white"
+                      >
+                        Reviews
+                      </TabsTrigger>
                     </TabsList>
                     
-                    <TabsContent value="overview" className="mt-6">
+                    <TabsContent value="overview" className="mt-6" key="overview-tab">
                       <div className="space-y-6">
                         {/* Business Logo section removed as requested */}
 
@@ -1079,7 +1107,7 @@ const BusinessDetailPage = () => {
                       </div>
                     </TabsContent>
                     
-                    <TabsContent value="services" className="mt-6">
+                    <TabsContent value="services" className="mt-6" key="services-tab">
                       <div className="space-y-6">
                         <div className="flex items-center justify-between mb-6">
                           <h3 className="text-2xl font-bold text-fem-navy">Services</h3>
@@ -1264,7 +1292,7 @@ const BusinessDetailPage = () => {
                       </div>
                     </TabsContent>
                     
-                    <TabsContent value="products" className="mt-6">
+                    <TabsContent value="products" className="mt-6" key="products-tab">
                       <div className="space-y-6">
                         <div className="flex items-center justify-between mb-6">
                           <h3 className="text-2xl font-bold text-fem-navy">Products</h3>
@@ -1453,7 +1481,7 @@ const BusinessDetailPage = () => {
                       </div>
                     </TabsContent>
                     
-                    <TabsContent value="reviews" className="mt-6">
+                    <TabsContent value="reviews" className="mt-6" key="reviews-tab">
                       <div ref={reviewsRef} className="space-y-6">
                         <div className="flex items-center justify-between mb-6">
                           <h3 className="text-2xl font-bold text-fem-navy">Customer Reviews</h3>
