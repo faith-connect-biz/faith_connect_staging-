@@ -34,7 +34,7 @@ export const ProductList: React.FC<ProductListProps> = ({
   filters, 
   itemsPerPage = 15
 }) => {
-  const { products, businesses, isLoadingProducts, fetchProducts, totalProductsCount } = useBusiness();
+  const { products, businesses, isLoadingProducts, fetchProductsWithPagination, totalProductsCount, currentPage: contextCurrentPage, totalPages: contextTotalPages } = useBusiness();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -83,24 +83,25 @@ export const ProductList: React.FC<ProductListProps> = ({
     return shuffleArray(filtered);
   }, [products, filters.searchTerm]);
 
-  // Update pagination
+  // Update pagination from context (server-side pagination)
   useEffect(() => {
-    setTotalItems(filteredProducts.length);
-    setTotalPages(Math.ceil(filteredProducts.length / itemsPerPage) || 1);
-  }, [filteredProducts, itemsPerPage]);
+    setTotalItems(totalProductsCount || 0);
+    setTotalPages(contextTotalPages || 1);
+    setCurrentPage(contextCurrentPage || 1);
+  }, [totalProductsCount, contextTotalPages, contextCurrentPage]);
 
-  // Fetch products from API - only once on mount
+  // Fetch products from API with server-side pagination
   useEffect(() => {
-    fetchProducts({ page: 1, limit: 20 }); // Use unified limit for consistent performance
-  }, [fetchProducts]);
+    fetchProductsWithPagination({ page: currentPage, limit: itemsPerPage });
+  }, [fetchProductsWithPagination, currentPage, itemsPerPage]);
 
-  // Paginate filtered products
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+  // Use filtered products directly (no client-side pagination)
+  const paginatedProducts = filteredProducts;
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    // Fetch new page data
+    fetchProductsWithPagination({ page, limit: itemsPerPage });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

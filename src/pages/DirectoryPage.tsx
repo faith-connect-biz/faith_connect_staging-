@@ -35,7 +35,9 @@ export const DirectoryPage: React.FC = () => {
     fetchBusinesses, 
     fetchServices, 
     fetchProducts, 
-    fetchCategories, 
+    fetchCategories,
+    fetchServicesWithPagination,
+    fetchProductsWithPagination,
     businesses, 
     totalServicesCount, 
     totalProductsCount,
@@ -133,20 +135,20 @@ export const DirectoryPage: React.FC = () => {
   // Load initial data with optimized loading strategy
   useEffect(() => {
     // Load with smaller initial batch size for faster initial render
-    const initialLimit = 20; // Use the unified limit constant
+    const initialLimit = 20; // Use the unified limit constant for businesses only
     
-    console.log('🔍 DirectoryPage - Loading initial data with limit:', initialLimit);
+    console.log('🔍 DirectoryPage - Loading initial data');
     
     // Load all data in parallel instead of sequentially
     Promise.all([
-      fetchBusinesses({ page: 1, limit: initialLimit }),
-      fetchServices({ page: 1, limit: initialLimit }),
-      fetchProducts({ page: 1, limit: initialLimit }),
+      fetchBusinesses({ page: 1, limit: initialLimit }), // Server-side pagination
+      fetchServicesWithPagination({ page: 1, limit: initialLimit }), // Server-side pagination
+      fetchProductsWithPagination({ page: 1, limit: initialLimit }), // Server-side pagination
       fetchCategories()
     ]).catch(error => {
       console.error('Error loading initial data:', error);
     });
-  }, [fetchBusinesses, fetchServices, fetchProducts, fetchCategories]);
+  }, [fetchBusinesses, fetchServicesWithPagination, fetchProductsWithPagination, fetchCategories]);
 
   // Shuffle data based on session key for consistent randomization per session
   const shuffledBusinesses = useMemo(() => {
