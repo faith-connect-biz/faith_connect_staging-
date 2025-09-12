@@ -111,7 +111,7 @@ const Index = () => {
          {/* <ApiTester />
          <DataDebugger /> */}
          <BusinessCategories />
-         <SearchDemo />
+         {/* <SearchDemo /> */}
          <ProductServiceCarousel />
          <CommunityStats />
          <CallToAction />
