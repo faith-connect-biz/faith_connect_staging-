@@ -102,7 +102,7 @@ export const BusinessList: React.FC<BusinessListProps> = ({
       console.log('🔍 BusinessList - Executing fetchBusinesses:', searchParams);
       fetchBusinesses(searchParams);
     }, filters.searchTerm ? 300 : 0); // 300ms delay for search, immediate for page changes
-    
+
     return () => {
       console.log('🔍 BusinessList - Cleaning up timeout');
       clearTimeout(timeoutId);
@@ -158,7 +158,7 @@ export const BusinessList: React.FC<BusinessListProps> = ({
         <div className="relative h-48 overflow-hidden">
           <img
             src={getBusinessImageUrl(business)}
-            alt={business.business_name}
+              alt={business.business_name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
@@ -202,14 +202,14 @@ export const BusinessList: React.FC<BusinessListProps> = ({
           <div className="absolute top-3 left-3 flex flex-col gap-2">
             <Badge variant={business.is_active ? "default" : "secondary"} className="bg-fem-navy/90 text-white">
               {business.is_active ? "Active" : "Inactive"}
-            </Badge>
-            {business.is_featured && (
+                </Badge>
+              {business.is_featured && (
               <Badge variant="default" className="bg-fem-gold text-white">
                 <Star className="w-3 h-3 mr-1" />
-                Featured
-              </Badge>
-            )}
-          </div>
+                  Featured
+                </Badge>
+              )}
+            </div>
 
           {/* Business Verification Badge */}
           {business.is_verified && (
@@ -218,10 +218,10 @@ export const BusinessList: React.FC<BusinessListProps> = ({
                 <Star className="w-3 h-3 mr-1" />
                 Verified
               </Badge>
-            </div>
+              </div>
           )}
-        </div>
-
+          </div>
+          
         <CardContent className="p-5">
           {/* Business Name */}
           <h3 className="font-bold text-lg text-fem-navy mb-3 group-hover:text-fem-terracotta transition-colors duration-300 cursor-pointer line-clamp-2">
@@ -234,7 +234,7 @@ export const BusinessList: React.FC<BusinessListProps> = ({
               <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
                 {business.category.name}
               </Badge>
-            </div>
+                  </div>
           )}
 
           {/* Business Description */}
@@ -248,7 +248,7 @@ export const BusinessList: React.FC<BusinessListProps> = ({
           <div className="flex items-center text-sm text-gray-600 mb-3">
             <MapPin className="w-4 h-4 mr-1" />
             {business.city && (business as any).county ? `${business.city}, ${(business as any).county}` : business.address}
-          </div>
+                </div>
 
           {/* Business Contact Info */}
           <div className="mb-3">
@@ -263,8 +263,8 @@ export const BusinessList: React.FC<BusinessListProps> = ({
                 <Globe className="w-4 h-4 mr-1" />
                 <span className="truncate">{business.website}</span>
               </div>
-            )}
-          </div>
+                  )}
+                </div>
 
           {/* Business Rating */}
           <div className="flex items-center justify-between">
@@ -278,9 +278,9 @@ export const BusinessList: React.FC<BusinessListProps> = ({
               </span>
             </div>
             
-            <Button
-              variant="outline"
-              size="sm"
+              <Button 
+                variant="outline" 
+                size="sm" 
               className="text-fem-navy border-fem-navy hover:bg-fem-navy hover:text-white"
               onClick={(e) => {
                 e.stopPropagation();
@@ -288,19 +288,19 @@ export const BusinessList: React.FC<BusinessListProps> = ({
               }}
             >
               View Details
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
     );
   };
 
-  return (
+    return (
     <div className="space-y-6">
       {/* Loading State */}
       {isLoading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[...Array(6)].map((_, i) => (
             <div key={i} className="space-y-4">
               <Skeleton className="h-48 w-full" />
               <div className="space-y-2">
@@ -308,18 +308,18 @@ export const BusinessList: React.FC<BusinessListProps> = ({
                 <Skeleton className="h-4 w-1/2" />
                 <Skeleton className="h-4 w-2/3" />
               </div>
-            </div>
-          ))}
-        </div>
+              </div>
+        ))}
+      </div>
       )}
 
       {/* Businesses Grid */}
       {!isLoading && paginatedBusinesses.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {paginatedBusinesses.map((business) => (
-            <BusinessCard key={business.id} business={business} />
-          ))}
-        </div>
+          <BusinessCard key={business.id} business={business} />
+        ))}
+      </div>
       )}
 
       {/* No Businesses Found */}

@@ -188,7 +188,7 @@ export const ProductList: React.FC<ProductListProps> = ({
                     <div className="absolute top-2 left-2">
                       <Badge className="bg-black/80 text-white text-xs font-medium px-2 py-1 rounded-full border border-white/20 shadow-lg">
                         {productImages.length} images
-                      </Badge>
+                </Badge>
                     </div>
                   )}
                   
@@ -219,7 +219,7 @@ export const ProductList: React.FC<ProductListProps> = ({
               return (
                 <div className="w-full h-full bg-gray-100 flex items-center justify-center">
                   <Package className="w-16 h-16 text-gray-400" />
-                </div>
+            </div>
               );
             }
           })()}
@@ -241,19 +241,19 @@ export const ProductList: React.FC<ProductListProps> = ({
                   reviewCount={business.review_count}
                   inStock={product.in_stock}
                   isActive={product.is_active}
-                  size="sm"
+                  size="sm" 
                   className="bg-white/90 hover:bg-white shadow-lg"
                 />
               )}
-              <Button
-                size="sm"
+                <Button 
+                  size="sm" 
                 variant="ghost"
                 onClick={(e) => handleShare(e, product, business)}
                 className="bg-white/90 hover:bg-white text-fem-navy hover:text-fem-terracotta shadow-lg h-8 w-8 p-0 rounded-full"
-              >
+                >
                 <Share2 className="w-4 h-4" />
-              </Button>
-            </div>
+                </Button>
+              </div>
           </div>
 
           {/* Price Tag - Floating Design */}
@@ -270,8 +270,8 @@ export const ProductList: React.FC<ProductListProps> = ({
             }`}>
               {product.in_stock ? "In Stock" : "Out of Stock"}
             </Badge>
-          </div>
-        </div>
+                  </div>
+                </div>
 
         <CardContent className="p-5">
           {/* Product Name */}
@@ -280,16 +280,16 @@ export const ProductList: React.FC<ProductListProps> = ({
           </h3>
 
           {/* Business Name with Verification */}
-          <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-3">
             <Building2 className="w-4 h-4 text-fem-terracotta" />
             <span className="text-sm font-medium text-gray-700">{business.business_name}</span>
             {business.is_verified && (
               <Badge className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
                 <Star className="w-2 h-2 mr-1" />
                 Verified
-              </Badge>
+                  </Badge>
             )}
-          </div>
+                </div>
 
           {/* Product Description */}
           {product.description && (
@@ -302,7 +302,7 @@ export const ProductList: React.FC<ProductListProps> = ({
           <div className="flex items-center text-sm text-gray-500 mb-4">
             <MapPin className="w-4 h-4 mr-2 text-fem-terracotta" />
             <span>{business.city && business.county ? `${business.city}, ${business.county}` : business.address}</span>
-          </div>
+                  </div>
 
           {/* Business Rating and Reviews */}
           <div className="flex items-center justify-between mb-4">
@@ -312,15 +312,15 @@ export const ProductList: React.FC<ProductListProps> = ({
                 <span className="text-sm font-bold text-gray-800 ml-1">
                   {typeof business.rating === 'number' ? business.rating.toFixed(1) : business.rating}
                 </span>
-              </div>
+                  </div>
               <span className="text-xs text-gray-500">
                 ({business.review_count || 0} reviews)
               </span>
+              </div>
             </div>
-          </div>
-          
+            
           {/* Action Button */}
-          <Button
+                <Button
             className="w-full bg-gradient-to-r from-fem-terracotta to-fem-navy hover:from-fem-terracotta/90 hover:to-fem-navy/90 text-white font-semibold py-2 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
             onClick={(e) => {
               e.stopPropagation();
@@ -329,28 +329,28 @@ export const ProductList: React.FC<ProductListProps> = ({
           >
             <Eye className="w-4 h-4 mr-2" />
             View Product Details
-          </Button>
-        </CardContent>
-      </Card>
-    );
+              </Button>
+          </CardContent>
+        </Card>
+  );
   };
 
-  return (
+    return (
     <div className="space-y-6">
       {/* Loading State */}
       {isLoadingProducts && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="space-y-4">
-              <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
               <div className="space-y-2">
                 <Skeleton className="h-4 w-3/4" />
                 <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-2/3" />
               </div>
             </div>
           ))}
-        </div>
+              </div>
       )}
 
       {/* Products Grid */}
@@ -358,17 +358,17 @@ export const ProductList: React.FC<ProductListProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {paginatedProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        ))}
+      </div>
       )}
 
       {/* No Products Found */}
       {!isLoadingProducts && paginatedProducts.length === 0 && (
-        <div className="text-center py-12">
-          <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+      <div className="text-center py-12">
+        <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
           <p className="text-gray-500">Try adjusting your filters or search terms.</p>
-        </div>
+      </div>
       )}
 
       {/* Pagination */}
@@ -381,7 +381,7 @@ export const ProductList: React.FC<ProductListProps> = ({
             totalItems={totalItems}
             itemsPerPage={itemsPerPage}
           />
-        </div>
+      </div>
       )}
 
       {/* Share Modal */}

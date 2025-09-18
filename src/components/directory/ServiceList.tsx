@@ -188,7 +188,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
                     <div className="absolute top-2 left-2">
                       <Badge className="bg-black/80 text-white text-xs font-medium px-2 py-1 rounded-full border border-white/20 shadow-lg">
                         {serviceImages.length} images
-                      </Badge>
+                </Badge>
                     </div>
                   )}
                   
@@ -219,7 +219,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
               return (
                 <div className="w-full h-full bg-gray-100 flex items-center justify-center">
                   <Settings className="w-16 h-16 text-gray-400" />
-                </div>
+            </div>
               );
             }
           })()}
@@ -241,36 +241,36 @@ export const ServiceList: React.FC<ServiceListProps> = ({
                   reviewCount={business.review_count}
                   inStock={true}
                   isActive={true}
-                  size="sm"
+                  size="sm" 
                   className="bg-white/90 hover:bg-white shadow-lg"
                 />
               )}
-              <Button
-                size="sm"
+                <Button 
+                  size="sm" 
                 variant="ghost"
                 onClick={(e) => handleShare(e, service, business)}
                 className="bg-white/90 hover:bg-white text-fem-navy hover:text-fem-terracotta shadow-lg h-8 w-8 p-0 rounded-full"
-              >
+                >
                 <Share2 className="w-4 h-4" />
-              </Button>
+                </Button>
             </div>
           </div>
-
+          
           {/* Price Tag - Floating Design */}
           <div className="absolute bottom-3 left-3">
             <div className="bg-fem-terracotta text-white px-4 py-2 rounded-full shadow-xl font-bold text-sm">
               {service.price_range}
-            </div>
-          </div>
-          
+                  </div>
+                </div>
+
           {/* Duration Indicator */}
           {service.duration && (
             <div className="absolute bottom-3 right-3">
               <Badge className="bg-black/80 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-lg border border-white/20">
-                <Clock className="w-3 h-3 mr-1" />
+                    <Clock className="w-3 h-3 mr-1" />
                 {service.duration}
-              </Badge>
-            </div>
+                  </Badge>
+                </div>
           )}
         </div>
 
@@ -290,7 +290,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
                 Verified
               </Badge>
             )}
-          </div>
+                  </div>
 
           {/* Service Description */}
           {service.description && (
@@ -303,7 +303,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
           <div className="flex items-center text-sm text-gray-500 mb-4">
             <MapPin className="w-4 h-4 mr-2 text-fem-terracotta" />
             <span>{business.city && business.county ? `${business.city}, ${business.county}` : business.address}</span>
-          </div>
+                  </div>
 
           {/* Business Rating and Reviews */}
           <div className="flex items-center justify-between mb-4">
@@ -313,15 +313,15 @@ export const ServiceList: React.FC<ServiceListProps> = ({
                 <span className="text-sm font-bold text-gray-800 ml-1">
                   {typeof business.rating === 'number' ? business.rating.toFixed(1) : business.rating}
                 </span>
-              </div>
+                </div>
               <span className="text-xs text-gray-500">
                 ({business.review_count || 0} reviews)
               </span>
+              </div>
             </div>
-          </div>
-          
+            
           {/* Action Button */}
-          <Button
+                <Button
             className="w-full bg-gradient-to-r from-fem-terracotta to-fem-navy hover:from-fem-terracotta/90 hover:to-fem-navy/90 text-white font-semibold py-2 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
             onClick={(e) => {
               e.stopPropagation();
@@ -330,28 +330,28 @@ export const ServiceList: React.FC<ServiceListProps> = ({
           >
             <Eye className="w-4 h-4 mr-2" />
             View Service Details
-          </Button>
-        </CardContent>
-      </Card>
-    );
+              </Button>
+          </CardContent>
+        </Card>
+  );
   };
 
-  return (
+    return (
     <div className="space-y-6">
       {/* Loading State */}
       {isLoadingServices && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="space-y-4">
-              <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
               <div className="space-y-2">
                 <Skeleton className="h-4 w-3/4" />
                 <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-2/3" />
               </div>
             </div>
           ))}
-        </div>
+              </div>
       )}
 
       {/* Services Grid */}
@@ -359,17 +359,17 @@ export const ServiceList: React.FC<ServiceListProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {paginatedServices.map((service) => (
             <ServiceCard key={service.id} service={service} />
-          ))}
-        </div>
+        ))}
+      </div>
       )}
 
       {/* No Services Found */}
       {!isLoadingServices && paginatedServices.length === 0 && (
-        <div className="text-center py-12">
-          <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+      <div className="text-center py-12">
+        <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No services found</h3>
           <p className="text-gray-500">Try adjusting your filters or search terms.</p>
-        </div>
+      </div>
       )}
 
       {/* Pagination */}
@@ -382,7 +382,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
             totalItems={totalItems}
             itemsPerPage={itemsPerPage}
           />
-        </div>
+      </div>
       )}
 
       {/* Share Modal */}

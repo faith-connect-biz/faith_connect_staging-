@@ -10,11 +10,13 @@ interface ImageData {
 interface ImageCarouselProps {
   images: ImageData[];
   className?: string;
+  fullScreen?: boolean;
 }
 
 const ImageCarousel: React.FC<ImageCarouselProps> = ({
   images,
-  className
+  className,
+  fullScreen = false
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
@@ -50,15 +52,26 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   }, [currentIndex, displayImages.length]);
 
   return (
-    <div className={cn("relative w-full max-w-5xl mx-auto", className)}>
+    <div className={cn(
+      "relative w-full", 
+      fullScreen ? "h-full" : "max-w-5xl mx-auto", 
+      className
+    )}>
       {/* Main Carousel Container */}
-      <div className="relative group">
-        {/* Decorative Background Elements */}
-        <div className="absolute -inset-4 bg-gradient-to-r from-fem-gold/10 via-transparent to-fem-terracotta/10 rounded-[2rem] blur-xl opacity-50" />
-        <div className="absolute -inset-2 bg-gradient-to-br from-fem-gold/5 to-fem-terracotta/5 rounded-[1.5rem]" />
+      <div className={cn("relative group", fullScreen ? "h-full" : "")}>
+        {/* Decorative Background Elements - only for card mode */}
+        {!fullScreen && (
+          <>
+            <div className="absolute -inset-4 bg-gradient-to-r from-fem-gold/10 via-transparent to-fem-terracotta/10 rounded-[2rem] blur-xl opacity-50" />
+            <div className="absolute -inset-2 bg-gradient-to-br from-fem-gold/5 to-fem-terracotta/5 rounded-[1.5rem]" />
+          </>
+        )}
         
-        {/* Main Image Container - More rectangular shape */}
-        <div className="relative w-full h-[400px] rounded-[1.5rem] overflow-hidden shadow-2xl border border-white/10">
+        {/* Main Image Container */}
+        <div className={cn(
+          "relative w-full overflow-hidden",
+          fullScreen ? "h-full" : "h-[400px] rounded-[1.5rem] shadow-2xl border border-white/10"
+        )}>
           {/* Dynamic Background Gradient Based on Current Image */}
           <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-transparent to-black/40 z-10" />
           
@@ -76,8 +89,8 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           )}
         </div>
 
-        {/* Navigation Arrows */}
-        {displayImages.length > 1 && (
+        {/* Navigation Arrows - only show in non-fullscreen mode */}
+        {displayImages.length > 1 && !fullScreen && (
           <>
             <button
               onClick={() => setCurrentIndex(prev => prev === 0 ? displayImages.length - 1 : prev - 1)}
@@ -101,8 +114,8 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
         )}
       </div>
 
-      {/* Thumbnail Strip */}
-      {displayImages.length > 1 && (
+      {/* Thumbnail Strip - only show in non-fullscreen mode */}
+      {displayImages.length > 1 && !fullScreen && (
         <div className="flex justify-center gap-3 mt-6 px-4">
           {displayImages.map((image, index) => (
             <button
@@ -128,8 +141,8 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
         </div>
       )}
 
-      {/* Enhanced Progress Indicator */}
-      {displayImages.length > 1 && (
+      {/* Enhanced Progress Indicator - only show in non-fullscreen mode */}
+      {displayImages.length > 1 && !fullScreen && (
         <div className="flex justify-center gap-4 mt-6">
           {displayImages.map((_, index) => (
             <button 
