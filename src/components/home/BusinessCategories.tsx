@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import React, { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { 
   Utensils, 
   ShoppingBag, 
@@ -13,49 +12,13 @@ import {
   Building2,
   Palette,
   Wrench,
-  Briefcase,
-  Sprout,
-  Factory,
-  Hotel,
-  DollarSign,
-  Truck,
-  Zap,
-  Scissors,
-  Music,
-  Users,
-  PawPrint,
-  ChevronLeft,
-  ChevronRight
+  Briefcase
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useBusiness } from "@/contexts/BusinessContext";
-import { useAuth } from "@/contexts/AuthContext";
-import AuthModal from "@/components/auth/AuthModal";
 
 // Icon mapping for categories
 const categoryIcons: { [key: string]: any } = {
-  // New comprehensive categories
-  "Agriculture & Farming 🌱": Sprout,
-  "Manufacturing & Production 🏭": Factory,
-  "Retail & Wholesale 🛒": ShoppingBag,
-  "Hospitality & Tourism 🏨": Hotel,
-  "Technology & IT 💻": Monitor,
-  "Finance & Insurance 💰": DollarSign,
-  "Healthcare & Wellness 🏥": Heart,
-  "Real Estate & Construction 🏗️": Building2,
-  "Transportation & Logistics 🚚": Truck,
-  "Professional Services 📑": Briefcase,
-  "Education & Training 📚": GraduationCap,
-  "Energy & Utilities ⚡": Zap,
-  "Creative Industries 🎨": Palette,
-  "Food & Beverage 🍽️": Utensils,
-  "Beauty & Personal Care 💄": Scissors,
-  "Automotive Services 🚗": Wrench,
-  "Home & Garden 🏡": Home,
-  "Entertainment & Media 🎭": Music,
-  "Non-Profit & Community 🤝": Users,
-  "Pet Services & Veterinary 🐾": PawPrint,
-  // Legacy mappings for backward compatibility
   "Restaurant": Utensils,
   "Retail": ShoppingBag,
   "Services": Settings,
@@ -68,81 +31,25 @@ const categoryIcons: { [key: string]: any } = {
   "Home & Garden": Building2,
   "Professional Services": Briefcase,
   "Automotive Services": Wrench,
+  // New categories from API
   "Food & Dining": Utensils,
   "Health & Beauty": Heart,
   "Fashion & Clothing": ShoppingBag,
   "Sports & Fitness": Heart,
-  "Entertainment": Monitor
+  "Entertainment": Monitor,
+  // Add more mappings as needed
 };
 
 // Default icon for unknown categories
 const DefaultIcon = Building2;
 
 export const BusinessCategories = () => {
-  const { categories, businesses, isLoading, isLoadingBusinesses } = useBusiness();
-  const { isAuthenticated, isBusinessUser } = useAuth();
-  const navigate = useNavigate();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [scrollPosition, setScrollPosition] = useState(0);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
+  const { categories, businesses, isLoading } = useBusiness();
 
-  const handleOpenAuthModal = () => {
-    setIsAuthModalOpen(true);
-  };
-
-  const handleRegisterBusinessClick = () => {
-    // If user is authenticated and is a business user, navigate directly
-    if (isAuthenticated && isBusinessUser()) {
-      navigate('/register-business');
-    } else {
-      // Otherwise, open the auth modal
-      handleOpenAuthModal();
-    }
-  };
-
-  const scrollLeft = () => {
-    const container = document.getElementById('categories-scroll');
-    if (container) {
-      container.scrollBy({ left: -300, behavior: 'smooth' });
-    }
-  };
-
-  const scrollRight = () => {
-    const container = document.getElementById('categories-scroll');
-    if (container) {
-      container.scrollBy({ left: 300, behavior: 'smooth' });
-    }
-  };
-
-  const handleScroll = () => {
-    const container = document.getElementById('categories-scroll');
-    if (container) {
-      const { scrollLeft, scrollWidth, clientWidth } = container;
-      setScrollPosition(scrollLeft);
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
-    }
-  };
-
-  // Add scroll event listener when component mounts
-  React.useEffect(() => {
-    const container = document.getElementById('categories-scroll');
-    if (container) {
-      container.addEventListener('scroll', handleScroll);
-      // Initial check
-      handleScroll();
-      
-      return () => {
-        container.removeEventListener('scroll', handleScroll);
-      };
-    }
-  }, []);
-
-  // Calculate business count for each category
-  const getCategoryStats = () => {
-    // Check if either businesses or categories are still loading
-    if (isLoading || isLoadingBusinesses) {
+  // Calculate business count for each category - memoized to prevent unnecessary recalculations
+  const categoryStats = useMemo(() => {
+    // Check if data is still loading
+    if (isLoading) {
       return [];
     }
 
@@ -150,69 +57,12 @@ export const BusinessCategories = () => {
       return [];
     }
 
-    const categoryStats = categories.map(category => {
-      const matchingBusinesses = Array.isArray(businesses) ? businesses.filter(business => {
-        // Handle both object and number category types
-        const categoryId = category.id;
-        const businessCategoryId = typeof business.category === 'object' ? business.category?.id : business.category;
-        const matches = categoryId == businessCategoryId; // Use loose equality to handle type differences
-        // console.log(`Category ${category.name} (ID: ${categoryId}, type: ${typeof categoryId}) vs Business ${business.business_name} category ID: ${businessCategoryId} (type: ${typeof businessCategoryId}) - Match: ${matches}`);
-        return matches; // Backend already filters for active businesses
-      }) : [];
-      
-      const businessCount = matchingBusinesses.length;
+    if (!Array.isArray(businesses)) {
+      return [];
+    }
 
-      const IconComponent = categoryIcons[category.name] || DefaultIcon;
-
-      return {
-        id: category.id,
-        name: category.name,
-        slug: category.slug,
-        count: businessCount,
-        icon: IconComponent,
-        color: getCategoryColor(category.name)
-      };
-    });
-
-    // console.log('Category stats before filtering:', categoryStats);
-
-    // Show only categories with businesses, sorted by business count
-    return categoryStats
-      .filter(category => category.count > 0) // Only show categories with businesses
-      .sort((a, b) => {
-        // First sort by business count (descending), then by name
-        if (b.count !== a.count) {
-          return b.count - a.count;
-        }
-        return a.name.localeCompare(b.name);
-      })
-      .slice(0, 12); // Show top 12 categories
-  };
-
-  const getCategoryColor = (categoryName: string): string => {
+    // Color mapping object - defined outside the map to avoid recreation
     const colorMap: { [key: string]: string } = {
-      // New comprehensive categories
-      "Agriculture & Farming 🌱": "text-green-600",
-      "Manufacturing & Production 🏭": "text-gray-600",
-      "Retail & Wholesale 🛒": "text-blue-600",
-      "Hospitality & Tourism 🏨": "text-orange-600",
-      "Technology & IT 💻": "text-indigo-600",
-      "Finance & Insurance 💰": "text-purple-600",
-      "Healthcare & Wellness 🏥": "text-red-600",
-      "Real Estate & Construction 🏗️": "text-yellow-600",
-      "Transportation & Logistics 🚚": "text-teal-600",
-      "Professional Services 📑": "text-slate-600",
-      "Education & Training 📚": "text-emerald-600",
-      "Energy & Utilities ⚡": "text-cyan-600",
-      "Creative Industries 🎨": "text-pink-600",
-      "Food & Beverage 🍽️": "text-orange-600",
-      "Beauty & Personal Care 💄": "text-pink-600",
-      "Automotive Services 🚗": "text-amber-600",
-      "Home & Garden 🏡": "text-emerald-600",
-      "Entertainment & Media 🎭": "text-blue-600",
-      "Non-Profit & Community 🤝": "text-purple-600",
-      "Pet Services & Veterinary 🐾": "text-green-600",
-      // Legacy mappings for backward compatibility
       "Restaurant": "text-orange-600",
       "Retail": "text-blue-600",
       "Services": "text-green-600",
@@ -231,12 +81,35 @@ export const BusinessCategories = () => {
       "Sports & Fitness": "text-green-600",
       "Entertainment": "text-blue-600"
     };
-    return colorMap[categoryName] || "text-gray-600";
-  };
 
-  const categoryStats = getCategoryStats();
+    const stats = categories.map(category => {
+      const matchingBusinesses = businesses.filter(business => {
+        // Handle both object and number category types
+        const categoryId = category.id;
+        const businessCategoryId = typeof business.category === 'object' ? business.category?.id : business.category;
+        return categoryId == businessCategoryId; // Use loose equality to handle type differences
+      });
+      
+      const businessCount = matchingBusinesses.length;
+      const IconComponent = categoryIcons[category.name] || DefaultIcon;
 
-  if (isLoading || isLoadingBusinesses) {
+      return {
+        id: category.id,
+        name: category.name,
+        slug: category.slug,
+        count: businessCount,
+        icon: IconComponent,
+        color: colorMap[category.name] || "text-gray-600"
+      };
+    });
+
+    // Show all categories, not just those with businesses
+    return stats
+      .sort((a, b) => b.count - a.count) // Sort by business count
+      .slice(0, 8); // Show top 8 categories
+  }, [categories, businesses, isLoading]);
+
+  if (isLoading) {
     return (
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
@@ -281,64 +154,31 @@ export const BusinessCategories = () => {
         
         {categoryStats.length > 0 ? (
           <>
-            {/* Scrollable Categories Section */}
-            <div className="relative mb-8">
-              {/* Left Scroll Button */}
-              <button
-                onClick={scrollLeft}
-                className={`absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-white/90 hover:bg-white border border-gray-200 rounded-full p-2 shadow-lg transition-all duration-200 hover:shadow-xl ${
-                  canScrollLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                }`}
-              >
-                <ChevronLeft className="w-5 h-5 text-gray-600" />
-              </button>
-
-              {/* Right Scroll Button */}
-              <button
-                onClick={scrollRight}
-                className={`absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-white/90 hover:bg-white border border-gray-200 rounded-full p-2 shadow-lg transition-all duration-200 hover:shadow-xl ${
-                  canScrollRight ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                }`}
-              >
-                <ChevronRight className="w-5 h-5 text-gray-600" />
-              </button>
-
-              {/* Scrollable Container */}
-              <div 
-                id="categories-scroll"
-                className="flex gap-6 overflow-x-auto scrollbar-hide pb-4 px-2"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
-                {categoryStats.map((category) => (
-                  <div key={category.id} className="flex-shrink-0 w-64">
-                    <Link 
-                      to={`/directory?category=${category.slug}`}
-                      className="block"
-                    >
-                      <Card className="hover-card-effect cursor-pointer transition-all duration-300 hover:shadow-lg h-full">
-                        <CardContent className="p-6 text-center h-full flex flex-col justify-between">
-                          <div>
-                            <div className={`mx-auto w-12 h-12 mb-4 flex items-center justify-center rounded-lg bg-gray-50 ${category.color}`}>
-                              {React.createElement(category.icon, { className: "w-6 h-6" })}
-                            </div>
-                            <h3 className="font-semibold text-fem-navy mb-2">{category.name}</h3>
-                            <p className="text-sm text-fem-darkgray mb-2">
-                              {category.count > 0 
-                                ? `${category.count} ${category.count === 1 ? 'business' : 'businesses'}`
-                                : 'No businesses yet'
-                              }
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  </div>
-                ))}
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {categoryStats.map((category, index) => (
+                <Link 
+                  key={category.id}
+                  to={`/directory?category=${category.slug}`}
+                  className="block"
+                >
+                  <Card className="hover-card-effect cursor-pointer transition-all duration-300 hover:shadow-lg h-full min-h-[200px]">
+                    <CardContent className="p-6 text-center h-full flex flex-col justify-between">
+                      <div>
+                        <div className={`mx-auto w-12 h-12 mb-4 flex items-center justify-center rounded-lg bg-gray-50 ${category.color}`}>
+                          {React.createElement(category.icon, { className: "w-6 h-6" })}
+                        </div>
+                        <h3 className="font-semibold text-fem-navy mb-2 line-clamp-2">{category.name}</h3>
+                        <p className="text-sm text-fem-darkgray">
+                          {category.count} {category.count === 1 ? 'business' : 'businesses'}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
             </div>
             
-            {/* View All Categories Button */}
-            <div className="text-center">
+            <div className="text-center mt-8">
               <Link to="/directory">
                 <button className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white px-6 py-3 rounded-lg font-medium transition-colors">
                   View All Categories
@@ -349,17 +189,29 @@ export const BusinessCategories = () => {
         ) : (
           // Show message when no categories are available
           <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">Loading categories...</p>
+            <div className="max-w-md mx-auto">
+              <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                <Building2 className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">No Categories Available</h3>
+              <p className="text-gray-500 mb-4">
+                {isLoading 
+                  ? "Loading categories..." 
+                  : "No business categories found. Please try again later."
+                }
+              </p>
+              {!isLoading && (
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="text-fem-terracotta hover:text-fem-terracotta/80 font-medium"
+                >
+                  Refresh Page
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
-      
-      {/* Auth Modal */}
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)}
-        hideTabs={true}
-      />
     </section>
   );
 };
