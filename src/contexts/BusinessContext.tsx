@@ -255,6 +255,9 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       functionId: Math.random().toString(36).substring(7)
     });
     
+    // Declare loadingTimeout outside try block so it's accessible in finally
+    let loadingTimeout: NodeJS.Timeout | null = null;
+    
     // Check cache first
     const cachedData = cacheRef.current.get(cacheKey);
     if (cachedData && !params.search) {
@@ -307,6 +310,13 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.log(`🔍 BusinessContext - Setting loading to true for ${type}`);
       setLoading(true);
       setError(null);
+      console.log(`🔍 BusinessContext - Loading state set to true for ${type}`);
+      
+      // Add a timeout to ensure loading state doesn't stay true indefinitely
+      loadingTimeout = setTimeout(() => {
+        console.log(`🔍 BusinessContext - Loading timeout for ${type}, setting to false`);
+        setLoading(false);
+      }, 35000); // 35 second timeout (longer than API timeout)
 
       // Ensure consistent limits
       const apiParams = {
@@ -382,7 +392,15 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.error(`Failed to fetch ${type}:`, err);
     } finally {
       console.log(`🔍 BusinessContext - Setting loading to false for ${type} in finally block`);
-      setLoading(false);
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout);
+      }
+      
+      // Add minimum loading time to prevent rapid state changes
+      setTimeout(() => {
+        setLoading(false);
+        console.log(`🔍 BusinessContext - Loading state set to false for ${type} in finally block`);
+      }, 100); // 100ms minimum loading time
     }
   }, []); // Memoize fetchWithCache - no dependencies since cache refs are stable
 

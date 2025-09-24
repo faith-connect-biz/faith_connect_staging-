@@ -364,7 +364,7 @@ export interface UserActivity {
 }
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://femdjango-production.up.railway.app/api';
+const API_BASE_URL = 'https://femdjango-production.up.railway.app/api';
 
 // Debug: Log the API base URL
 console.log('🔧 API Configuration:', {
@@ -379,7 +379,7 @@ class ApiService {
   constructor() {
     this.api = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 10000, // 10 second timeout for all requests
+      timeout: 30000, // 30 second timeout for all requests
       headers: {
         'Content-Type': 'application/json',
       },
@@ -974,7 +974,8 @@ class ApiService {
       if (params?.limit) queryParams.append('limit', params.limit.toString());
       if (params?.offset) queryParams.append('offset', params.offset.toString());
 
-      const response = await this.api.get(`/business/services/${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
+      const url = `/business/services/${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const response = await this.api.get(url);
       console.log('API getAllServices - Raw response:', response);
       console.log('API getAllServices - Response data:', response.data);
       console.log('API getAllServices - Response data type:', typeof response.data);
@@ -1368,13 +1369,24 @@ class ApiService {
     return response.data;
   }
 
-  // Get product by ID
+  // Get product by ID (legacy method)
   async getProduct(productId: string): Promise<Product> {
     try {
       const response = await this.api.get(`/business/products/${productId}/`);
       return response.data;
     } catch (error) {
       console.error('Error fetching product:', error);
+      throw error;
+    }
+  }
+
+  // Get product by category and slug
+  async getProductByCategory(categorySlug: string, productSlug: string): Promise<Product> {
+    try {
+      const response = await this.api.get(`/business/category/${categorySlug}/product/${productSlug}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching product by category:', error);
       throw error;
     }
   }
@@ -1395,13 +1407,6 @@ class ApiService {
     await this.api.delete(`/business/products/${productId}/`);
   }
 
-  // Review Methods
-  async getBusinessReviews(businessId: string): Promise<Review[]> {
-    const response = await this.api.get(`/business/${businessId}/reviews/`);
-    // The API returns a paginated response with { count, next, previous, results }
-    // We need to return the results array
-    return response.data.results || response.data;
-  }
 
   // Check if current user owns a business
   async getUserBusiness(): Promise<Business | null> {
@@ -1424,19 +1429,6 @@ class ApiService {
     }
   }
 
-  // Check if user can review a business (business owners cannot review their own business)
-  async canUserReviewBusiness(businessId: string): Promise<boolean> {
-    try {
-      const userBusiness = await this.getUserBusiness();
-      if (userBusiness && userBusiness.id === businessId) {
-        return false; // User owns this business, cannot review
-      }
-      return true;
-    } catch (error) {
-      console.error('Error checking if user can review business:', error);
-      return true; // Default to allowing review if check fails
-    }
-  }
 
   // Check if current user owns a specific business
   async isBusinessOwner(businessId: string): Promise<boolean> {
@@ -1449,55 +1441,7 @@ class ApiService {
     }
   }
 
-  async createReview(businessId: string, data: {
-    rating: number;
-    review_text?: string;
-  }): Promise<Review> {
-    // Ensure user is properly authenticated before submitting review
-    const isAuthenticated = await this.ensureAuthenticated();
-    if (!isAuthenticated) {
-      throw new Error('Authentication required. Please log in to submit a review.');
-    }
 
-    // Check if user can review this business
-    const canReview = await this.canUserReviewBusiness(businessId);
-    if (!canReview) {
-      throw new Error('Business owners cannot review their own businesses');
-    }
-
-    const reviewData = {
-      ...data,
-      business: businessId
-    };
-    
-    console.log(`[API] Submitting review for business ${businessId}:`, reviewData);
-    const response = await this.api.post(`/business/${businessId}/reviews/`, reviewData);
-    console.log(`[API] Review submitted successfully:`, response.data);
-    return response.data;
-  }
-
-  async updateReview(businessId: string, reviewId: number, data: {
-    rating?: number;
-    review_text?: string;
-  }): Promise<Review> {
-    const response = await this.api.put(`/business/${businessId}/reviews/${reviewId}/`, data);
-    return response.data;
-  }
-
-  async deleteReview(businessId: string, reviewId: number): Promise<void> {
-    await this.api.delete(`/business/${businessId}/reviews/${reviewId}/`);
-  }
-
-  async getUserReview(businessId: string): Promise<Review | null> {
-    try {
-      const response = await this.api.get(`/business/${businessId}/reviews/`);
-      const reviews = response.data;
-      // Find the current user's review
-      return reviews.find((review: Review) => review.user === 'current_user') || null;
-    } catch (error) {
-      return null;
-    }
-  }
 
   // User Methods
   async getCurrentUser(): Promise<User> {
@@ -1508,6 +1452,33 @@ class ApiService {
     }
     // Fallback to direct response.data if no nesting
     return response.data;
+  }
+
+  // Get platform statistics
+  async getStats(): Promise<{
+    total_businesses: number;
+    total_users: number;
+    verified_businesses: number;
+    average_rating: number;
+  }> {
+    try {
+      const response = await this.api.get('/stats/');
+      // Clean up the response data to ensure valid rating
+      const data = response.data;
+      if (data.average_rating && (isNaN(data.average_rating) || data.average_rating < 0 || data.average_rating > 5)) {
+        data.average_rating = 0;
+      }
+      return data;
+    } catch (error) {
+      console.error('Error fetching platform statistics:', error);
+      // Return fallback data if stats endpoint is not available
+      return {
+        total_businesses: 0,
+        total_users: 0,
+        verified_businesses: 0,
+        average_rating: 0
+      };
+    }
   }
 
   async updateProfile(data: Partial<User>): Promise<{ success: boolean; message: string; user?: User }> {
@@ -1606,9 +1577,21 @@ class ApiService {
     return response.data;
   }
 
+  // Get service by ID (legacy method)
   async getService(serviceId: string): Promise<Service> {
     const response = await this.api.get(`/business/services/${serviceId}/`);
     return response.data;
+  }
+
+  // Get service by category and slug
+  async getServiceByCategory(categorySlug: string, serviceSlug: string): Promise<Service> {
+    try {
+      const response = await this.api.get(`/business/category/${categorySlug}/service/${serviceSlug}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching service by category:', error);
+      throw error;
+    }
   }
 
   async updateService(serviceId: string, data: Partial<Service>): Promise<Service> {
@@ -2025,6 +2008,7 @@ class ApiService {
       return false;
     }
   }
+
 
 }
 

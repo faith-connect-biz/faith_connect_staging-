@@ -342,42 +342,42 @@ export const AdvancedSearchFilters: React.FC<AdvancedSearchFiltersProps> = ({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {localFilters.category && (
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    <Badge variant="outline" className="bg-gradient-to-r from-fem-terracotta/10 to-fem-gold/10 text-fem-terracotta border-fem-terracotta/30 hover:from-fem-terracotta/20 hover:to-fem-gold/20 transition-all duration-200">
                       Category: {localFilters.category}
                     </Badge>
                   )}
                   {localFilters.county && (
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    <Badge variant="outline" className="bg-gradient-to-r from-fem-gold/10 to-fem-terracotta/10 text-fem-gold border-fem-gold/30 hover:from-fem-gold/20 hover:to-fem-terracotta/20 transition-all duration-200">
                       Location: {localFilters.county}
                     </Badge>
                   )}
                   {localFilters.verifiedOnly && (
-                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                    <Badge variant="outline" className="bg-gradient-to-r from-fem-terracotta/15 to-fem-gold/15 text-fem-navy border-fem-terracotta/40 hover:from-fem-terracotta/25 hover:to-fem-gold/25 transition-all duration-200">
                       Verified Only
                     </Badge>
                   )}
                   {localFilters.openNow && (
-                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                    <Badge variant="outline" className="bg-gradient-to-r from-fem-gold/15 to-fem-terracotta/15 text-fem-navy border-fem-gold/40 hover:from-fem-gold/25 hover:to-fem-terracotta/25 transition-all duration-200">
                       Open Now
                     </Badge>
                   )}
                   {localFilters.hasPhotos && (
-                    <Badge variant="outline" className="bg-pink-50 text-pink-700 border-pink-200">
+                    <Badge variant="outline" className="bg-gradient-to-r from-fem-terracotta/12 to-fem-gold/12 text-fem-terracotta border-fem-terracotta/35 hover:from-fem-terracotta/22 hover:to-fem-gold/22 transition-all duration-200">
                       Has Photos
                     </Badge>
                   )}
                   {localFilters.inStock && (
-                    <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
+                    <Badge variant="outline" className="bg-gradient-to-r from-fem-gold/12 to-fem-terracotta/12 text-fem-gold border-fem-gold/35 hover:from-fem-gold/22 hover:to-fem-terracotta/22 transition-all duration-200">
                       In Stock
                     </Badge>
                   )}
                   {(localFilters.rating[0] > 0 || localFilters.rating[1] < 5) && (
-                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                    <Badge variant="outline" className="bg-gradient-to-r from-fem-gold/15 to-fem-terracotta/15 text-fem-navy border-fem-gold/40 hover:from-fem-gold/25 hover:to-fem-terracotta/25 transition-all duration-200">
                       Rating: {localFilters.rating[0]}-{localFilters.rating[1]} ⭐
                     </Badge>
                   )}
                   {(localFilters.priceRange[0] > 0 || localFilters.priceRange[1] < 10000) && (
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <Badge variant="outline" className="bg-gradient-to-r from-fem-terracotta/12 to-fem-gold/12 text-fem-terracotta border-fem-terracotta/35 hover:from-fem-terracotta/22 hover:to-fem-gold/22 transition-all duration-200">
                       Price: KSh {localFilters.priceRange[0].toLocaleString()}-{localFilters.priceRange[1].toLocaleString()}
                     </Badge>
                   )}

@@ -15,6 +15,7 @@ interface SearchResultsProps {
 
 interface SearchResult {
   id: string;
+  slug?: string;
   name: string;
   description?: string;
   type: 'business' | 'service' | 'product';
@@ -70,6 +71,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 
       results.push({
         id: service.id,
+        slug: (service as any).slug,
         name: service.name,
         description: service.description,
         type: 'service',
@@ -91,6 +93,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 
       results.push({
         id: product.id,
+        slug: (product as any).slug,
         name: product.name,
         description: product.description,
         type: 'product',
@@ -170,11 +173,23 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
   const handleResultClick = (result: SearchResult) => {
     onResultClick(result, result.type);
     
-    // Navigate to appropriate page
+    // Navigate to appropriate page based on result type
     if (result.type === 'business') {
       navigate(`/business/${result.id}`);
-    } else if (result.business) {
-      navigate(`/business/${result.business.id}`);
+    } else if (result.type === 'product') {
+      // Use category-based URL if available, fallback to ID-based
+      if (result.business?.category?.slug) {
+        navigate(`/category/${result.business.category.slug}/product/${result.slug || result.id}`);
+      } else {
+        navigate(`/product/${result.id}`);
+      }
+    } else if (result.type === 'service') {
+      // Use category-based URL if available, fallback to ID-based
+      if (result.business?.category?.slug) {
+        navigate(`/category/${result.business.category.slug}/service/${result.slug || result.id}`);
+      } else {
+        navigate(`/service/${result.id}`);
+      }
     }
   };
 

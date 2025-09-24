@@ -1,6 +1,7 @@
 
 import { Link } from "react-router-dom";
 import { useAuth } from '@/contexts/AuthContext';
+import { FooterLogo } from '@/components/ui/Logo';
 
 export const Footer = () => {
   const { user, isAuthenticated, isBusiness, isCommunity } = useAuth();
@@ -10,15 +11,11 @@ export const Footer = () => {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="space-y-2">
-            <Link to="/" className="flex items-center gap-2">
-              <img 
-                src="/lovable-uploads/NewFaithConnect.png" 
-                alt="FEM Family Church Logo" 
-                className="h-8 w-auto" 
-              />
+            <Link to="/" className="flex items-center gap-3 group">
+              <FooterLogo />
               <div className="flex flex-col">
-                <span className="font-heading font-semibold">Faith Connect</span>
-                <span className="text-xs text-gray-300">Business Connect</span>
+                <span className="font-heading font-semibold group-hover:text-fem-gold transition-colors duration-300">Faith Connect</span>
+                <span className="text-xs text-gray-300 group-hover:text-gray-200 transition-colors duration-300">Business Connect</span>
               </div>
             </Link>
             <p className="text-xs text-gray-300">

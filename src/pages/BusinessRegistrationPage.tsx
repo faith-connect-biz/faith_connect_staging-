@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { MultiImageUpload } from '@/components/ui/MultiImageUpload';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import HelpButton from '@/components/onboarding/HelpButton';
 import ScrollToTop from '@/components/ui/ScrollToTop';
@@ -101,6 +102,7 @@ const BusinessRegistrationPage = () => {
     sector: '' as string,
     subcategory: '' as string,
     description: '',
+    business_logo: '' as string,
     long_description: '',
     phone: '',
     email: '',
@@ -714,10 +716,21 @@ const BusinessRegistrationPage = () => {
   }, []);
 
   const addService = useCallback(() => {
-    setFormData(prev => ({
-      ...prev,
-      services: [...prev.services, { name: '', description: '', photos: [] }]
-    }));
+    setFormData(prev => {
+      const total = prev.services.length + prev.products.length;
+      if (total >= 10) {
+        toast({
+          title: "Item limit reached",
+          description: "You can add up to 10 services/products in total.",
+          variant: "destructive"
+        });
+        return prev;
+      }
+      return {
+        ...prev,
+        services: [...prev.services, { name: '', description: '', photos: [] }]
+      };
+    });
   }, []);
 
   const removeService = useCallback((index: number) => {
@@ -755,10 +768,21 @@ const BusinessRegistrationPage = () => {
   }, []);
 
   const addProduct = useCallback(() => {
-    setFormData(prev => ({
-      ...prev,
-      products: [...prev.products, { name: '', price: '', description: '' }]
-    }));
+    setFormData(prev => {
+      const total = prev.services.length + prev.products.length;
+      if (total >= 10) {
+        toast({
+          title: "Item limit reached",
+          description: "You can add up to 10 services/products in total.",
+          variant: "destructive"
+        });
+        return prev;
+      }
+      return {
+        ...prev,
+        products: [...prev.products, { name: '', price: '', description: '' }]
+      };
+    });
   }, []);
 
   const removeProduct = useCallback((index: number) => {
@@ -1091,6 +1115,28 @@ const BusinessRegistrationPage = () => {
         photos: product.photos || []  // Use photos array with S3 URLs
       }));
 
+    // Upload logo if provided as base64 and get a URL
+    let businessLogoUrl: string | null = null;
+    try {
+      if (formData.business_logo && formData.business_logo.startsWith('data:image')) {
+        setUploadingImages(true);
+        const response = await fetch(formData.business_logo);
+        const blob = await response.blob();
+        const file = new File([blob], `business_logo_${Date.now()}.jpg`, { type: 'image/jpeg' });
+        const uploadData = await apiService.getProfilePhotoUploadUrl(file.name, file.type);
+        const success = await apiService.uploadFileToS3(uploadData.presigned_url, file);
+        if (success) {
+          businessLogoUrl = `https://${import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp'}.s3.${import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1'}.amazonaws.com/${uploadData.file_key}`;
+        }
+      } else if (formData.business_logo) {
+        businessLogoUrl = formData.business_logo; // already a URL
+      }
+    } catch (err) {
+      console.error('Logo upload failed:', err);
+    } finally {
+      setUploadingImages(false);
+    }
+
     // Clean and prepare the data
     const businessData = {
       business_name: formData.business_name.trim(),
@@ -1114,7 +1160,8 @@ const BusinessRegistrationPage = () => {
       hours: hours,
       services_data: services,
       products_data: products,
-      features: formData.features.filter(feature => feature.trim() !== '')
+      features: formData.features.filter(feature => feature.trim() !== ''),
+      business_logo_url: businessLogoUrl || undefined,
     };
 
     // Debug logging to see what's being sent
@@ -1487,6 +1534,18 @@ const BusinessRegistrationPage = () => {
         />
       </motion.div>
 
+      {/* Business Logo/Image Upload */}
+      <motion.div variants={itemVariants}>
+        <ImageUpload
+          value={formData.business_logo}
+          onChange={(img) => handleInputChange('business_logo', img)}
+          onRemove={() => handleInputChange('business_logo', '')}
+          label="Business Logo or Image"
+          placeholder="Click to upload or drag & drop"
+        />
+        <p className="text-xs text-gray-500 mt-1">PNG/JPG up to 5MB. Square works best.</p>
+      </motion.div>
+
       <motion.div variants={itemVariants}>
         <Label className="text-base font-medium">
           What will you be listing? <span className="text-red-500">*</span>
@@ -1613,31 +1672,66 @@ const BusinessRegistrationPage = () => {
         </div>
       </motion.div>
 
-      {/* Address Information */}
+      {/* Address Information with Online/Physical toggle */}
       <motion.div variants={itemVariants} className="space-y-4">
-        <Label className="text-lg font-semibold">Address Information</Label>
-        <div>
-          <Label htmlFor="address">
-            Street Address <span className="text-red-500">*</span>
-          </Label>
-          <Textarea id="address" value={formData.address} onChange={(e) => handleInputChange("address", e.target.value)} placeholder="Enter your business address" className={`mt-1 ${getFieldError("address") ? 'border-red-500 focus:border-red-500' : ''}`} rows={2} />
-        </div>
-        <div>
-          <Label htmlFor="office_address">
-            Office/Shop Address (Optional)
-          </Label>
-          <Textarea id="office_address" value={formData.office_address} onChange={(e) => handleInputChange("office_address", e.target.value)} placeholder="Enter separate office or shop address if different from main address" className="mt-1" rows={2} />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="country">Country</Label>
-            <Input id="country" value={formData.country} onChange={(e) => handleInputChange("country", e.target.value)} placeholder="Kenya" className="mt-1" />
+        <Label className="text-lg font-semibold">Business Address</Label>
+        <div className="flex gap-4 items-center">
+          <div className="flex items-center gap-2">
+            <input
+              type="radio"
+              id="addr-online"
+              name="addressType"
+              checked={!formData.office_address}
+              onChange={() => {
+                // online business: clear physical-only fields
+                handleInputChange('office_address', '');
+                handleInputChange('country', formData.country || 'Kenya');
+              }}
+            />
+            <Label htmlFor="addr-online" className="cursor-pointer">Online Business</Label>
           </div>
-          <div>
-            <Label htmlFor="city">City (Optional)</Label>
-            <Input id="city" value={formData.city} onChange={(e) => handleInputChange("city", e.target.value)} placeholder="Nairobi" className="mt-1" />
+          <div className="flex items-center gap-2">
+            <input
+              type="radio"
+              id="addr-physical"
+              name="addressType"
+              checked={!!formData.office_address || (!!formData.country && !!formData.city)}
+              onChange={() => {
+                if (!formData.country) handleInputChange('country', 'Kenya');
+              }}
+            />
+            <Label htmlFor="addr-physical" className="cursor-pointer">Physical Location</Label>
           </div>
         </div>
+
+        {/* Online presence field */}
+        {!formData.office_address && !(formData.country && formData.city) ? (
+          <div>
+            <Label htmlFor="address">Online Presence Details <span className="text-red-500">*</span></Label>
+            <Textarea id="address" value={formData.address} onChange={(e) => handleInputChange('address', e.target.value)} placeholder="Website, social handle, marketplace link, etc." className={`mt-1 ${getFieldError('address') ? 'border-red-500 focus:border-red-500' : ''}`} rows={2} />
+          </div>
+        ) : (
+          <>
+            <div>
+              <Label htmlFor="address">Street Address <span className="text-red-500">*</span></Label>
+              <Textarea id="address" value={formData.address} onChange={(e) => handleInputChange('address', e.target.value)} placeholder="Enter your business address" className={`mt-1 ${getFieldError('address') ? 'border-red-500 focus:border-red-500' : ''}`} rows={2} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="country">Country</Label>
+                <Input id="country" value={formData.country} onChange={(e) => handleInputChange('country', e.target.value)} placeholder="Kenya" className="mt-1" />
+              </div>
+              <div>
+                <Label htmlFor="city">City (Optional)</Label>
+                <Input id="city" value={formData.city} onChange={(e) => handleInputChange('city', e.target.value)} placeholder="Nairobi" className="mt-1" />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="office_address">Office/Shop Address (Optional)</Label>
+              <Textarea id="office_address" value={formData.office_address} onChange={(e) => handleInputChange('office_address', e.target.value)} placeholder="Enter separate office or shop address if different from main address" className="mt-1" rows={2} />
+            </div>
+          </>
+        )}
       </motion.div>
 
       {/* FEM Church Affiliation */}

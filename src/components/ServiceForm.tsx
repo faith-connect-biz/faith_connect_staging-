@@ -44,6 +44,35 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  // Reset form when modal opens for new service
+  useEffect(() => {
+    if (isOpen && !service) {
+      // Reset all form state when opening for new service
+      setFormData({
+        business: businessId,
+        name: '',
+        description: '',
+        price_range: '',
+        duration: '',
+        is_active: true,
+        service_image_url: '',
+        images: []
+      });
+      setImagePreviews([]);
+      setIsDragOver(false);
+      setUploadingImages(false);
+    }
+  }, [isOpen, service, businessId]);
+
+  // Clean up form state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset drag state when modal closes
+      setIsDragOver(false);
+    }
+  }, [isOpen]);
 
   // Show delete button if user is authenticated and service exists
   // The backend will handle the actual security check
@@ -61,6 +90,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
       if (service.images) previews.push(...service.images);
       setImagePreviews(previews);
     } else {
+      // Reset form data for new service
       setFormData({
         business: businessId,
         name: '',
@@ -73,7 +103,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
       });
       setImagePreviews([]);
     }
-  }, [service]);
+  }, [service, isOpen, businessId]);
 
   const handleImageUpload = async (file: File) => {
     if (!file) return;
@@ -90,34 +120,45 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
 
     setUploadingImages(true);
     try {
-      // Get pre-signed URL for upload
-      const uploadData = await apiService.getProfilePhotoUploadUrl(file.name, file.type);
+      // Convert image to base64 for temporary storage
+      // This approach is more reliable and matches the pattern used in other components
+      const reader = new FileReader();
       
-      // Upload file to S3
-      const uploadSuccess = await apiService.uploadFileToS3(uploadData.presigned_url, file);
+      reader.onload = (e) => {
+        const base64String = e.target?.result as string;
+        if (base64String) {
+          // Add to form data as base64
+          setFormData(prev => ({ 
+            ...prev, 
+            images: [...prev.images || [], base64String] 
+          }));
+          setImagePreviews(prev => [...prev, base64String]);
+          
+          toast({
+            title: "Success",
+            description: "Image added successfully! It will be uploaded when you save the service.",
+          });
+        }
+        setUploadingImages(false);
+      };
       
-      if (uploadSuccess) {
-        // Generate S3 URL
-        const s3Url = `https://${import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp'}.s3.${import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1'}.amazonaws.com/${uploadData.file_key}`;
-        
-        setFormData(prev => ({ ...prev, images: [...prev.images || [], s3Url] }));
-        setImagePreviews(prev => [...prev, s3Url]);
-        
+      reader.onerror = () => {
         toast({
-          title: "Success",
-          description: "Image uploaded successfully!",
+          title: "Error",
+          description: "Failed to process image. Please try again.",
+          variant: "destructive"
         });
-      } else {
-        throw new Error('Failed to upload image');
-      }
+        setUploadingImages(false);
+      };
+      
+      reader.readAsDataURL(file);
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error('Error processing image:', error);
       toast({
         title: "Error",
-        description: "Failed to upload image. Please try again.",
+        description: "Failed to process image. Please try again.",
         variant: "destructive"
       });
-    } finally {
       setUploadingImages(false);
     }
   };
@@ -168,6 +209,61 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
       images: prev.images?.filter((_, index) => index !== indexToRemove) || []
     }));
     setImagePreviews(prev => prev.filter((_, index) => index !== indexToRemove));
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      // Check if adding these files would exceed the 5 image limit
+      if (imagePreviews.length + files.length > 5) {
+        toast({
+          title: "Too Many Images",
+          description: "You can only have up to 5 images total. Please remove some existing images first.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      files.forEach(file => {
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          toast({
+            title: "Invalid File",
+            description: `"${file.name}" is not an image file`,
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Validate file size (5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+          toast({
+            title: "File Too Large",
+            description: `"${file.name}" is larger than 5MB`,
+            variant: "destructive"
+          });
+          return;
+        }
+
+        handleImageUpload(file);
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -353,10 +449,29 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
               ) : null}
               
               {imagePreviews.length < 5 && (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
-                  <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 mx-auto mb-2" />
-                  <Label htmlFor="service-image" className="cursor-pointer text-xs sm:text-sm text-gray-600">
-                    {uploadingImages ? 'Uploading...' : `Click to upload images or drag and drop (${imagePreviews.length}/5)`}
+                <div 
+                  className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center transition-all duration-300 ${
+                    isDragOver 
+                      ? 'border-fem-terracotta bg-fem-terracotta/5 scale-105' 
+                      : 'border-gray-300 hover:border-fem-terracotta/50 hover:bg-gray-50'
+                  }`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => document.getElementById('service-image')?.click()}
+                >
+                  <Upload className={`w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 transition-colors duration-300 ${
+                    isDragOver ? 'text-fem-terracotta' : 'text-gray-400'
+                  }`} />
+                  <Label htmlFor="service-image" className={`cursor-pointer text-xs sm:text-sm transition-colors duration-300 ${
+                    isDragOver ? 'text-fem-terracotta font-semibold' : 'text-gray-600'
+                  }`}>
+                    {uploadingImages 
+                      ? 'Uploading...' 
+                      : isDragOver 
+                        ? 'Drop images here!' 
+                        : `Click to upload images or drag and drop (${imagePreviews.length}/5)`
+                    }
                   </Label>
                   <Input
                     id="service-image"

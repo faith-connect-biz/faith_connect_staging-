@@ -22,10 +22,10 @@ from django.conf import settings
 # Local imports
 from .models import (
     Business, Category, Favorite, Product, Review, BusinessHour,
-    Service, PhotoRequest, BusinessLike, ReviewLike, ServiceReview, ProductReview
+    Service, PhotoRequest, BusinessLike, ReviewLike, ServiceReview, ProductReview, FEMChurch
 )
 from .serializers import (
-    BusinessSerializer, CategorySerializer, FavoriteSerializer, 
+    BusinessSerializer, BusinessListSerializer, CategorySerializer, FavoriteSerializer, 
     ProductSerializer, ReviewSerializer, BusinessHourSerializer,
     ServiceSerializer, PhotoRequestSerializer, BusinessLikeSerializer, 
     ReviewLikeSerializer, ServiceReviewSerializer, ProductReviewSerializer
@@ -52,7 +52,6 @@ class BusinessDetailAPIView(generics.RetrieveAPIView):
 
 
 class BusinessListCreateAPIView(generics.ListCreateAPIView):
-    serializer_class = BusinessSerializer
     permission_classes = [IsAuthenticated]  # Require authentication for both list and create
     queryset = Business.objects.filter(is_active=True).select_related('category', 'user').order_by('-created_at')
 
@@ -69,6 +68,13 @@ class BusinessListCreateAPIView(generics.ListCreateAPIView):
         if self.request.method == 'GET':
             return [AllowAny()]
         return [IsAuthenticated()]
+
+    def get_serializer_class(self):
+        """Use different serializers for list vs create"""
+        if self.request.method == 'GET':
+            return BusinessListSerializer  # Lightweight for listing
+        return BusinessSerializer  # Full serializer for creation
+
 
     def get_serializer_context(self):
         return {"request": self.request}
@@ -102,6 +108,228 @@ class BusinessListCreateAPIView(generics.ListCreateAPIView):
                                 BusinessSerializer(business, context=self.get_serializer_context()).data)
 
 
+class BusinessRegistrationStep1APIView(APIView):
+    """API endpoint for Step 1 of business registration - Basic business information"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Create business with basic information from Step 1"""
+        try:
+            user = request.user
+            
+            # Validate user type
+            if user.user_type != 'business':
+                return error_response(
+                    "Only business users can create a business.",
+                    status_code=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Validate required fields for Step 1
+            required_fields = ['business_name', 'category_id', 'description', 'address', 'business_type']
+            missing_fields = [field for field in required_fields if not request.data.get(field)]
+            
+            if missing_fields:
+                return error_response(
+                    f"Missing required fields: {', '.join(missing_fields)}",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Validate business_type
+            business_type = request.data.get('business_type')
+            if business_type not in ['products', 'services', 'both']:
+                return error_response(
+                    "Invalid business_type. Must be 'products', 'services', or 'both'",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Check if user already has a business
+            existing_business = Business.objects.filter(user=user, is_active=True).first()
+            if existing_business:
+                return error_response(
+                    "User already has an active business. Use update endpoint instead.",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Create business with basic information
+            business_data = {
+                'business_name': request.data.get('business_name'),
+                'category_id': request.data.get('category_id'),
+                'description': request.data.get('description'),
+                'address': request.data.get('address'),
+                'business_type': business_type,
+                'city': request.data.get('city', ''),
+                'country': request.data.get('country', 'Kenya'),
+                'fem_church_id': request.data.get('fem_church_id')
+            }
+            
+            # Validate category exists
+            try:
+                category = Category.objects.get(id=business_data['category_id'])
+            except Category.DoesNotExist:
+                return error_response(
+                    f"Category with ID {business_data['category_id']} not found.",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Create business
+            business = Business.objects.create(
+                user=user,
+                category=category,
+                business_name=business_data['business_name'],
+                description=business_data['description'],
+                address=business_data['address'],
+                business_type=business_data['business_type'],
+                city=business_data['city'],
+                country=business_data['country']
+            )
+            
+            # Set FEM Church if provided
+            if business_data['fem_church_id']:
+                try:
+                    fem_church = FEMChurch.objects.get(id=business_data['fem_church_id'])
+                    business.fem_church = fem_church
+                    business.save()
+                except FEMChurch.DoesNotExist:
+                    # Log warning but don't fail the creation
+                    logger.warning(f"FEM Church with ID {business_data['fem_church_id']} not found")
+            
+            logger.info(f"[BUSINESS STEP 1 CREATED] user_id={user.id} business_id={business.id}")
+            
+            # Return business data with minimal fields for Step 2
+            return success_response(
+                "Business basic information created successfully",
+                {
+                    'id': str(business.id),
+                    'business_name': business.business_name,
+                    'business_type': business.business_type,
+                    'category': business.category.name if business.category else None,
+                    'step': 1,
+                    'next_step': 2
+                }
+            )
+            
+        except Exception as e:
+            logger.error(f"[BUSINESS STEP 1 ERROR] user_id={request.user.id} error={str(e)}")
+            return error_response(
+                f"Failed to create business: {str(e)}",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class BusinessRegistrationStep2APIView(APIView):
+    """API endpoint for Step 2 of business registration - Profile completion"""
+    permission_classes = [IsAuthenticated]
+    
+    def put(self, request, business_id):
+        """Update business with profile completion information from Step 2"""
+        try:
+            user = request.user
+            
+            # Get business and verify ownership
+            try:
+                business = Business.objects.get(id=business_id, user=user, is_active=True)
+            except Business.DoesNotExist:
+                return error_response(
+                    "Business not found or access denied.",
+                    status_code=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Update business fields from Step 2
+            update_fields = [
+                'phone', 'email', 'website', 'long_description',
+                'facebook_url', 'instagram_url', 'twitter_url', 'youtube_url'
+            ]
+            
+            for field in update_fields:
+                if field in request.data:
+                    setattr(business, field, request.data[field])
+            
+            # Handle business hours if provided
+            if 'hours' in request.data:
+                hours_data = request.data['hours']
+                # Clear existing hours
+                BusinessHour.objects.filter(business=business).delete()
+                
+                # Create new hours
+                for hour_data in hours_data:
+                    day_of_week = hour_data.get('day_of_week')
+                    open_time = hour_data.get('open_time')
+                    close_time = hour_data.get('close_time')
+                    is_closed = hour_data.get('is_closed', False)
+                    
+                    if day_of_week is not None:
+                        BusinessHour.objects.create(
+                            business=business,
+                            day_of_week=day_of_week,
+                            open_time=open_time if not is_closed else None,
+                            close_time=close_time if not is_closed else None,
+                            is_closed=is_closed
+                        )
+            
+            # Handle services if provided
+            if 'services' in request.data:
+                services_data = request.data['services']
+                # Clear existing services
+                Service.objects.filter(business=business).delete()
+                
+                # Create new services
+                for service_data in services_data:
+                    if isinstance(service_data, dict) and service_data.get('name'):
+                        Service.objects.create(
+                            business=business,
+                            name=service_data['name'],
+                            description=service_data.get('description', ''),
+                            price_range=service_data.get('price_range', ''),
+                            duration=service_data.get('duration', ''),
+                            service_image_url=service_data.get('service_image_url', ''),
+                            is_active=True
+                        )
+            
+            # Handle products if provided
+            if 'products' in request.data:
+                products_data = request.data['products']
+                # Clear existing products
+                Product.objects.filter(business=business).delete()
+                
+                # Create new products
+                for product_data in products_data:
+                    if isinstance(product_data, dict) and product_data.get('name') and product_data.get('price'):
+                        Product.objects.create(
+                            business=business,
+                            name=product_data['name'],
+                            description=product_data.get('description', ''),
+                            price=product_data['price'],
+                            price_currency=product_data.get('price_currency', 'KSH'),
+                            product_image_url=product_data.get('product_image_url', ''),
+                            is_active=True,
+                            in_stock=True
+                        )
+            
+            business.save()
+            
+            logger.info(f"[BUSINESS STEP 2 COMPLETED] user_id={user.id} business_id={business.id}")
+            
+            # Return updated business data
+            serializer = BusinessSerializer(business, context={'request': request})
+            return success_response(
+                "Business profile completed successfully",
+                {
+                    'id': str(business.id),
+                    'business_name': business.business_name,
+                    'step': 2,
+                    'completed': True,
+                    'business': serializer.data
+                }
+            )
+            
+        except Exception as e:
+            logger.error(f"[BUSINESS STEP 2 ERROR] user_id={request.user.id} business_id={business_id} error={str(e)}")
+            return error_response(
+                f"Failed to complete business profile: {str(e)}",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 class BusinessUpdateView(generics.UpdateAPIView):
     queryset = Business.objects.all()
     serializer_class = BusinessSerializer
@@ -126,6 +354,30 @@ class CategoryListAPIView(generics.ListAPIView):
     serializer_class = CategorySerializer
     permission_classes = [AllowAny]  # Allow public access to list categories
     pagination_class = None  # Disable pagination for categories to show all 17
+
+
+class FEMChurchListAPIView(generics.ListAPIView):
+    """List all FEM Churches for business registration"""
+    queryset = FEMChurch.objects.filter(is_active=True).order_by('sort_order', 'name')
+    permission_classes = [AllowAny]  # Allow public access to list churches
+    pagination_class = None
+    
+    def list(self, request, *args, **kwargs):
+        churches = self.get_queryset()
+        church_data = []
+        for church in churches:
+            church_data.append({
+                'id': church.id,
+                'name': church.name,
+                'location': church.location,
+                'city': church.city,
+                'country': church.country
+            })
+        
+        return Response({
+            'success': True,
+            'data': church_data
+        })
 
 
 # class GenerateSASToken(APIView):
@@ -1180,12 +1432,35 @@ class ProductListCreateAPIView(generics.ListCreateAPIView):
 
 class BusinessHourCreateView(generics.CreateAPIView):
     serializer_class = BusinessHourSerializer
-    permission_classes = [IsAuthenticated]
 
-    def perform_create(self, serializer):
-        business_id = self.kwargs.get('business_id')
-        business = get_object_or_404(Business, id=business_id, user=self.request.user)
-        serializer.save(business=business)
+
+# New views for category-based product and service details
+class ProductDetailByCategoryView(generics.RetrieveAPIView):
+    """Get product details by category and slug"""
+    serializer_class = ProductSerializer
+    permission_classes = [AllowAny]
+    lookup_field = 'slug'
+    
+    def get_queryset(self):
+        category_slug = self.kwargs.get('category_slug')
+        return Product.objects.filter(
+            business__category__slug=category_slug,
+            is_active=True
+        ).select_related('business', 'business__category')
+
+
+class ServiceDetailByCategoryView(generics.RetrieveAPIView):
+    """Get service details by category and slug"""
+    serializer_class = ServiceSerializer
+    permission_classes = [AllowAny]
+    lookup_field = 'slug'
+    
+    def get_queryset(self):
+        category_slug = self.kwargs.get('category_slug')
+        return Service.objects.filter(
+            business__category__slug=category_slug,
+            is_active=True
+        ).select_related('business', 'business__category')
 
 
 class PhotoRequestCreateView(generics.CreateAPIView):

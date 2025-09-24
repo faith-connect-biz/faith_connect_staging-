@@ -249,7 +249,7 @@ export const EpicSearchBar: React.FC<EpicSearchBarProps> = ({
             // Delay hiding suggestions to allow clicks
             setTimeout(() => setIsFocused(false), 200);
           }}
-          className="pl-12 pr-12 py-3 text-lg bg-white/90 backdrop-blur-sm border-2 border-transparent focus:border-fem-terracotta shadow-lg rounded-xl transition-all duration-300"
+          className="pl-12 pr-12 py-4 text-base md:text-lg bg-white border-2 border-gray-200 focus:border-fem-terracotta focus:ring-2 focus:ring-fem-terracotta/20 shadow-md hover:shadow-lg rounded-xl transition-all duration-300 placeholder:text-gray-400"
         />
         {searchTerm && (
           <Button
@@ -265,7 +265,7 @@ export const EpicSearchBar: React.FC<EpicSearchBarProps> = ({
 
       {/* Search Suggestions Dropdown */}
       {isFocused && (searchTerm || suggestions.length > 0) && (
-        <Card className="absolute top-full left-0 right-0 mt-2 z-50 bg-white/95 backdrop-blur-sm border-0 shadow-2xl rounded-xl overflow-hidden">
+        <Card className="absolute top-full left-0 right-0 mt-2 z-50 bg-white border border-gray-200 shadow-2xl rounded-xl overflow-hidden">
           <CardContent className="p-0">
             {suggestions.length > 0 ? (
               <div className="max-h-80 overflow-y-auto">
@@ -274,7 +274,7 @@ export const EpicSearchBar: React.FC<EpicSearchBarProps> = ({
                     key={suggestion.id}
                     ref={index === 0 ? suggestionsRef : null}
                     onClick={() => handleSuggestionClick(suggestion)}
-                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors duration-200 ${
+                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-all duration-200 border-b border-gray-100 last:border-b-0 ${
                       index === selectedIndex 
                         ? 'bg-fem-terracotta/10 border-l-4 border-fem-terracotta' 
                         : 'hover:bg-gray-50'

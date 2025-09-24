@@ -220,7 +220,30 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'slug']
 
 
+class BusinessListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for business listings - only essential fields"""
+    category = CategorySerializer(read_only=True)
+    business_image_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Business
+        fields = [
+            'id', 'business_name', 'address', 'category', 'business_image_url', 
+            'rating', 'is_featured', 'is_active'
+        ]
+        read_only_fields = ['id', 'rating']
+    
+    def get_business_image_url(self, obj):
+        """Get business image URL with fallback"""
+        if obj.business_image_url:
+            # Try to convert CloudFront to S3 if needed
+            url = convert_cloudfront_to_s3_url(obj.business_image_url)
+            return validate_and_clean_image_url(url, 'business')
+        return validate_and_clean_image_url(None, 'business')
+
+
 class BusinessSerializer(serializers.ModelSerializer):
+    """Full serializer for business details - includes all fields"""
     category = CategorySerializer(read_only=True)
     category_id = serializers.IntegerField(write_only=True, required=True)
     user = serializers.SerializerMethodField()
@@ -235,7 +258,7 @@ class BusinessSerializer(serializers.ModelSerializer):
         model = Business
         fields = [
             'id', 'user', 'business_name', 'category', 'category_id', 'description', 'long_description',
-            'phone', 'email', 'website', 'address', 'city', 'county', 'state', 'zip_code',
+            'business_type', 'phone', 'email', 'website', 'address', 'city', 'county', 'state', 'zip_code',
             'latitude', 'longitude', 'rating', 'review_count', 'is_verified', 'is_featured',
             'is_active', 'business_image_url', 'business_logo_url', 'facebook_url',
             'instagram_url', 'twitter_url', 'youtube_url', 'created_at', 'updated_at',

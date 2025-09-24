@@ -65,7 +65,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           size="sm"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="hidden sm:flex"
+          className="hidden sm:flex border-fem-terracotta/30 text-fem-terracotta hover:bg-fem-terracotta hover:text-white hover:border-fem-terracotta disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
           Previous
@@ -75,7 +75,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           size="sm"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="sm:hidden"
+          className="sm:hidden border-fem-terracotta/30 text-fem-terracotta hover:bg-fem-terracotta hover:text-white hover:border-fem-terracotta disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -86,14 +86,18 @@ export const Pagination: React.FC<PaginationProps> = ({
             <div key={index}>
               {page === '...' ? (
                 <div className="px-2 py-1">
-                  <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                  <MoreHorizontal className="h-4 w-4 text-fem-terracotta/60" />
                 </div>
               ) : (
                 <Button
                   variant={currentPage === page ? "default" : "outline"}
                   size="sm"
                   onClick={() => onPageChange(page as number)}
-                  className="min-w-[40px]"
+                  className={`min-w-[40px] ${
+                    currentPage === page 
+                      ? "bg-gradient-to-r from-fem-terracotta to-fem-gold text-white border-fem-terracotta hover:from-fem-terracotta/90 hover:to-fem-gold/90" 
+                      : "border-fem-terracotta/30 text-fem-terracotta hover:bg-fem-terracotta hover:text-white hover:border-fem-terracotta"
+                  }`}
                 >
                   {page}
                 </Button>
@@ -108,7 +112,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           size="sm"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="hidden sm:flex"
+          className="hidden sm:flex border-fem-terracotta/30 text-fem-terracotta hover:bg-fem-terracotta hover:text-white hover:border-fem-terracotta disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Next
           <ChevronRight className="h-4 w-4 ml-1" />
@@ -118,7 +122,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           size="sm"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="sm:hidden"
+          className="sm:hidden border-fem-terracotta/30 text-fem-terracotta hover:bg-fem-terracotta hover:text-white hover:border-fem-terracotta disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>

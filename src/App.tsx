@@ -27,6 +27,8 @@ import BusinessRegistrationSuccessPage from "./pages/BusinessRegistrationSuccess
 import WelcomePage from "./pages/WelcomePage";
 import BusinessOnboardingPage from "./pages/BusinessOnboardingPage";
 import { BusinessManagementPage } from "./pages/BusinessManagementPage";
+import { ProductDetailPage } from "./pages/ProductDetailPage";
+import { ServiceDetailPage } from "./pages/ServiceDetailPage";
 import { OTPVerificationPage } from "@/components/otp/OTPVerificationPage";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import SignupOTPPage from "./pages/otp/SignupOTPPage";
@@ -66,7 +68,16 @@ const App = () => (
         
 
                 <Route path="/business/:id" element={<BusinessDetailPage />} />
+                <Route path="/product/:id" element={<ProductDetailPage />} />
+                <Route path="/service/:id" element={<ServiceDetailPage />} />
+                <Route path="/category/:categorySlug/product/:productSlug" element={<ProductDetailPage />} />
+                <Route path="/category/:categorySlug/service/:serviceSlug" element={<ServiceDetailPage />} />
                 <Route path="/register-business" element={
+                  <ProtectedRoute requireBusinessUser={true}>
+                    <BusinessRegistrationPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/business/register" element={
                   <ProtectedRoute requireBusinessUser={true}>
                     <BusinessRegistrationPage />
                   </ProtectedRoute>

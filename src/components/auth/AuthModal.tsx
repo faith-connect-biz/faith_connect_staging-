@@ -377,8 +377,29 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login', hideT
   console.log('AuthModal state:', { signupStep, activeTab, isOpen });
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md border border-fem-terracotta/10 max-h-[90vh] flex flex-col">
+    <div 
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-[99999] p-2 sm:p-4" 
+      style={{ 
+        zIndex: 99999, 
+        position: 'fixed', 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        bottom: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
+      <div 
+        className="bg-white rounded-xl shadow-2xl w-full max-w-md border border-fem-terracotta/10 max-h-[90vh] flex flex-col relative" 
+        style={{ 
+          zIndex: 99999, 
+          position: 'relative',
+          margin: 'auto',
+          maxHeight: '90vh'
+        }}
+      >
         <div className="flex justify-between items-center p-6 border-b bg-[#faf9f8]">
           <div className="flex-1">
             <h2 className="text-xl font-semibold text-fem-navy">
@@ -401,7 +422,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login', hideT
           </button>
         </div>
 
-        <div className="relative flex-1 overflow-y-auto">
+        <div className="relative flex-1 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 120px)' }}>
           {forgotOpen ? (
             <div className="p-6 space-y-4">
               {/* Close button for forgot password flow */}
@@ -674,15 +695,32 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login', hideT
                     </Button>
                   </form>
                   
-                  {/* Forgot Password Link */}
-                  <div className="text-center">
+                  {/* Don't have an account section */}
+                  <div className="text-center space-y-3">
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-gray-200" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-white px-2 text-gray-500">New to FaithConnect?</span>
+                      </div>
+                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('signup')}
+                      className="w-full py-2 px-4 border border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white transition-all duration-200 rounded-md text-sm font-medium"
+                    >
+                      Create Your Account
+                    </button>
+                    
                     <button
                       onClick={() => {
                         setForgotOpen(true);
                         setForgotMethod('phone');
                         setForgotIdentifier('');
                       }}
-                      className="text-sm text-fem-terracotta hover:text-fem-terracotta/80 underline"
+                      className="text-sm text-fem-terracotta hover:text-fem-terracotta/80 underline block mx-auto"
                     >
                       Forgot Password?
                     </button>
@@ -945,6 +983,26 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login', hideT
                       )}
                     </Button>
                   </form>
+                  
+                  {/* Already have an account section */}
+                  <div className="text-center space-y-3">
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-gray-200" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-white px-2 text-gray-500">Already have an account?</span>
+                      </div>
+                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('login')}
+                      className="w-full py-2 px-4 border border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white transition-all duration-200 rounded-md text-sm font-medium"
+                    >
+                      Sign In Instead
+                    </button>
+                  </div>
                 </TabsContent>
               </Tabs>
             </div>

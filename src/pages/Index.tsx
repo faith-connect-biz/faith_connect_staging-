@@ -1,10 +1,13 @@
 
 import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Hero } from '@/components/home/Hero';
 import { BusinessCategories } from '@/components/home/BusinessCategories';
 import { ProductServiceCarousel } from '@/components/home/ProductServiceCarousel';
+import { BusinessLogosCarousel } from '@/components/home/BusinessLogosCarousel';
 import { CommunityStats } from '@/components/home/CommunityStats';
 import { CallToAction } from '@/components/home/CallToAction';
 import { SearchDemo } from '@/components/search/SearchDemo';
@@ -15,6 +18,21 @@ import ScrollToTop from '@/components/ui/ScrollToTop';
 // import { ApiTester } from "@/components/debug/ApiTester";
 
 const Index = () => {
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
+
+  // Handle login modal trigger from navigation state
+  useEffect(() => {
+    if (location.state?.showLogin) {
+      if (!isAuthenticated) {
+        // Trigger login modal by setting localStorage flag
+        localStorage.setItem('open_login_modal', 'true');
+      }
+      // Clear the state to prevent re-triggering regardless of auth state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, isAuthenticated]);
+
   useEffect(() => {
     // Smooth scroll behavior for navigation links
     const handleSmoothScroll = (e: Event) => {
@@ -113,6 +131,7 @@ const Index = () => {
          <BusinessCategories />
          {/* <SearchDemo /> */}
          <ProductServiceCarousel />
+         <BusinessLogosCarousel />
          <CommunityStats />
          <CallToAction />
        </main>

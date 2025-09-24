@@ -50,6 +50,29 @@ button:focus, a:focus, input:focus, textarea:focus, select:focus {
   color: white;
 }
 
+/* Prevent layout shifts and stabilize animations */
+.grid {
+  contain: layout;
+}
+
+/* Stabilize card animations */
+[class*="hover:scale"] {
+  transform-origin: center;
+  will-change: transform;
+}
+
+/* Prevent dancing effects during loading */
+.transition-shadow,
+.transition-opacity,
+.transition-colors {
+  transition-timing-function: ease-in-out;
+}
+
+/* Stabilize grid layouts */
+.grid > * {
+  contain: layout style;
+}
+
 ::-moz-selection {
   background-color: #C84B31; /* fem-terracotta */
   color: white;

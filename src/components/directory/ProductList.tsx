@@ -84,13 +84,18 @@ export const ProductList: React.FC<ProductListProps> = ({
       searchParams.search = filters.searchTerm.trim();
     }
     
+    // Add category filter if provided
+    if (filters.category && filters.category.trim()) {
+      searchParams.category = filters.category.trim();
+    }
+    
     // Debounce search to prevent excessive API calls
     const timeoutId = setTimeout(() => {
       fetchProductsWithPagination(searchParams);
     }, filters.searchTerm ? 300 : 0); // 300ms delay for search, immediate for page changes
     
     return () => clearTimeout(timeoutId);
-  }, [currentPage, itemsPerPage, filters.searchTerm, fetchProductsWithPagination]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentPage, itemsPerPage, filters.searchTerm, filters.category, fetchProductsWithPagination]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Use filtered products directly (no client-side pagination)
   const paginatedProducts = filteredProducts;
@@ -109,17 +114,15 @@ export const ProductList: React.FC<ProductListProps> = ({
   };
 
   const handleProductClick = (product: Product) => {
-    let business;
-    if (typeof product.business === 'string') {
-      business = businesses.find(b => b.id === product.business);
-    } else {
-      business = product.business;
-    }
+    // Navigate to product detail page using category-based URL if available
+    const business = typeof product.business === 'string' 
+      ? businesses.find(b => b.id === product.business)
+      : product.business;
     
-    if (business && typeof business === 'object' && business.id) {
-      navigate(`/business/${business.id}`);
-    } else if (typeof product.business === 'string') {
-      navigate(`/business/${product.business}`);
+    if (business?.category?.slug && (product as any).slug) {
+      navigate(`/category/${business.category.slug}/product/${(product as any).slug}`);
+    } else {
+      navigate(`/product/${product.id}`);
     }
   };
 

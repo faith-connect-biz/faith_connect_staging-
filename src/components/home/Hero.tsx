@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Car, Utensils, ShoppingBag, Heart, Hotel, Building2, Users, Briefcase, Sprout, Factory, DollarSign, Truck, GraduationCap, Monitor, Palette, Wrench, Music, PawPrint, ChevronDown, MapPin } from "lucide-react";
+import { Search, ChevronDown, MapPin } from "lucide-react";
+import { 
+  MdRestaurant, MdShoppingBag, MdLocalHospital, MdDirectionsCar, MdHotel,
+  MdComputer, MdConstruction, MdLocalShipping, MdBusiness, MdSchool,
+  MdAttachMoney, MdHome, MdPalette, MdMusicNote, MdPets, MdSportsBasketball,
+  MdBuild, MdStore, MdRestaurantMenu, MdLocalPharmacy, MdAccountBalance,
+  MdBrush, MdFitnessCenter, MdMovie, MdFlight, MdMoreHoriz
+} from "react-icons/md";
 import { useAuth } from '@/contexts/AuthContext';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { apiService } from '@/services/api';
@@ -107,7 +114,7 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
         setShowSuggestions(false);
         navigate(`/directory?search=${encodeURIComponent(selectedSuggestion)}`);
       } else {
-        handleSearch();
+      handleSearch();
       }
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -208,148 +215,8 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
     fetchStats();
   }, []);
 
-  // Icon mapping for categories
-  const categoryIcons: { [key: string]: any } = {
-    "Agriculture & Farming 🌱": Sprout,
-    "Manufacturing & Production 🏭": Factory,
-    "Retail & Wholesale 🛒": ShoppingBag,
-    "Hospitality & Tourism 🏨": Hotel,
-    "Technology & IT 💻": Monitor,
-    "Finance & Insurance 💰": DollarSign,
-    "Healthcare & Wellness 🏥": Heart,
-    "Real Estate & Construction 🏗️": Building2,
-    "Transportation & Logistics 🚚": Truck,
-    "Professional Services 📁": Briefcase,
-    "Education & Training 📚": GraduationCap,
-    "Energy & Utilities ⚡": Wrench,
-    "Creative Industries 🎨": Palette,
-    "Food & Beverage 🍽️": Utensils,
-    "Beauty & Personal Care 💄": Heart,
-    "Automotive Services 🚗": Car,
-    "Home & Garden 🏡": Building2,
-    "Entertainment & Media 🎭": Music,
-    "Non-Profit & Community 🤝": Users,
-    "Pet Services & Veterinary 🐾": PawPrint,
-    "Sports & Recreation 🏃": Heart,
-    "Mining & Natural Resources ⛏️": Wrench,
-    "Textiles & Fashion 👗": ShoppingBag,
-    "Government & Public Services 🏛️": Building2,
-    "Import & Export Trade 🚢": Truck,
-    // Legacy mappings
-    "Restaurant": Utensils,
-    "Retail": ShoppingBag,
-    "Services": Briefcase,
-    "Health & Wellness": Heart,
-    "Automotive": Car,
-    "Real Estate": Building2,
-    "Education": GraduationCap,
-    "Technology": Monitor,
-    "Beauty & Personal Care": Heart,
-    "Home & Garden": Building2,
-    "Professional Services": Briefcase,
-    "Automotive Services": Car,
-    "Food & Dining": Utensils,
-    "Health & Beauty": Heart,
-    "Fashion & Clothing": ShoppingBag,
-    "Sports & Fitness": Heart,
-    "Entertainment": Music
-  };
 
-  // Get top 5 categories with most businesses
-  const getTop5Categories = () => {
-    if (isLoading || isLoadingBusinesses || !Array.isArray(categories) || !Array.isArray(businesses)) {
-      return [
-        { id: 1, name: "Food & Beverage", displayName: "Restaurant", icon: Utensils, color: "bg-orange-100 text-orange-600", slug: "food-beverage" },
-        { id: 2, name: "Retail & Wholesale", displayName: "Shopping", icon: ShoppingBag, color: "bg-blue-100 text-blue-600", slug: "retail-wholesale" },
-        { id: 3, name: "Automotive Services", displayName: "Automotive", icon: Car, color: "bg-amber-100 text-amber-600", slug: "automotive-services" },
-        { id: 4, name: "Beauty & Personal Care", displayName: "Beauty & Spa", icon: Heart, color: "bg-pink-100 text-pink-600", slug: "beauty-personal-care" },
-        { id: 5, name: "Hospitality & Tourism", displayName: "Hotels", icon: Hotel, color: "bg-purple-100 text-purple-600", slug: "hospitality-tourism" }
-      ];
-    }
 
-    const categoryStats = categories.map(category => {
-      const matchingBusinesses = businesses.filter(business => {
-        if (!business.category) return false;
-        const categoryId = category.id;
-        let businessCategoryId: any;
-        if (typeof business.category === 'object' && business.category && 'id' in business.category) {
-          businessCategoryId = (business.category as any).id;
-        } else {
-          businessCategoryId = business.category;
-        }
-        return categoryId == businessCategoryId;
-      });
-      
-      const businessCount = matchingBusinesses.length;
-      const IconComponent = categoryIcons[category.name] || Building2;
-      
-      // Create a shorter display name by removing emojis and keeping the main part
-      const displayName = category.name.replace(/[🌱🏭🛒🏨💻💰🏥🏗️🚚📁📚⚡🎨🍽️💄🚗🏡🎭🤝🐾🏃⛏️👗🏛️🚢]/g, '').trim();
-      
-      return {
-        id: category.id,
-        name: category.name,
-        displayName,
-        slug: category.slug,
-        count: businessCount,
-        icon: IconComponent,
-        color: getCategoryColor(category.name)
-      };
-    });
-
-    return categoryStats
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-  };
-
-  const getCategoryColor = (categoryName: string): string => {
-    const colorMap: { [key: string]: string } = {
-      "Agriculture & Farming 🌱": "bg-green-100 text-green-600",
-      "Manufacturing & Production 🏭": "bg-gray-100 text-gray-600",
-      "Retail & Wholesale 🛒": "bg-blue-100 text-blue-600",
-      "Hospitality & Tourism 🏨": "bg-orange-100 text-orange-600",
-      "Technology & IT 💻": "bg-indigo-100 text-indigo-600",
-      "Finance & Insurance 💰": "bg-purple-100 text-purple-600",
-      "Healthcare & Wellness 🏥": "bg-red-100 text-red-600",
-      "Real Estate & Construction 🏗️": "bg-yellow-100 text-yellow-600",
-      "Transportation & Logistics 🚚": "bg-teal-100 text-teal-600",
-      "Professional Services 📁": "bg-slate-100 text-slate-600",
-      "Education & Training 📚": "bg-emerald-100 text-emerald-600",
-      "Energy & Utilities ⚡": "bg-cyan-100 text-cyan-600",
-      "Creative Industries 🎨": "bg-pink-100 text-pink-600",
-      "Food & Beverage 🍽️": "bg-orange-100 text-orange-600",
-      "Beauty & Personal Care 💄": "bg-pink-100 text-pink-600",
-      "Automotive Services 🚗": "bg-amber-100 text-amber-600",
-      "Home & Garden 🏡": "bg-emerald-100 text-emerald-600",
-      "Entertainment & Media 🎭": "bg-blue-100 text-blue-600",
-      "Non-Profit & Community 🤝": "bg-purple-100 text-purple-600",
-      "Pet Services & Veterinary 🐾": "bg-green-100 text-green-600",
-      "Sports & Recreation 🏃": "bg-green-100 text-green-600",
-      "Mining & Natural Resources ⛏️": "bg-gray-100 text-gray-600",
-      "Textiles & Fashion 👗": "bg-pink-100 text-pink-600",
-      "Government & Public Services 🏛️": "bg-slate-100 text-slate-600",
-      "Import & Export Trade 🚢": "bg-blue-100 text-blue-600",
-      // Legacy mappings
-      "Restaurant": "bg-orange-100 text-orange-600",
-      "Retail": "bg-blue-100 text-blue-600",
-      "Services": "bg-green-100 text-green-600",
-      "Health & Wellness": "bg-red-100 text-red-600",
-      "Automotive": "bg-purple-100 text-purple-600",
-      "Real Estate": "bg-yellow-100 text-yellow-600",
-      "Education": "bg-indigo-100 text-indigo-600",
-      "Technology": "bg-teal-100 text-teal-600",
-      "Beauty & Personal Care": "bg-pink-100 text-pink-600",
-      "Home & Garden": "bg-emerald-100 text-emerald-600",
-      "Professional Services": "bg-slate-100 text-slate-600",
-      "Automotive Services": "bg-amber-100 text-amber-600",
-      "Food & Dining": "bg-orange-100 text-orange-600",
-      "Health & Beauty": "bg-pink-100 text-pink-600",
-      "Fashion & Clothing": "bg-purple-100 text-purple-600",
-      "Sports & Fitness": "bg-green-100 text-green-600",
-      "Entertainment": "bg-blue-100 text-blue-600"
-    };
-    return colorMap[categoryName] || "bg-gray-100 text-gray-600";
-  };
 
   // Sliding background images
   const carouselImages = [
@@ -403,7 +270,7 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
           </div>
 
           {/* Search Bar */}
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-1 md:p-2 shadow-2xl max-w-2xl mx-auto relative mx-2 sm:mx-4 md:mx-auto">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-1 md:p-2 shadow-2xl max-w-2xl mx-auto relative mx-2 sm:mx-4 md:mx-auto z-10">
             <div className="flex gap-1 md:gap-2">
               {/* What Field */}
               <div className="flex-1 relative">
@@ -415,7 +282,9 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={handleKeyPress}
                   onFocus={() => {
-                    if (suggestions.length > 0) setShowSuggestions(true);
+                    if (searchTerm.length >= 1) {
+                      filterSuggestions(searchTerm);
+                    }
                   }}
                   className="w-full px-3 md:px-4 py-3 md:py-4 bg-transparent border-none outline-none text-gray-800 placeholder:text-gray-500 text-base md:text-lg"
                 />
@@ -438,19 +307,19 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
             {showSuggestions && suggestions.length > 0 && (
               <div 
                 ref={suggestionsRef}
-                className="absolute top-full left-2 right-2 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-60 overflow-y-auto"
+                className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-2xl border border-gray-100 z-[9999] max-h-60 overflow-y-auto backdrop-blur-sm"
               >
                 {suggestions.map((suggestion, index) => (
                   <button
                     key={suggestion}
                     onClick={() => handleSuggestionClick(suggestion)}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors duration-150 first:rounded-t-xl last:rounded-b-xl ${
-                      index === selectedSuggestionIndex ? 'bg-gray-100' : ''
+                    className={`w-full px-3 py-2.5 text-left hover:bg-gray-50 transition-colors duration-150 first:rounded-t-lg last:rounded-b-lg border-b border-gray-100 last:border-b-0 ${
+                      index === selectedSuggestionIndex ? 'bg-gray-50' : ''
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                      <span className="text-gray-800 font-medium">{suggestion}</span>
+                    <div className="flex items-center gap-2">
+                      <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                      <span className="text-gray-700 text-sm font-medium">{suggestion}</span>
                     </div>
                   </button>
                 ))}
@@ -459,38 +328,38 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center items-center mt-6 px-4">
+          <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center items-center mt-8 px-4 relative z-0">
             <button
               onClick={() => navigate("/directory")}
               className="bg-gradient-to-r from-fem-gold to-fem-terracotta hover:from-fem-gold/90 hover:to-fem-terracotta/90 text-white px-6 md:px-8 py-3 md:py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 w-full sm:w-auto text-sm md:text-base"
             >
               Browse Directory
             </button>
-            <button
-              onClick={() => navigate("/business/register")}
-              className="bg-white/10 hover:bg-white/20 text-white border border-white/30 hover:border-white/50 px-6 md:px-8 py-3 md:py-3 rounded-xl font-semibold transition-all duration-200 backdrop-blur-sm w-full sm:w-auto text-sm md:text-base"
-            >
-              List Your Business
-            </button>
+            {(!isAuthenticated) ? (
+              <Link 
+                to="/" 
+                state={{ showLogin: true, redirectAfterLogin: "/register-business" }}
+                className="bg-white/10 hover:bg-white/20 text-white border border-white/30 hover:border-white/50 px-6 md:px-8 py-3 md:py-3 rounded-xl font-semibold transition-all duration-200 backdrop-blur-sm w-full sm:w-auto text-sm md:text-base text-center"
+              >
+                List Your Business
+              </Link>
+            ) : hasBusiness ? (
+              <Link 
+                to="/manage-business"
+                className="bg-white/10 hover:bg-white/20 text-white border border-white/30 hover:border-white/50 px-6 md:px-8 py-3 md:py-3 rounded-xl font-semibold transition-all duration-200 backdrop-blur-sm w-full sm:w-auto text-sm md:text-base text-center"
+              >
+                Manage Your Business
+              </Link>
+            ) : (
+              <Link 
+                to="/register-business"
+                className="bg-white/10 hover:bg-white/20 text-white border border-white/30 hover:border-white/50 px-6 md:px-8 py-3 md:py-3 rounded-xl font-semibold transition-all duration-200 backdrop-blur-sm w-full sm:w-auto text-sm md:text-base text-center"
+              >
+                List Your Business
+              </Link>
+            )}
           </div>
 
-          {/* Top 5 Category Buttons */}
-          <div className="flex flex-wrap justify-center gap-1 md:gap-2 lg:gap-3 mt-6 md:mt-8 px-2">
-            {getTop5Categories().map((category, index) => {
-              const IconComponent = category.icon;
-              return (
-                <button
-                  key={category.id}
-                  className={`flex flex-col items-center gap-1 p-2 rounded-lg ${category.color} hover:scale-105 transition-transform duration-200 w-[60px] sm:w-[70px] md:w-[80px] lg:w-[90px] flex-shrink-0`}
-                  onClick={() => navigate(`/directory?category=${category.slug}`)}
-                >
-                  <IconComponent className="w-3 h-3 sm:w-4 sm:h-4 md:w-4 md:h-4" />
-                  <span className="text-[10px] sm:text-xs font-medium text-center leading-tight hidden xs:block">{category.displayName.split(' ')[0]}</span>
-                  <span className="text-[9px] font-medium text-center leading-tight xs:hidden">{category.displayName.split(' ')[0].substring(0, 3)}</span>
-                </button>
-              );
-            })}
-          </div>
 
           {/* Stats Row */}
           <div className="mt-6 md:mt-8 flex flex-wrap items-center justify-center gap-x-1 sm:gap-x-2 md:gap-x-4 gap-y-1 text-white font-semibold text-[10px] sm:text-xs md:text-sm lg:text-base drop-shadow-lg bg-black/20 backdrop-blur-sm rounded-lg px-2 sm:px-3 md:px-6 py-2 md:py-3 mx-2 sm:mx-4 md:mx-0">

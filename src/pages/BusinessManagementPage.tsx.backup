@@ -49,7 +49,6 @@ import { formatToBritishDate } from '@/utils/dateUtils';
 import HelpButton from '@/components/onboarding/HelpButton';
 import ScrollToTop from '@/components/ui/ScrollToTop';
 import { ProtectedContactInfo } from '@/components/ui/ProtectedContactInfo';
-import { InlineLogo } from '@/components/ui/Logo';
 
 
 interface BusinessData {
@@ -137,8 +136,14 @@ export const BusinessManagementPage: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<LocalProduct | null>(null);
   const [showPhotoRequestModal, setShowPhotoRequestModal] = useState(false);
 
-  // Image navigation state (for any remaining modals)
+  // Product detail modal state
+  const [selectedProduct, setSelectedProduct] = useState<LocalProduct | null>(null);
+  const [showProductDetail, setShowProductDetail] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Service detail modal state
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [showServiceDetail, setShowServiceDetail] = useState(false);
 
   useEffect(() => {
     // Check if user is authenticated and is a business user
@@ -182,7 +187,7 @@ export const BusinessManagementPage: React.FC = () => {
               website: business.website || '',
               address: business.address,
               city: business.city || '',
-              county: (business as any).county || '',
+              county: business.county || '',
               rating: typeof business.rating === 'string' ? parseFloat(business.rating) : business.rating,
               review_count: business.review_count,
               is_verified: business.is_verified,
@@ -253,7 +258,7 @@ export const BusinessManagementPage: React.FC = () => {
           website: business.website || '',
           address: business.address,
           city: business.city || '',
-          county: (business as any).county || '',
+          county: business.county || '',
           rating: typeof business.rating === 'string' ? parseFloat(business.rating) : business.rating,
           review_count: business.review_count,
           is_verified: business.is_verified,
@@ -432,27 +437,54 @@ export const BusinessManagementPage: React.FC = () => {
   };
 
   const handleProductClick = (product: LocalProduct) => {
-    // Navigate to product detail page using category-based URL if available
-    if (businessData?.category?.slug && (product as any).slug) {
-      navigate(`/category/${businessData.category.slug}/product/${(product as any).slug}`);
-    } else {
-      navigate(`/product/${product.id}`);
-    }
+    setSelectedProduct(product);
+    setCurrentImageIndex(0);
+    setShowProductDetail(true);
   };
 
   const handleServiceClick = (service: Service) => {
-    // Navigate to service detail page using category-based URL if available
-    if (businessData?.category?.slug && (service as any).slug) {
-      navigate(`/category/${businessData.category.slug}/service/${(service as any).slug}`);
+    setSelectedService(service);
+    setShowServiceDetail(true);
+  };
+
+  const handleImageNavigation = (direction: 'next' | 'prev') => {
+    if (!selectedProduct && !selectedService) return;
+    
+    let allImages: string[] = [];
+    
+    if (selectedProduct) {
+      allImages = [
+        ...(selectedProduct.images || []),
+        ...(selectedProduct.product_image_url ? [selectedProduct.product_image_url] : [])
+      ];
+    } else if (selectedService) {
+      allImages = [
+        ...(selectedService.images || []),
+        ...(selectedService.service_image_url ? [selectedService.service_image_url] : [])
+      ];
+    }
+    
+    if (direction === 'next') {
+      setCurrentImageIndex((prev) => 
+        prev === allImages.length - 1 ? 0 : prev + 1
+      );
     } else {
-      navigate(`/service/${service.id}`);
+      setCurrentImageIndex((prev) => 
+        prev === 0 ? allImages.length - 1 : prev - 1
+      );
     }
   };
 
-  // Image navigation function (kept for any remaining modals)
-  const handleImageNavigation = (direction: 'next' | 'prev') => {
-    // This function is kept for any remaining modals that might need it
-    // The main product/service details now use dedicated pages
+  const closeProductDetail = () => {
+    setShowProductDetail(false);
+    setSelectedProduct(null);
+    setCurrentImageIndex(0);
+  };
+
+  const closeServiceDetail = () => {
+    setShowServiceDetail(false);
+    setSelectedService(null);
+    setCurrentImageIndex(0);
   };
 
   const handleServiceSuccess = () => {
@@ -600,16 +632,9 @@ export const BusinessManagementPage: React.FC = () => {
           <div className="mb-8 bg-white rounded-2xl border border-gray-200/50 shadow-lg backdrop-blur-sm">
             <div className="p-8">
               <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-3">
                   <div className="w-3 h-3 bg-gradient-to-r from-fem-terracotta to-fem-gold rounded-full animate-pulse"></div>
                   <span className="text-gray-700 text-sm font-semibold tracking-wide uppercase">Navigation</span>
-                  </div>
-                  {/* Faith Connect Logo for better branding visibility */}
-                  <div className="hidden sm:flex items-center space-x-2 pl-4 border-l border-gray-200">
-                    <InlineLogo />
-                    <span className="text-xs text-gray-500 font-medium">Powered by</span>
-                  </div>
                 </div>
                 <div className="text-gray-600 text-sm font-medium bg-gray-100 px-3 py-1 rounded-full">
                   {businessData.business_name}
@@ -637,7 +662,7 @@ export const BusinessManagementPage: React.FC = () => {
                     {/* Enhanced Business Profile Picture */}
                 <div className="relative group">
                   <div 
-                        className="w-32 h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center border-4 border-white shadow-2xl hover:border-fem-terracotta transition-all duration-200 cursor-pointer overflow-hidden"
+                        className="w-32 h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center border-4 border-white shadow-2xl hover:border-fem-terracotta transition-all duration-500 cursor-pointer overflow-hidden hover:scale-105"
                     onClick={() => handleProfilePictureClick()}
                   >
                     {businessData.business_image_url ? (
@@ -695,7 +720,7 @@ export const BusinessManagementPage: React.FC = () => {
                     <Button 
                       onClick={handleEditBusiness} 
                       variant="outline"
-                      className="bg-white/80 backdrop-blur-sm border-2 border-fem-terracotta/30 text-fem-terracotta hover:bg-fem-terracotta hover:text-white hover:border-fem-terracotta transition-all duration-200 hover:shadow-lg px-6 py-3"
+                      className="bg-white/80 backdrop-blur-sm border-2 border-fem-terracotta/30 text-fem-terracotta hover:bg-fem-terracotta hover:text-white hover:border-fem-terracotta transition-all duration-300 hover:shadow-lg hover:scale-105 px-6 py-3"
                     >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Business
@@ -730,15 +755,16 @@ export const BusinessManagementPage: React.FC = () => {
                   <div className="flex items-center space-x-3 p-4 bg-white rounded-xl shadow-sm border border-gray-200/50 hover:shadow-md transition-all duration-300">
                     <div className="p-2 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg">
                       <Phone className="h-5 w-5 text-green-600" />
-              </div>
+                    </div>
                     <div>
                       <div className="font-semibold text-gray-900">Phone</div>
                       <div className="text-sm text-gray-600">{businessData.phone}</div>
-              </div>
-              </div>
-              </div>
+                    </div>
+                  </div>
             </div>
           </div>
+
+
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
@@ -779,7 +805,7 @@ export const BusinessManagementPage: React.FC = () => {
                   <Star className="h-4 w-4 mr-2" />
                   Analytics
                 </TabsTrigger>
-            </TabsList>
+              </TabsList>
             </div>
 
             {/* Overview Tab */}
@@ -1001,7 +1027,7 @@ export const BusinessManagementPage: React.FC = () => {
                 <div className="flex items-center gap-3">
                     <Button 
                       onClick={handleAddService} 
-                      className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-6 py-3"
+                      className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 px-6 py-3"
                     >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Service
@@ -1017,11 +1043,17 @@ export const BusinessManagementPage: React.FC = () => {
                   {services.map((service, index) => (
                     <Card 
                       key={service.id || `service-${service.name}-${index}`} 
-                      className="group relative overflow-hidden hover:shadow-lg transition-shadow duration-200 cursor-pointer bg-gradient-to-br from-white to-gray-50 border-2 border-transparent hover:border-fem-terracotta/30"
+                      className="group relative overflow-hidden hover:shadow-2xl hover:scale-105 transition-all duration-500 ease-out cursor-pointer bg-gradient-to-br from-white to-gray-50 border-2 border-transparent hover:border-fem-terracotta/30 hover:bg-gradient-to-br hover:from-white hover:to-fem-terracotta/5"
                     >
                       {/* Animated background gradient */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-fem-terracotta/0 via-fem-gold/0 to-fem-terracotta/0 group-hover:from-fem-terracotta/5 group-hover:via-fem-gold/5 group-hover:to-fem-terracotta/5 transition-all duration-200"></div>
+                      <div className="absolute inset-0 bg-gradient-to-br from-fem-terracotta/0 via-fem-gold/0 to-fem-terracotta/0 group-hover:from-fem-terracotta/5 group-hover:via-fem-gold/5 group-hover:to-fem-terracotta/5 transition-all duration-700"></div>
                       
+                      {/* Floating particles effect */}
+                      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        <div className="absolute top-4 right-4 w-2 h-2 bg-fem-gold rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-ping transition-opacity duration-500"></div>
+                        <div className="absolute bottom-8 left-6 w-1 h-1 bg-fem-terracotta rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-pulse transition-opacity duration-700 delay-100"></div>
+                        <div className="absolute top-1/2 right-8 w-1.5 h-1.5 bg-fem-gold rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-bounce transition-opacity duration-600 delay-200"></div>
+                      </div>
                       
                       <CardContent className="relative z-10 p-6">
                         <div className="flex items-start space-x-4 mb-4">
@@ -1031,13 +1063,13 @@ export const BusinessManagementPage: React.FC = () => {
                             <img 
                               src={service.images?.[0] || service.service_image_url || "/placeholder.svg"} 
                               alt={service.name}
-                              className="w-16 h-16 object-cover rounded-lg border-2 border-gray-200 group-hover:border-fem-terracotta/50 transition-all duration-200 shadow-md group-hover:shadow-lg"
+                              className="w-16 h-16 object-cover rounded-lg border-2 border-gray-200 group-hover:border-fem-terracotta/50 group-hover:scale-110 transition-all duration-300 shadow-md group-hover:shadow-lg"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = "/placeholder.svg";
                               }}
                             />
                             {/* Glow effect on image */}
-                            <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-fem-terracotta/30 to-fem-gold/30 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-200 -z-10"></div>
+                            <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-fem-terracotta/30 to-fem-gold/30 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-500 -z-10"></div>
                           </div>
                           
                           {/* Service Details */}
@@ -1369,8 +1401,8 @@ export const BusinessManagementPage: React.FC = () => {
             </TabsContent>
           </Tabs>
         </div>
-        </div>
       </main>
+    </div>
       
       {/* Service Form Modal */}
       <ServiceForm
@@ -1390,7 +1422,330 @@ export const BusinessManagementPage: React.FC = () => {
         onSuccess={handleProductSuccess}
       />
 
-      {/* Product and Service details now use dedicated pages instead of modals */}
+      {/* Product Detail Modal */}
+      <Dialog open={showProductDetail} onOpenChange={closeProductDetail}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{selectedProduct?.name}</span>
+              <Button variant="ghost" size="sm" onClick={closeProductDetail}>
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedProduct && (
+            <div className="space-y-6">
+              {/* Image Gallery */}
+              <div className="relative">
+                {(() => {
+                  const allImages = [
+                    ...(selectedProduct.images || []),
+                    ...(selectedProduct.product_image_url ? [selectedProduct.product_image_url] : [])
+                  ];
+                  
+                  if (allImages.length === 0) {
+                    return (
+                      <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <Image className="h-16 w-16 text-gray-400" />
+                        <span className="ml-2 text-gray-500">No images available</span>
+                      </div>
+                    );
+                  }
+                  
+                  return (
+                    <div className="relative">
+                      {/* Main Image */}
+                      <img 
+                        src={allImages[currentImageIndex]} 
+                        alt={`${selectedProduct.name} - Image ${currentImageIndex + 1}`}
+                        className="w-full h-96 object-cover rounded-lg shadow-lg"
+                      />
+                      
+                      {/* Navigation Arrows */}
+                      {allImages.length > 1 && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg"
+                            onClick={() => handleImageNavigation('prev')}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg"
+                            onClick={() => handleImageNavigation('next')}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      
+                      {/* Image Counter */}
+                      <div className="absolute bottom-2 right-2 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-medium">
+                        {currentImageIndex + 1} / {allImages.length}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+              
+              {/* Thumbnail Gallery */}
+              {(() => {
+                const allImages = [
+                  ...(selectedProduct.images || []),
+                  ...(selectedProduct.product_image_url ? [selectedProduct.product_image_url] : [])
+                ];
+                
+                if (allImages.length > 1) {
+                  return (
+                    <div className="mt-4">
+                      <Label className="text-sm font-medium text-gray-700 mb-2">All Images</Label>
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {allImages.map((image, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentImageIndex(index)}
+                            className={`flex-shrink-0 relative group ${
+                              index === currentImageIndex 
+                                ? 'ring-2 ring-fem-terracotta ring-offset-2' 
+                                : 'hover:ring-2 hover:ring-gray-300 ring-offset-2'
+                            }`}
+                          >
+                            <img
+                              src={image}
+                              alt={`${selectedProduct.name} thumbnail ${index + 1}`}
+                              className="w-20 h-20 object-cover rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-colors"
+                            />
+                            {index === currentImageIndex && (
+                              <div className="absolute inset-0 bg-fem-terracotta/20 rounded-lg flex items-center justify-center">
+                                <div className="w-2 h-2 bg-fem-terracotta rounded-full"></div>
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              
+              {/* Product Information */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">{selectedProduct.name}</h3>
+                  <p className="text-gray-600">{selectedProduct.description || 'No description available'}</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-500">Price</label>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {selectedProduct.price} {selectedProduct.price_currency}
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-500">Stock Status</label>
+                    <Badge variant={selectedProduct.in_stock ? "default" : "secondary"}>
+                      {selectedProduct.in_stock ? "In Stock" : "Out of Stock"}
+                    </Badge>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-500">Status</label>
+                    <Badge variant={selectedProduct.is_active ? "default" : "secondary"}>
+                      {selectedProduct.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                  
+                  {selectedProduct.created_at && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-500">Added</label>
+                      <p className="text-sm text-gray-600">
+                        {formatToBritishDate(selectedProduct.created_at)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    closeProductDetail();
+                    handleEditProduct(selectedProduct);
+                  }}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Product
+                </Button>
+                <Button onClick={closeProductDetail}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Service Detail Modal */}
+      <Dialog open={showServiceDetail} onOpenChange={closeServiceDetail}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{selectedService?.name}</span>
+              <Button variant="ghost" size="sm" onClick={closeServiceDetail}>
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedService && (
+            <div className="space-y-6">
+              {/* Service Images */}
+              <div className="relative">
+                {(() => {
+                  const allImages = [
+                    ...(selectedService.images || []),
+                    ...(selectedService.service_image_url ? [selectedService.service_image_url] : [])
+                  ];
+                  
+                  if (allImages.length > 0) {
+                    return (
+                      <div className="relative">
+                        <img 
+                          src={allImages[currentImageIndex] || allImages[0]} 
+                          alt={`${selectedService.name} - Image ${currentImageIndex + 1}`}
+                          className="w-full h-96 object-cover rounded-lg shadow-lg"
+                        />
+                        
+                        {/* Image Navigation */}
+                        {allImages.length > 1 && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 rounded-full p-2"
+                              onClick={() => handleImageNavigation('prev')}
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 rounded-full p-2"
+                              onClick={() => handleImageNavigation('next')}
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                            
+                            {/* Image Counter */}
+                            <div className="absolute bottom-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                              {currentImageIndex + 1} / {allImages.length}
+                            </div>
+                          </>
+                        )}
+                        
+                        {/* Image Thumbnails */}
+                        {allImages.length > 1 && (
+                          <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
+                            {allImages.map((image, index) => (
+                              <button
+                                key={index}
+                                onClick={() => setCurrentImageIndex(index)}
+                                className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${
+                                  index === currentImageIndex ? 'border-fem-terracotta' : 'border-gray-200'
+                                }`}
+                              >
+                                <img 
+                                  src={image} 
+                                  alt={`Thumbnail ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <Settings className="h-16 w-16 text-gray-400" />
+                        <span className="ml-2 text-gray-500">No images available</span>
+                      </div>
+                    );
+                  }
+                })()}
+              </div>
+              
+              {/* Service Information */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">{selectedService.name}</h3>
+                  <p className="text-gray-600">{selectedService.description || 'No description available'}</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-500">Price Range</label>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {selectedService.price_range || 'Contact for pricing'}
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-500">Duration</label>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {selectedService.duration || 'Not specified'}
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-500">Status</label>
+                    <Badge variant={selectedService.is_active ? "default" : "secondary"}>
+                      {selectedService.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                  
+                  {selectedService.created_at && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-500">Added</label>
+                      <p className="text-sm text-gray-600">
+                        {formatToBritishDate(selectedService.created_at)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    closeServiceDetail();
+                    handleEditService(selectedService);
+                  }}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Service
+                </Button>
+                <Button onClick={closeServiceDetail}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       
       {/* Photo Request Modal */}
       <PhotoRequestModal
@@ -1400,9 +1755,9 @@ export const BusinessManagementPage: React.FC = () => {
         businessName={businessData?.business_name || ''}
       />
       
-              <Footer />
-        <ScrollToTop />
-        <HelpButton />
-      </div>
-    );
+      <Footer />
+      <ScrollToTop />
+      <HelpButton />
+    </div>
+  );
 };

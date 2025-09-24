@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Navbar } from '@/components/layout/Navbar';
+import { Footer } from '@/components/layout/Footer';
 
 interface FAQItem {
   question: string;
@@ -86,7 +88,9 @@ const FAQPage: React.FC = () => {
   const categories = ['General', 'Business', 'Community'];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Navbar />
+      <main className="flex-grow">
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
@@ -158,6 +162,8 @@ const FAQPage: React.FC = () => {
           </div>
         </div>
       </div>
+      </main>
+      <Footer />
     </div>
   );
 };

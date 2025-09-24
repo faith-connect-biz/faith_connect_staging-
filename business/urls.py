@@ -11,12 +11,18 @@ from .views import (
     get_product_image_upload_url, update_product_image, get_business_profile_image_upload_url, 
     update_business_profile_image, get_business_logo_upload_url, update_business_logo,
     ServiceReviewListCreateView, ServiceReviewUpdateDeleteView, ProductReviewListCreateView, ProductReviewUpdateDeleteView,
-    UserLikedReviewsView
+    UserLikedReviewsView, ProductDetailByCategoryView, ServiceDetailByCategoryView,
+    BusinessRegistrationStep1APIView, BusinessRegistrationStep2APIView, FEMChurchListAPIView
 )
 
 urlpatterns = [
     path('', BusinessListCreateAPIView.as_view(), name="business-list-create"),
     path('categories/', CategoryListAPIView.as_view(), name="category-list"),
+    
+    # Two-step registration endpoints
+    path('register/step1/', BusinessRegistrationStep1APIView.as_view(), name="business-registration-step1"),
+    path('register/step2/<uuid:business_id>/', BusinessRegistrationStep2APIView.as_view(), name="business-registration-step2"),
+    path('churches/', FEMChurchListAPIView.as_view(), name="fem-church-list"),
     path('services/', ServiceListCreateAPIView.as_view(), name="service-list"),
     path('products/', ProductListCreateAPIView.as_view(), name="product-list"),
     path('my-business/', MyBusinessView.as_view(), name="my-business"),
@@ -35,6 +41,9 @@ urlpatterns = [
     path('products/<int:product_id>/reviews/', ProductReviewListCreateView.as_view(), name="product-reviews"),
     path('products/<int:product_id>/reviews/<int:pk>/', ProductReviewUpdateDeleteView.as_view(), name="product-review-detail"),
     path('<uuid:business_id>/hours/', BusinessHoursView.as_view(), name="business-hours"),
+    # New category-based URLs
+    path('category/<str:category_slug>/product/<str:slug>/', ProductDetailByCategoryView.as_view(), name="product-detail-by-category"),
+    path('category/<str:category_slug>/service/<str:slug>/', ServiceDetailByCategoryView.as_view(), name="service-detail-by-category"),
     path('<uuid:business_id>/analytics/', BusinessAnalyticsView.as_view(), name="business-analytics"),
     path('<uuid:business_id>/upload-image/', BusinessImageUploadView.as_view(), name="business-image-upload"),
     

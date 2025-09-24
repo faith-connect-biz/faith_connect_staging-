@@ -84,13 +84,18 @@ export const ServiceList: React.FC<ServiceListProps> = ({
       searchParams.search = filters.searchTerm.trim();
     }
     
+    // Add category filter if provided
+    if (filters.category && filters.category.trim()) {
+      searchParams.category = filters.category.trim();
+    }
+    
     // Debounce search to prevent excessive API calls
     const timeoutId = setTimeout(() => {
       fetchServicesWithPagination(searchParams);
     }, filters.searchTerm ? 300 : 0); // 300ms delay for search, immediate for page changes
     
     return () => clearTimeout(timeoutId);
-  }, [currentPage, itemsPerPage, filters.searchTerm, fetchServicesWithPagination]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentPage, itemsPerPage, filters.searchTerm, filters.category, fetchServicesWithPagination]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Use filtered services directly (no client-side pagination)
   const paginatedServices = filteredServices;
@@ -109,17 +114,15 @@ export const ServiceList: React.FC<ServiceListProps> = ({
   };
 
   const handleServiceClick = (service: Service) => {
-    let business;
-    if (typeof service.business === 'string') {
-      business = businesses.find(b => b.id === service.business);
-    } else {
-      business = service.business;
-    }
+    // Navigate to service detail page using category-based URL if available
+    const business = typeof service.business === 'string' 
+      ? businesses.find(b => b.id === service.business)
+      : service.business;
     
-    if (business && typeof business === 'object' && business.id) {
-      navigate(`/business/${business.id}`);
-    } else if (typeof service.business === 'string') {
-      navigate(`/business/${service.business}`);
+    if (business?.category?.slug && (service as any).slug) {
+      navigate(`/category/${business.category.slug}/service/${(service as any).slug}`);
+    } else {
+      navigate(`/service/${service.id}`);
     }
   };
 
@@ -162,7 +165,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
     return (
       <Card 
         key={service.id} 
-        className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer hover:scale-[1.02] rounded-2xl"
+        className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-shadow duration-200 overflow-hidden group cursor-pointer rounded-2xl"
         onClick={() => handleServiceClick(service)}
       >
         {/* Service Image Gallery */}
@@ -176,7 +179,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
                   <img
                     src={serviceImages[0]}
                     alt={service.name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    className="w-full h-full object-cover"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.src = "/placeholder.svg";
@@ -225,7 +228,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
           })()}
           
           {/* Hover Overlay with Action Buttons */}
-          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-end p-3">
+          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end justify-end p-3">
             <div className="flex gap-2">
               {isAuthenticated && (
                 <LikeButton
@@ -276,7 +279,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
 
         <CardContent className="p-5">
           {/* Service Name */}
-          <h3 className="font-bold text-lg text-fem-navy mb-3 group-hover:text-fem-terracotta transition-colors duration-300 cursor-pointer line-clamp-2">
+          <h3 className="font-bold text-lg text-fem-navy mb-3 group-hover:text-fem-terracotta transition-colors duration-200 cursor-pointer line-clamp-2">
             {service.name}
           </h3>
 
@@ -322,7 +325,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
             
           {/* Action Button */}
                 <Button
-            className="w-full bg-gradient-to-r from-fem-terracotta to-fem-navy hover:from-fem-terracotta/90 hover:to-fem-navy/90 text-white font-semibold py-2 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
+            className="w-full bg-gradient-to-r from-fem-terracotta to-fem-navy hover:from-fem-terracotta/90 hover:to-fem-navy/90 text-white font-semibold py-2 rounded-lg transition-colors duration-200 shadow-lg"
             onClick={(e) => {
               e.stopPropagation();
               handleServiceClick(service);

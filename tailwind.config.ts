@@ -207,6 +207,30 @@ export default {
 					  opacity: '1',
 					  transform: 'scale(1)',
 					}
+				},
+				'scroll-left': {
+					'0%': {
+						transform: 'translateX(0)',
+					},
+					'100%': {
+						transform: 'translateX(-50%)',
+					}
+				},
+				'scroll-stats': {
+					'0%': {
+						transform: 'translateX(0)',
+					},
+					'100%': {
+						transform: 'translateX(-33.333%)',
+					}
+				},
+				'shimmer': {
+					'0%': {
+						'background-position': '-200% 0',
+					},
+					'100%': {
+						'background-position': '200% 0',
+					}
 				}
 			},
 			animation: {
@@ -223,7 +247,25 @@ export default {
 				'float-slow': 'float-slow 8s ease-in-out infinite',
 				'float-fast': 'float-fast 4s ease-in-out infinite',
 				'gradient-shift': 'gradient-shift 4s ease infinite',
-				'scale-in': 'scale-in 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards'
+				'scale-in': 'scale-in 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+				'scroll-left': 'scroll-left 30s linear infinite',
+				'scroll-stats': 'scroll-stats 20s linear infinite',
+				'shimmer': 'shimmer 2s ease-in-out infinite'
+			},
+			animationPlayState: {
+				'paused': 'paused',
+				'running': 'running'
+			}
+		},
+		utilities: {
+			'.scrollbar-hide': {
+				/* Hide scrollbar for IE, Edge and Firefox */
+				'-ms-overflow-style': 'none',
+				'scrollbar-width': 'none',
+				/* Hide scrollbar for Chrome, Safari and Opera */
+				'&::-webkit-scrollbar': {
+					display: 'none'
+				}
 			}
 		}
 	},

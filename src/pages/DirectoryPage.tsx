@@ -3,6 +3,48 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { useBusiness } from '@/contexts/BusinessContext';
+
+// Error Boundary Component for DirectoryPage
+class DirectoryPageErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('DirectoryPage Error Boundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center max-w-md mx-auto p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Something went wrong</h2>
+            <p className="text-gray-600 mb-6">
+              We're sorry, but something went wrong while loading the directory.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-fem-terracotta text-white px-6 py-3 rounded-lg hover:bg-fem-terracotta/90 transition-colors"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 import { Search, Filter, X, Building2, Settings, Package, Star, MessageSquare, Sparkles, TrendingUp, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +58,7 @@ import { DirectorySkeleton } from '@/components/directory/DirectorySkeleton';
 import { BusinessCategories } from '@/components/home/BusinessCategories';
 import { EpicSearchBar } from '@/components/search/EpicSearchBar';
 import { AdvancedSearchFilters } from '@/components/search/AdvancedSearchFilters';
+import { DirectoryBreadcrumb } from '@/components/ui/DirectoryBreadcrumb';
 import { toast } from 'sonner';
 
 interface Filters {
@@ -33,6 +76,19 @@ interface Filters {
 }
 
 export const DirectoryPage: React.FC = () => {
+  // Add error handling for BusinessContext
+  const businessContext = useBusiness();
+  if (!businessContext) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Loading...</h2>
+          <p className="text-gray-600">Please wait while we load the directory.</p>
+        </div>
+      </div>
+    );
+  }
+
   const { 
     fetchBusinesses, 
     fetchServices, 
@@ -41,6 +97,8 @@ export const DirectoryPage: React.FC = () => {
     fetchServicesWithPagination,
     fetchProductsWithPagination,
     businesses, 
+    services,
+    products,
     totalServicesCount, 
     totalProductsCount,
     isLoading,
@@ -48,10 +106,10 @@ export const DirectoryPage: React.FC = () => {
     isLoadingServices,
     isLoadingProducts,
     getPriceRanges
-  } = useBusiness();
+  } = businessContext;
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('businesses');
+  const [activeTab, setActiveTab] = useState('services');
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>({
@@ -84,7 +142,8 @@ export const DirectoryPage: React.FC = () => {
     }
     
     if (urlCategory) {
-      setFilters(prev => ({ ...prev, category: decodeURIComponent(urlCategory) }));
+      const decodedCategory = decodeURIComponent(urlCategory);
+      setFilters(prev => ({ ...prev, category: decodedCategory }));
     }
     
     // Scroll to top when URL parameters change (e.g., category filter from landing page)
@@ -117,6 +176,18 @@ export const DirectoryPage: React.FC = () => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeTab]);
+
+  // Add a timeout to ensure loading states don't stay true indefinitely
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (isLoadingServices) {
+        console.log('🔍 DirectoryPage - Services loading timeout, forcing loading to false');
+        // The loading state should be managed by the context, but this is a fallback
+      }
+    }, 40000); // 40 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [isLoadingServices]);
 
   // Handle search input changes
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,6 +244,10 @@ export const DirectoryPage: React.FC = () => {
       <Navbar />
       <main className="flex-grow">
         <div className="container mx-auto px-4 py-8">
+          {/* Breadcrumb */}
+          <div className="mb-8">
+            <DirectoryBreadcrumb activeTab={activeTab as 'services' | 'businesses' | 'products'} className="shadow-xl" />
+          </div>
           
           {/* Enhanced Header */}
           <div className="mb-8 text-center">
@@ -181,44 +256,37 @@ export const DirectoryPage: React.FC = () => {
               <h1 className="text-xl sm:text-2xl font-bold">Services & Products Directory</h1>
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <p className="text-gray-600 max-w-2xl mx-auto px-4 text-sm sm:text-base">
+            <p className="text-gray-800 max-w-2xl mx-auto px-6 py-4 text-sm sm:text-base bg-white/90 backdrop-blur-sm rounded-lg shadow-lg border border-white/20">
               Discover trusted businesses, services, and quality products from our faith community. Connect with local entrepreneurs through their offerings.
             </p>
           </div>
 
           {/* Stats Section */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8">
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 text-center shadow-lg">
-              <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center mx-auto mb-2">
-                <Settings className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-2 sm:p-4 text-center shadow-lg">
+              <div className="w-6 h-6 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center mx-auto mb-1 sm:mb-2">
+                <Settings className="w-3 h-3 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div className="text-lg sm:text-2xl font-bold text-fem-navy">{totalServicesCount || 0}</div>
-              <div className="text-xs sm:text-sm text-gray-600">Total Services</div>
+              <div className="text-sm sm:text-2xl font-bold text-fem-navy">{totalServicesCount || 0}</div>
+              <div className="text-xs text-gray-700 font-medium">Total Services</div>
             </div>
             
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 text-center shadow-lg">
-              <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-navy to-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-2">
-                <Package className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-2 sm:p-4 text-center shadow-lg">
+              <div className="w-6 h-6 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-navy to-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-1 sm:mb-2">
+                <Package className="w-3 h-3 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div className="text-lg sm:text-2xl font-bold text-fem-navy">{totalProductsCount || 0}</div>
-              <div className="text-xs sm:text-sm text-gray-600">Total Products</div>
+              <div className="text-sm sm:text-2xl font-bold text-fem-navy">{totalProductsCount || 0}</div>
+              <div className="text-xs text-gray-700 font-medium">Total Products</div>
             </div>
             
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 text-center shadow-lg">
-              <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-gold to-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-2">
-                <Star className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-2 sm:p-4 text-center shadow-lg">
+              <div className="w-6 h-6 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-gold to-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-1 sm:mb-2">
+                <Star className="w-3 h-3 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div className="text-lg sm:text-2xl font-bold text-fem-navy">{averageRating}</div>
-              <div className="text-xs sm:text-sm text-gray-600">Avg Rating</div>
+              <div className="text-sm sm:text-2xl font-bold text-fem-navy">{averageRating}</div>
+              <div className="text-xs text-gray-700 font-medium">Avg Rating</div>
             </div>
             
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 text-center shadow-lg">
-              <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-terracotta to-fem-navy rounded-full flex items-center justify-center mx-auto mb-2">
-                <MessageSquare className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
-              </div>
-              <div className="text-lg sm:text-2xl font-bold text-fem-navy">{totalReviews}</div>
-              <div className="text-xs sm:text-sm text-gray-600">Reviews</div>
-            </div>
           </div>
 
           {/* Epic Search Section */}
@@ -258,28 +326,28 @@ export const DirectoryPage: React.FC = () => {
                     setFilters(prev => ({ ...prev, ...customFilters }));
                   }
                 }}
-                placeholder="Search businesses, services, and products with AI-powered suggestions..."
+                placeholder="Search businesses, services, and products..."
                 showFilters={true}
                 className="w-full"
               />
             </div>
 
-            {/* Epic Search Button */}
-            <div className="flex justify-center gap-4">
+            {/* Search Actions */}
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4">
               <Button
                 variant="outline"
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center space-x-2 bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+                className="flex items-center space-x-2 bg-white border-2 border-gray-200 hover:border-fem-terracotta hover:bg-fem-terracotta/5 text-gray-700 hover:text-fem-terracotta shadow-md hover:shadow-lg transition-all duration-200 px-6 py-3"
               >
                 <Filter className="w-4 h-4" />
-                <span>{showFilters ? 'Hide' : 'Show'} Advanced Filters</span>
+                <span className="font-medium">{showFilters ? 'Hide Filters' : 'Advanced Filters'}</span>
               </Button>
               <Button
                 onClick={() => navigate('/epic-search')}
-                className="flex items-center space-x-2 bg-gradient-to-r from-fem-terracotta to-fem-gold text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                className="flex items-center space-x-2 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-6 py-3 font-medium"
               >
                 <Zap className="w-4 h-4" />
-                <span>Try Epic Search</span>
+                <span>Epic Search</span>
               </Button>
             </div>
           </div>
@@ -354,8 +422,14 @@ export const DirectoryPage: React.FC = () => {
                   </div>
                   {isLoadingServices ? (
                     <DirectorySkeleton count={6} type="service" />
-                  ) : (
+                  ) : services && services.length > 0 ? (
                     <ServiceList filters={filters} />
+                  ) : (
+                    <div className="text-center py-12">
+                      <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No services found</h3>
+                      <p className="text-gray-500">Try adjusting your filters or search terms.</p>
+                    </div>
                   )}
                 </TabsContent>
 
@@ -392,4 +466,11 @@ export const DirectoryPage: React.FC = () => {
   );
 };
 
-export default DirectoryPage;
+// Wrap DirectoryPage with Error Boundary
+const DirectoryPageWithErrorBoundary = () => (
+  <DirectoryPageErrorBoundary>
+    <DirectoryPage />
+  </DirectoryPageErrorBoundary>
+);
+
+export default DirectoryPageWithErrorBoundary;

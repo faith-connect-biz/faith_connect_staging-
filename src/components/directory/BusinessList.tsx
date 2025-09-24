@@ -231,7 +231,7 @@ export const BusinessList: React.FC<BusinessListProps> = ({
           {/* Business Category */}
           {business.category && (
             <div className="mb-3">
-              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+              <Badge variant="outline" className="text-xs bg-gradient-to-r from-fem-terracotta/10 to-fem-gold/10 text-fem-terracotta border-fem-terracotta/30 hover:from-fem-terracotta/20 hover:to-fem-gold/20 transition-all duration-200">
                 {business.category.name}
               </Badge>
                   </div>

@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import AuthModal from '@/components/auth/AuthModal';
+import { NavbarLogo } from '@/components/ui/Logo';
 import { 
   Menu, 
   X, 
@@ -97,31 +98,31 @@ const Navbar: React.FC = () => {
   // Auto-open login modal when instructed (e.g., after password reset)
   useEffect(() => {
     const shouldOpen = localStorage.getItem('open_login_modal');
-    if (shouldOpen) {
+    // Only open the modal if the user is NOT authenticated
+    if (shouldOpen && !isAuthenticated) {
       setAuthModalTab('login');
       setIsAuthModalOpen(true);
+    }
+    // Always clear the flag once checked to avoid stale triggers
+    if (shouldOpen) {
       localStorage.removeItem('open_login_modal');
     }
-  }, []);
+  }, [isAuthenticated]);
 
   return (
-         <nav className="bg-transparent py-4 relative z-50 transition-all duration-300">
+    <nav className="sticky top-0 bg-gradient-to-r from-slate-100 via-blue-50 to-slate-100 py-4 z-40 transition-all duration-300 shadow-sm border-b border-gray-200/50 backdrop-blur-sm">
       <div className="container mx-auto px-4 flex justify-between items-center">
         <Link to="/" className="flex items-center group" onClick={closeMenu}>
-          <img 
-            src="/lovable-uploads/NewFaithConnect.png" 
-            alt="Faith Connect Logo" 
-            className="h-10 w-auto sm:h-12 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-2 group-hover:drop-shadow-2xl group-active:animate-bounce group-active:scale-95 group-active:rotate-0 group-active:drop-shadow-lg" 
-          />
+          <NavbarLogo />
         </Link>
         
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-8">
-          <Link to="/" className={`text-fem-navy transition-all duration-300 relative group ${location.pathname === '/' ? 'text-fem-terracotta font-semibold' : 'hover:text-fem-terracotta'}`}>
+          <Link to="/" className={`text-gray-700 transition-all duration-300 relative group px-3 py-2 rounded-md ${location.pathname === '/' ? 'text-fem-terracotta font-semibold bg-white/50' : 'hover:text-fem-terracotta hover:bg-white/30'}`}>
             Home
             <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-300 ${location.pathname === '/' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
           </Link>
-          <Link to="/directory" className={`text-fem-navy transition-all duration-300 relative group ${location.pathname === '/directory' ? 'text-fem-terracotta font-semibold' : 'hover:text-fem-terracotta'}`}>
+          <Link to="/directory" className={`text-gray-700 transition-all duration-300 relative group px-3 py-2 rounded-md ${location.pathname === '/directory' ? 'text-fem-terracotta font-semibold bg-white/50' : 'hover:text-fem-terracotta hover:bg-white/30'}`}>
             Business Directory
             <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-300 ${location.pathname === '/directory' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
           </Link>
@@ -129,34 +130,34 @@ const Navbar: React.FC = () => {
           {isAuthenticated && isBusiness && (
             <>
               {isCheckingBusiness ? (
-                <div className="text-fem-navy opacity-50">
+                <div className="text-gray-700 opacity-50 px-3 py-2">
                   <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
                   Loading...
                 </div>
               ) : !hasExistingBusiness ? (
-                <Link to="/register-business" className={`text-fem-navy transition-all duration-300 relative group ${location.pathname === '/register-business' ? 'text-fem-terracotta font-semibold' : 'hover:text-fem-terracotta'}`}>
+                <Link to="/register-business" className={`text-gray-700 transition-all duration-300 relative group px-3 py-2 rounded-md ${location.pathname === '/register-business' ? 'text-fem-terracotta font-semibold bg-white/50' : 'hover:text-fem-terracotta hover:bg-white/30'}`}>
                   List Business
                   <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-300 ${location.pathname === '/register-business' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
                 </Link>
               ) : (
-                <Link to="/manage-business" className={`text-fem-navy transition-all duration-300 relative group ${location.pathname === '/manage-business' ? 'text-fem-terracotta font-semibold' : 'hover:text-fem-terracotta'}`}>
+                <Link to="/manage-business" className={`text-gray-700 transition-all duration-300 relative group px-3 py-2 rounded-md ${location.pathname === '/manage-business' ? 'text-fem-terracotta font-semibold bg-white/50' : 'hover:text-fem-terracotta hover:bg-white/30'}`}>
                   Manage Business
                   <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-300 ${location.pathname === '/manage-business' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
                 </Link>
               )}
             </>
           )}
-          <Link to="/about" className={`text-fem-navy transition-all duration-300 relative group ${location.pathname === '/about' ? 'text-fem-terracotta font-semibold' : 'hover:text-fem-terracotta'}`}>
+          <Link to="/about" className={`text-gray-700 transition-all duration-300 relative group px-3 py-2 rounded-md ${location.pathname === '/about' ? 'text-fem-terracotta font-semibold bg-white/50' : 'hover:text-fem-terracotta hover:bg-white/30'}`}>
             About
             <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-300 ${location.pathname === '/about' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
           </Link>
-          <Link to="/contact" className={`text-fem-navy transition-all duration-300 relative group ${location.pathname === '/contact' ? 'text-fem-terracotta font-semibold' : 'hover:text-fem-terracotta'}`}>
+          <Link to="/contact" className={`text-gray-700 transition-all duration-300 relative group px-3 py-2 rounded-md ${location.pathname === '/contact' ? 'text-fem-terracotta font-semibold bg-white/50' : 'hover:text-fem-terracotta hover:bg-white/30'}`}>
             Contact
             <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-300 ${location.pathname === '/contact' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
           </Link>
           {/* Favorites - Only when authenticated */}
           {isAuthenticated && (
-            <Link to="/favorites" className={`text-fem-navy transition-all duration-300 relative group ${location.pathname === '/favorites' ? 'text-fem-terracotta font-semibold' : 'hover:text-fem-terracotta'}`}>
+            <Link to="/favorites" className={`text-gray-700 transition-all duration-300 relative group px-3 py-2 rounded-md ${location.pathname === '/favorites' ? 'text-fem-terracotta font-semibold bg-white/50' : 'hover:text-fem-terracotta hover:bg-white/30'}`}>
               Favorites
               <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-300 ${location.pathname === '/favorites' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
             </Link>
@@ -226,20 +227,20 @@ const Navbar: React.FC = () => {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 bg-white shadow-lg border-t border-gray-100 z-50">
+        <div className="md:hidden absolute top-full left-0 right-0 bg-gradient-to-r from-slate-100 via-blue-50 to-slate-100 shadow-lg border-t border-gray-200/50 z-50">
           <div className="container mx-auto px-4 py-4 space-y-4">
             {/* Mobile Navigation Links */}
             <div className="space-y-3">
-                             <Link 
-                 to="/" 
-                 className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
-                 onClick={closeMenu}
-               >
-                 Home
-               </Link>
+              <Link 
+                to="/" 
+                className="block py-2 px-3 text-gray-700 hover:text-fem-terracotta hover:bg-white/30 rounded-md transition-colors"
+                onClick={closeMenu}
+              >
+                Home
+              </Link>
               <Link 
                 to="/directory" 
-                className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
+                className="block py-2 px-3 text-gray-700 hover:text-fem-terracotta hover:bg-white/30 rounded-md transition-colors"
                 onClick={closeMenu}
               >
                 Business Directory
@@ -248,14 +249,14 @@ const Navbar: React.FC = () => {
               {isAuthenticated && isBusiness && (
                 <>
                   {isCheckingBusiness ? (
-                    <div className="block py-2 text-fem-navy opacity-50">
+                    <div className="block py-2 px-3 text-gray-700 opacity-50">
                       <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
                       Loading...
                     </div>
                   ) : !hasExistingBusiness ? (
                     <Link 
                       to="/register-business" 
-                      className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
+                      className="block py-2 px-3 text-gray-700 hover:text-fem-terracotta hover:bg-white/30 rounded-md transition-colors"
                       onClick={closeMenu}
                     >
                       List Business
@@ -263,7 +264,7 @@ const Navbar: React.FC = () => {
                   ) : (
                     <Link 
                       to="/manage-business" 
-                      className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
+                      className="block py-2 px-3 text-gray-700 hover:text-fem-terracotta hover:bg-white/30 rounded-md transition-colors"
                       onClick={closeMenu}
                     >
                       Manage Business
@@ -273,14 +274,14 @@ const Navbar: React.FC = () => {
               )}
               <Link 
                 to="/about" 
-                className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
+                className="block py-2 px-3 text-gray-700 hover:text-fem-terracotta hover:bg-white/30 rounded-md transition-colors"
                 onClick={closeMenu}
               >
                 About
               </Link>
               <Link 
                 to="/contact" 
-                className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
+                className="block py-2 px-3 text-gray-700 hover:text-fem-terracotta hover:bg-white/30 rounded-md transition-colors"
                 onClick={closeMenu}
               >
                 Contact
@@ -288,7 +289,7 @@ const Navbar: React.FC = () => {
               {isAuthenticated && (
                 <Link 
                   to="/favorites" 
-                  className="block py-2 text-fem-navy hover:text-fem-terracotta transition-colors"
+                  className="block py-2 px-3 text-gray-700 hover:text-fem-terracotta hover:bg-white/30 rounded-md transition-colors"
                   onClick={closeMenu}
                 >
                   Favorites

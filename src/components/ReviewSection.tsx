@@ -52,7 +52,9 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
           break;
         case 'business':
         default:
-          response = await apiService.getBusinessReviews(itemId);
+          // Business reviews are handled differently - they come with the business data
+          // For now, set empty array since business reviews are not available through this endpoint
+          response = [];
           break;
       }
       setReviews(response);

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { 
   Star, 
   Phone, 
@@ -144,23 +145,38 @@ const BusinessDetailPage = () => {
         }
         setBusiness(businessData);
         
-        // Fetch reviews for this business
+        // Extract reviews from business data
         let reviewsArray: Review[] = [];
-        try {
-          const reviewsData = await apiService.getBusinessReviews(id);
-          // Ensure reviewsData is an array
-          reviewsArray = Array.isArray(reviewsData) ? reviewsData : [];
+        if (businessData.reviews && Array.isArray(businessData.reviews)) {
+          reviewsArray = businessData.reviews;
           setReviews(reviewsArray);
-          console.log('Reviews fetched successfully:', reviewsArray);
-        } catch (error) {
-          console.error('Failed to fetch reviews:', error);
-          // Set empty reviews array and show error toast
-          setReviews([]);
-          toast({
-            title: "Reviews Unavailable",
-            description: "Unable to load reviews at this time. The business stats show there are reviews, but we cannot display them due to a technical issue.",
-            variant: "destructive"
-          });
+          console.log('Reviews loaded from business data:', reviewsArray);
+        } else {
+          // If no reviews in business data, try to get them from analytics
+          try {
+            const analyticsData = await apiService.getBusinessAnalytics(id);
+            if (analyticsData.recent_reviews && Array.isArray(analyticsData.recent_reviews)) {
+              reviewsArray = analyticsData.recent_reviews.map((review: any) => ({
+                id: review.id,
+                user: review.user,
+                rating: review.rating,
+                review_text: review.review_text,
+                created_at: review.created_at || new Date().toISOString(),
+                updated_at: review.updated_at || new Date().toISOString(),
+                business: id,
+                is_verified: false
+              }));
+              setReviews(reviewsArray);
+              console.log('Reviews loaded from analytics:', reviewsArray);
+            } else {
+              setReviews([]);
+              console.log('No reviews found in business data or analytics');
+            }
+          } catch (error) {
+            console.error('Failed to fetch reviews from analytics:', error);
+            setReviews([]);
+            console.log('Reviews not available - using empty array');
+          }
         }
         
         // Check if current user has already reviewed this business
@@ -902,42 +918,44 @@ const BusinessDetailPage = () => {
                     target.className = "w-full h-full object-cover";
                   }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
                 
 
 
 
                 {/* Business Info Overlay */}
                 <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-6 text-white">
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                  {/* Enhanced background for text readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent rounded-t-xl"></div>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2 relative z-10">
                     {business.is_verified && (
-                      <Badge className="bg-green-500 text-white text-xs sm:text-sm px-2 py-1">
+                      <Badge className="bg-green-600 text-white text-xs sm:text-sm px-2 py-1 shadow-lg border border-green-400/30">
                         <Shield className="w-2 h-2 sm:w-3 sm:h-3 mr-1" />
                         Verified
                       </Badge>
                     )}
                     {business.is_featured && (
-                      <Badge className="bg-fem-gold text-white text-xs sm:text-sm px-2 py-1">
+                      <Badge className="bg-yellow-600 text-white text-xs sm:text-sm px-2 py-1 shadow-lg border border-yellow-400/30">
                         <Award className="w-2 h-2 sm:w-3 sm:h-3 mr-1" />
                         Featured
                       </Badge>
                     )}
                   </div>
-                  <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-2 leading-tight">{business.business_name}</h1>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-2 leading-tight drop-shadow-lg relative z-10" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.6)' }}>{business.business_name}</h1>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm drop-shadow-md relative z-10" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.6)' }}>
                     <div className="flex items-center gap-1">
                       <Star className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400 fill-current" />
-                      <span className="font-medium">
+                      <span className="font-medium text-white">
                         {business.rating && !isNaN(Number(business.rating)) 
                           ? Number(business.rating).toFixed(1) 
                           : '0.0'
                         }
                       </span>
-                      <span className="text-gray-300">({business.review_count || 0} reviews)</span>
+                      <span className="text-gray-200">({business.review_count || 0} reviews)</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span>{business.city}, {business.county}</span>
+                      <span className="text-white">{business.city}, {business.county}</span>
                     </div>
                   </div>
                   
@@ -977,7 +995,7 @@ const BusinessDetailPage = () => {
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             
             {/* Main Content */}
-            <div className="xl:col-span-2">
+            <div className="xl:col-span-2 order-1 xl:order-1">
               <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl">
                 <CardHeader className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white rounded-t-lg">
                   <CardTitle className="flex items-center gap-2">
@@ -1585,11 +1603,11 @@ const BusinessDetailPage = () => {
                         <div className="text-center py-12">
                           <MessageSquare className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                             <h3 className="text-lg font-semibold text-fem-navy mb-2">
-                              {business?.review_count > 0 ? 'Reviews Temporarily Unavailable' : 'No Reviews Yet'}
+                              {business?.review_count > 0 ? 'Reviews Loading...' : 'No Reviews Yet'}
                             </h3>
                             <p className="text-gray-600">
                               {business?.review_count > 0 
-                                ? `This business has ${business.review_count} reviews, but they cannot be displayed at the moment due to a technical issue. Please try again later.`
+                                ? `This business has ${business.review_count} reviews. Reviews are being loaded...`
                                 : 'Be the first to review this business!'
                               }
                             </p>
@@ -1603,52 +1621,13 @@ const BusinessDetailPage = () => {
             </div>
 
             {/* Sidebar */}
-            <div className="xl:col-span-1 order-first xl:order-last">
+            <div className="xl:col-span-1 order-2 xl:order-last">
               <div className="space-y-6">
-                {/* Contact Card */}
-                <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl">
-                  <CardHeader className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white rounded-t-lg">
-                    <CardTitle className="flex items-center gap-2">
-                      <Phone className="w-5 h-5" />
-                      Contact Business
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      <ProtectedContactInfo 
-                        phone={business.phone}
-                        email={business.email}
-                        variant="card"
-                      />
-                      
-                      {business.website ? (
-                        <Button 
-                          variant="outline" 
-                          className="w-full"
-                          onClick={() => window.open(business.website, '_blank')}
-                        >
-                          <ExternalLink className="w-4 h-4 mr-2" />
-                          Visit Website
-                        </Button>
-                      ) : (
-                        <Button 
-                          variant="outline" 
-                          className="w-full opacity-50 cursor-not-allowed"
-                          disabled
-                        >
-                          <ExternalLink className="w-4 h-4 mr-2" />
-                          No Website
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Business Summary - Redesigned from Business Details */}
+                {/* Business Summary */}
                 <MotionWrapper
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
                 >
                   <GlassmorphismCard className="backdrop-blur-md bg-gradient-to-br from-white/95 to-white/85 border-0 shadow-2xl relative overflow-hidden">
                     {/* Decorative Background */}
@@ -1709,6 +1688,46 @@ const BusinessDetailPage = () => {
                     </CardContent>
                   </GlassmorphismCard>
                 </MotionWrapper>
+
+                {/* Contact Card */}
+                <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl">
+                  <CardHeader className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white rounded-t-lg">
+                    <CardTitle className="flex items-center gap-2">
+                      <Phone className="w-5 h-5" />
+                      Contact Business
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <ProtectedContactInfo 
+                        phone={business.phone}
+                        email={business.email}
+                        variant="card"
+                      />
+                      
+                      {business.website ? (
+                        <Button 
+                          variant="outline" 
+                          className="w-full"
+                          onClick={() => window.open(business.website, '_blank')}
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          Visit Website
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          className="w-full opacity-50 cursor-not-allowed"
+                          disabled
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          No Website
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
               </div>
             </div>
           </div>

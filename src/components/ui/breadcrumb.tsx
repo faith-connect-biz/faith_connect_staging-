@@ -1,115 +1,125 @@
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { ChevronRight, MoreHorizontal } from "lucide-react"
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { ChevronRight, Home } from 'lucide-react';
 
-import { cn } from "@/lib/utils"
+interface BreadcrumbItem {
+  label: string;
+  href?: string;
+  icon?: React.ReactNode;
+}
 
-const Breadcrumb = React.forwardRef<
-  HTMLElement,
-  React.ComponentPropsWithoutRef<"nav"> & {
-    separator?: React.ReactNode
-  }
->(({ ...props }, ref) => <nav ref={ref} aria-label="breadcrumb" {...props} />)
-Breadcrumb.displayName = "Breadcrumb"
+interface BreadcrumbProps {
+  items?: BreadcrumbItem[];
+  className?: string;
+}
 
-const BreadcrumbList = React.forwardRef<
-  HTMLOListElement,
-  React.ComponentPropsWithoutRef<"ol">
->(({ className, ...props }, ref) => (
-  <ol
-    ref={ref}
-    className={cn(
-      "flex flex-wrap items-center gap-1.5 break-words text-sm text-muted-foreground sm:gap-2.5",
-      className
-    )}
-    {...props}
-  />
-))
-BreadcrumbList.displayName = "BreadcrumbList"
+export const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className = '' }) => {
+  const location = useLocation();
 
-const BreadcrumbItem = React.forwardRef<
-  HTMLLIElement,
-  React.ComponentPropsWithoutRef<"li">
->(({ className, ...props }, ref) => (
-  <li
-    ref={ref}
-    className={cn("inline-flex items-center gap-1.5", className)}
-    {...props}
-  />
-))
-BreadcrumbItem.displayName = "BreadcrumbItem"
+  // Generate breadcrumbs from current route if no items provided
+  const generateBreadcrumbs = (): BreadcrumbItem[] => {
+    const pathSegments = location.pathname.split('/').filter(Boolean);
+    const breadcrumbs: BreadcrumbItem[] = [
+      { label: 'Home', href: '/', icon: <Home className="w-4 h-4" /> }
+    ];
 
-const BreadcrumbLink = React.forwardRef<
-  HTMLAnchorElement,
-  React.ComponentPropsWithoutRef<"a"> & {
-    asChild?: boolean
-  }
->(({ asChild, className, ...props }, ref) => {
-  const Comp = asChild ? Slot : "a"
+    let currentPath = '';
+    pathSegments.forEach((segment, index) => {
+      currentPath += `/${segment}`;
+      const isLast = index === pathSegments.length - 1;
+      
+      // Map route segments to readable labels
+      let label = segment;
+      let icon: React.ReactNode | undefined;
+
+      switch (segment) {
+        case 'directory':
+          label = 'Directory';
+          icon = <ChevronRight className="w-4 h-4" />;
+          break;
+        case 'business':
+          label = 'Business';
+          break;
+        case 'profile':
+          label = 'Profile';
+          break;
+        case 'about':
+          label = 'About';
+          break;
+        case 'contact':
+          label = 'Contact';
+          break;
+        case 'register-business':
+          label = 'Register Business';
+          break;
+        case 'manage-business':
+          label = 'Manage Business';
+          break;
+        default:
+          // Handle UUIDs or other dynamic segments
+          if (segment.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+            // It's a UUID, try to determine context from previous segment
+            const prevSegment = pathSegments[index - 1];
+            if (prevSegment === 'business') {
+              label = 'Business Details';
+            } else {
+              label = 'Details';
+            }
+          } else {
+            // Capitalize first letter and replace hyphens with spaces
+            label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
+          }
+          break;
+      }
+
+      breadcrumbs.push({
+        label,
+        href: isLast ? undefined : currentPath,
+        icon
+      });
+    });
+
+    return breadcrumbs;
+  };
+
+  const breadcrumbItems = items || generateBreadcrumbs();
 
   return (
-    <Comp
-      ref={ref}
-      className={cn("transition-colors hover:text-foreground", className)}
-      {...props}
-    />
-  )
-})
-BreadcrumbLink.displayName = "BreadcrumbLink"
-
-const BreadcrumbPage = React.forwardRef<
-  HTMLSpanElement,
-  React.ComponentPropsWithoutRef<"span">
->(({ className, ...props }, ref) => (
-  <span
-    ref={ref}
-    role="link"
-    aria-disabled="true"
-    aria-current="page"
-    className={cn("font-normal text-foreground", className)}
-    {...props}
-  />
-))
-BreadcrumbPage.displayName = "BreadcrumbPage"
-
-const BreadcrumbSeparator = ({
-  children,
-  className,
-  ...props
-}: React.ComponentProps<"li">) => (
-  <li
-    role="presentation"
-    aria-hidden="true"
-    className={cn("[&>svg]:size-3.5", className)}
-    {...props}
-  >
-    {children ?? <ChevronRight />}
-  </li>
-)
-BreadcrumbSeparator.displayName = "BreadcrumbSeparator"
-
-const BreadcrumbEllipsis = ({
-  className,
-  ...props
-}: React.ComponentProps<"span">) => (
-  <span
-    role="presentation"
-    aria-hidden="true"
-    className={cn("flex h-9 w-9 items-center justify-center", className)}
-    {...props}
-  >
-    <MoreHorizontal className="h-4 w-4" />
-    <span className="sr-only">More</span>
-  </span>
-)
-BreadcrumbEllipsis.displayName = "BreadcrumbElipssis"
-
-export {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-  BreadcrumbEllipsis,
-}
+    <nav 
+      className={`relative flex items-center space-x-1 text-sm rounded-lg overflow-hidden border border-white/20 ${className}`} 
+      aria-label="Breadcrumb"
+      style={{
+        backgroundImage: `url('/images/breadcrumb-bg.jpg'), linear-gradient(135deg, #8B4513 0%, #D2691E 100%)`,
+        backgroundSize: 'cover, cover',
+        backgroundPosition: 'center, center',
+        backgroundRepeat: 'no-repeat, no-repeat',
+        minHeight: '160px'
+      }}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <ol className="relative z-10 flex items-center justify-center space-x-1 p-8 w-full h-full">
+        {breadcrumbItems.map((item, index) => (
+          <li key={index} className="flex items-center">
+            {index > 0 && (
+              <ChevronRight className="w-4 h-4 text-white/80 mx-2 drop-shadow-lg" />
+            )}
+            {item.href ? (
+              <Link
+                to={item.href}
+                className="flex items-center space-x-1 text-white hover:text-fem-gold transition-colors duration-200 drop-shadow-lg font-medium"
+              >
+                {item.icon && <span className="flex items-center">{item.icon}</span>}
+                <span>{item.label}</span>
+              </Link>
+            ) : (
+              <span className="flex items-center space-x-1 text-white font-bold drop-shadow-lg">
+                {item.icon && <span className="flex items-center">{item.icon}</span>}
+                <span>{item.label}</span>
+              </span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+};

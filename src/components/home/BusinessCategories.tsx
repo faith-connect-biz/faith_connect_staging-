@@ -12,7 +12,9 @@ import {
   Building2,
   Palette,
   Wrench,
-  Briefcase
+  Briefcase,
+  Hammer,
+  HardHat
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useBusiness } from "@/contexts/BusinessContext";
@@ -24,7 +26,7 @@ const categoryIcons: { [key: string]: any } = {
   "Services": Settings,
   "Health & Wellness": Heart,
   "Automotive": Car,
-  "Real Estate": Home,
+  "Real Estate": HardHat,
   "Education": GraduationCap,
   "Technology": Monitor,
   "Beauty & Personal Care": Palette,
@@ -63,23 +65,23 @@ export const BusinessCategories = () => {
 
     // Color mapping object - defined outside the map to avoid recreation
     const colorMap: { [key: string]: string } = {
-      "Restaurant": "text-orange-600",
-      "Retail": "text-blue-600",
-      "Services": "text-green-600",
-      "Health & Wellness": "text-red-600",
-      "Automotive": "text-purple-600",
-      "Real Estate": "text-yellow-600",
-      "Education": "text-indigo-600",
-      "Technology": "text-teal-600",
-      "Beauty & Personal Care": "text-pink-600",
-      "Home & Garden": "text-emerald-600",
-      "Professional Services": "text-slate-600",
-      "Automotive Services": "text-amber-600",
-      "Food & Dining": "text-orange-600",
-      "Health & Beauty": "text-pink-600",
-      "Fashion & Clothing": "text-purple-600",
-      "Sports & Fitness": "text-green-600",
-      "Entertainment": "text-blue-600"
+      "Restaurant": "text-orange-600 bg-orange-50",
+      "Retail": "text-blue-600 bg-blue-50",
+      "Services": "text-green-600 bg-green-50",
+      "Health & Wellness": "text-red-600 bg-red-50",
+      "Automotive": "text-purple-600 bg-purple-50",
+      "Real Estate": "text-yellow-600 bg-yellow-50",
+      "Education": "text-indigo-600 bg-indigo-50",
+      "Technology": "text-teal-600 bg-teal-50",
+      "Beauty & Personal Care": "text-pink-600 bg-pink-50",
+      "Home & Garden": "text-emerald-600 bg-emerald-50",
+      "Professional Services": "text-slate-600 bg-slate-50",
+      "Automotive Services": "text-amber-600 bg-amber-50",
+      "Food & Dining": "text-orange-600 bg-orange-50",
+      "Health & Beauty": "text-pink-600 bg-pink-50",
+      "Fashion & Clothing": "text-purple-600 bg-purple-50",
+      "Sports & Fitness": "text-green-600 bg-green-50",
+      "Entertainment": "text-blue-600 bg-blue-50"
     };
 
     const stats = categories.map(category => {
@@ -99,14 +101,15 @@ export const BusinessCategories = () => {
         slug: category.slug,
         count: businessCount,
         icon: IconComponent,
-        color: colorMap[category.name] || "text-gray-600"
+        color: colorMap[category.name] || "text-gray-600 bg-gray-50"
       };
     });
 
-    // Show all categories, not just those with businesses
+    // Show only categories with businesses, sorted by count, limited to top 10
     return stats
-      .sort((a, b) => b.count - a.count) // Sort by business count
-      .slice(0, 8); // Show top 8 categories
+      .filter(stat => stat.count > 0) // Only show categories with businesses
+      .sort((a, b) => b.count - a.count) // Sort by business count (highest first)
+      .slice(0, 10); // Show only top 10 categories
   }, [categories, businesses, isLoading]);
 
   if (isLoading) {
@@ -123,13 +126,35 @@ export const BusinessCategories = () => {
             </p>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, index) => (
-              <Card key={index} className="animate-pulse">
-                <CardContent className="p-6 text-center">
-                  <div className="mx-auto w-12 h-12 mb-4 bg-gray-200 rounded-lg"></div>
+          {/* Mobile App Style Loading Skeleton */}
+          <div className="grid grid-cols-4 gap-3 max-w-md mx-auto mb-8 md:hidden">
+            {[...Array(12)].map((_, index) => (
+              <div key={index} className="bg-gray-50 rounded-xl p-3 shadow-lg border border-gray-100 h-20 flex flex-col items-center justify-between">
+                <div className="w-5 h-5 bg-gray-200 rounded"></div>
+                <div className="h-3 bg-gray-200 rounded w-full"></div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Desktop Loading Skeleton - 5 Columns */}
+          <div className="hidden lg:grid grid-cols-5 gap-4 mb-8">
+            {[...Array(12)].map((_, index) => (
+              <Card key={index} className="bg-gray-50 shadow-lg border-0 h-[180px]">
+                <CardContent className="p-6 text-center h-full flex flex-col justify-between">
+                  <div className="mx-auto w-16 h-16 mb-4 bg-gray-200 rounded-xl"></div>
                   <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-2/3 mx-auto"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          
+          {/* Medium Screen Loading Skeleton - 3 Columns */}
+          <div className="hidden md:grid lg:hidden grid-cols-3 gap-4 mb-8">
+            {[...Array(12)].map((_, index) => (
+              <Card key={index} className="bg-gray-50 shadow-lg border-0 h-[160px]">
+                <CardContent className="p-5 text-center h-full flex flex-col justify-between">
+                  <div className="mx-auto w-14 h-14 mb-3 bg-gray-200 rounded-lg"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
                 </CardContent>
               </Card>
             ))}
@@ -154,23 +179,59 @@ export const BusinessCategories = () => {
         
         {categoryStats.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {categoryStats.map((category, index) => (
+            {/* Enhanced Mobile App Style Grid */}
+            <div className="grid grid-cols-4 gap-3 max-w-md mx-auto mb-8 md:hidden">
+              {categoryStats.slice(0, 12).map((category, index) => (
                 <Link 
                   key={category.id}
                   to={`/directory?category=${category.slug}`}
                   className="block"
                 >
-                  <Card className="hover-card-effect cursor-pointer transition-all duration-300 hover:shadow-lg h-full min-h-[200px]">
+                  <div className={`flex flex-col items-center justify-between gap-2 p-3 rounded-xl ${category.color} hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl border border-white/50 cursor-pointer backdrop-blur-sm h-20`}>
+                    {React.createElement(category.icon, { className: "w-5 h-5 drop-shadow-sm flex-shrink-0" })}
+                    <span className="text-[9px] font-semibold text-center leading-tight drop-shadow-sm line-clamp-2 flex-grow flex items-center justify-center">{category.name}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            
+            {/* Enhanced Desktop Grid - 5 Columns */}
+            <div className="hidden lg:grid grid-cols-5 gap-4 mb-8">
+              {categoryStats.slice(0, 12).map((category, index) => (
+                <Link 
+                  key={category.id}
+                  to={`/directory?category=${category.slug}`}
+                  className="block h-full"
+                >
+                  <Card className={`hover-card-effect cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 border-0 shadow-lg h-[180px] ${category.color.split(' ')[1]}`}>
                     <CardContent className="p-6 text-center h-full flex flex-col justify-between">
-                      <div>
-                        <div className={`mx-auto w-12 h-12 mb-4 flex items-center justify-center rounded-lg bg-gray-50 ${category.color}`}>
-                          {React.createElement(category.icon, { className: "w-6 h-6" })}
+                      <div className="flex flex-col items-center h-full">
+                        <div className={`mx-auto w-16 h-16 mb-4 flex items-center justify-center rounded-xl bg-white/80 backdrop-blur-sm shadow-md ${category.color.split(' ')[0]}`}>
+                          {React.createElement(category.icon, { className: "w-8 h-8" })}
                         </div>
-                        <h3 className="font-semibold text-fem-navy mb-2 line-clamp-2">{category.name}</h3>
-                        <p className="text-sm text-fem-darkgray">
-                          {category.count} {category.count === 1 ? 'business' : 'businesses'}
-                        </p>
+                        <h3 className="font-semibold text-fem-navy mb-2 text-sm line-clamp-2 leading-tight flex-grow flex items-center justify-center text-center">{category.name}</h3>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+            
+            {/* Medium Screen Grid - 3 Columns */}
+            <div className="hidden md:grid lg:hidden grid-cols-3 gap-4 mb-8">
+              {categoryStats.slice(0, 12).map((category, index) => (
+                <Link 
+                  key={category.id}
+                  to={`/directory?category=${category.slug}`}
+                  className="block h-full"
+                >
+                  <Card className={`hover-card-effect cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 border-0 shadow-lg h-[160px] ${category.color.split(' ')[1]}`}>
+                    <CardContent className="p-5 text-center h-full flex flex-col justify-between">
+                      <div className="flex flex-col items-center h-full">
+                        <div className={`mx-auto w-14 h-14 mb-3 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm shadow-md ${category.color.split(' ')[0]}`}>
+                          {React.createElement(category.icon, { className: "w-7 h-7" })}
+                        </div>
+                        <h3 className="font-semibold text-fem-navy mb-2 text-sm line-clamp-2 leading-tight flex-grow flex items-center justify-center text-center">{category.name}</h3>
                       </div>
                     </CardContent>
                   </Card>
@@ -180,7 +241,7 @@ export const BusinessCategories = () => {
             
             <div className="text-center mt-8">
               <Link to="/directory">
-                <button className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                <button className="bg-gradient-to-r from-fem-gold to-fem-terracotta hover:from-fem-gold/90 hover:to-fem-terracotta/90 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
                   View All Categories
                 </button>
               </Link>
@@ -203,7 +264,7 @@ export const BusinessCategories = () => {
               {!isLoading && (
                 <button 
                   onClick={() => window.location.reload()} 
-                  className="text-fem-terracotta hover:text-fem-terracotta/80 font-medium"
+                  className="bg-gradient-to-r from-fem-gold to-fem-terracotta hover:from-fem-gold/90 hover:to-fem-terracotta/90 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
                   Refresh Page
                 </button>

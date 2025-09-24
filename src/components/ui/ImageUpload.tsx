@@ -23,6 +23,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   className = ""
 }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = async (file: File) => {
@@ -86,6 +87,29 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
     fileInputRef.current?.click();
   };
 
+  // Drag & drop handlers
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleImageUpload(e.dataTransfer.files[0]);
+      e.dataTransfer.clearData();
+    }
+  };
+
   const handleRemove = () => {
     onRemove();
     if (fileInputRef.current) {
@@ -106,7 +130,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       />
 
       {value ? (
-        <div className="relative group">
+        <div className="relative group" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
           <img
             src={value}
             alt="Uploaded"
@@ -144,7 +168,10 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       ) : (
         <div
           onClick={handleClick}
-          className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition-colors duration-200"
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors duration-200 ${isDragging ? 'border-fem-terracotta bg-fem-terracotta/5' : 'border-gray-300 hover:border-gray-400'}`}
         >
           {isUploading ? (
             <div className="flex flex-col items-center space-y-2">
@@ -154,7 +181,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
           ) : (
             <div className="flex flex-col items-center space-y-2">
               <ImageIcon className="h-6 w-6 text-gray-400" />
-              <span className="text-sm text-gray-500">{placeholder}</span>
+              <span className="text-sm text-gray-500">{isDragging ? 'Drop image here' : `${placeholder} or drag & drop`}</span>
             </div>
           )}
         </div>

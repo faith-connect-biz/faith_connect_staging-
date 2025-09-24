@@ -59,6 +59,12 @@ class Category(models.Model):
         return self.name
 
 class Business(models.Model):
+    BUSINESS_TYPE_CHOICES = [
+        ('products', 'Products'),
+        ('services', 'Services'),
+        ('both', 'Both Products and Services'),
+    ]
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='businesses')
     business_name = models.CharField(max_length=255)
@@ -66,6 +72,7 @@ class Business(models.Model):
     subcategory = models.CharField(max_length=100, blank=True, null=True, help_text="Specific subcategory within the main category")
     description = models.TextField(blank=True, null=True)
     long_description = models.TextField(blank=True, null=True)
+    business_type = models.CharField(max_length=20, choices=BUSINESS_TYPE_CHOICES, default='both', help_text="Type of business: Products, Services, or Both")
 
     phone = models.CharField(max_length=20, blank=True, null=True)
     email = models.EmailField(max_length=255, blank=True, null=True)
@@ -140,6 +147,7 @@ class BusinessHour(models.Model):
 class Service(models.Model):
     business = models.ForeignKey('Business', on_delete=models.CASCADE, related_name='services')
     name = models.CharField(max_length=255)
+    slug = models.SlugField(unique=True, blank=True)
     description = models.TextField(blank=True, null=True)
     price_range = models.CharField(max_length=100, blank=True, null=True)  # e.g., "KSh 500 - 1000"
     duration = models.CharField(max_length=100, blank=True, null=True)     # e.g., "30 mins", "1 hour"
@@ -147,6 +155,11 @@ class Service(models.Model):
     images = models.JSONField(default=list, blank=True)  # Multiple service images (up to 10)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(f"{self.name}-{self.business.business_name}")
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.name} ({self.business.business_name})"
@@ -258,6 +271,7 @@ class Product(models.Model):
         related_name='products'
     )
     name = models.CharField(max_length=255)
+    slug = models.SlugField(unique=True, blank=True)
     description = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     price_currency = models.CharField(max_length=3, default='KSH')
@@ -266,6 +280,11 @@ class Product(models.Model):
     is_active = models.BooleanField(default=True)
     in_stock = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(f"{self.name}-{self.business.business_name}")
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.name} ({self.business.business_name})"
