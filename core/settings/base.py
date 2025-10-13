@@ -45,6 +45,10 @@ SMS_API_KEY = config('SMS_API_KEY', default='')
 SMS_API_SECRET = config('SMS_SECRET', default='')
 SMS_FROM_NUMBER = config('SMS_FROM_NUMBER', default='CHOSENGCM')
 
+# 2Chat WhatsApp API Configuration
+CHAT_API_KEY = config('CHAT_API_KEY', default='')
+CHAT_PHONE = config('CHAT_PHONE', default='')
+
 # AWS S3 Configurationc
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
 AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')

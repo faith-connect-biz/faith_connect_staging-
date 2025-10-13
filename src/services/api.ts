@@ -61,6 +61,7 @@ export interface Business {
   long_description?: string;
   phone?: string;
   email?: string;
+  whatsapp?: string;
   website?: string;
   address: string;
   office_address?: string;
@@ -2006,6 +2007,29 @@ class ApiService {
     } catch (error) {
       console.error('🔧 API connectivity test failed:', error);
       return false;
+    }
+  }
+
+  /**
+   * Check if a phone number is registered on WhatsApp
+   */
+  async checkWhatsAppNumber(phone: string): Promise<{
+    success: boolean;
+    phone: string;
+    is_whatsapp: boolean;
+    is_valid?: boolean;
+    cached?: boolean;
+    message?: string;
+    whatsapp_info?: any;
+  }> {
+    try {
+      const response = await this.api.post('/business/check-whatsapp/', {
+        phone: phone
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('WhatsApp check failed:', error);
+      throw new Error(error.response?.data?.message || 'Failed to check WhatsApp registration');
     }
   }
 

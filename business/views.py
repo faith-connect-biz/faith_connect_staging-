@@ -18,6 +18,10 @@ import uuid
 import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+import requests
+from django.core.cache import cache
 
 # Local imports
 from .models import (
@@ -1930,4 +1934,263 @@ class UserLikedReviewsView(generics.ListAPIView):
                 {'error': str(e)}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def book_service(request, service_id):
+    """
+    Send booking request email to business for a specific service
+    """
+    try:
+        # Get the service and business
+        service = get_object_or_404(Service, id=service_id, is_active=True)
+        business = service.business
+        
+        if not business.is_active:
+            return Response({
+                'success': False,
+                'message': 'Business is not active'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not business.email:
+            return Response({
+                'success': False,
+                'message': 'Business email not available'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get customer details from request
+        customer_name = request.data.get('customer_name', '')
+        customer_email = request.data.get('customer_email', '')
+        customer_phone = request.data.get('customer_phone', '')
+        message = request.data.get('message', '')
+        
+        # Validate required fields
+        if not customer_name or not customer_email:
+            return Response({
+                'success': False,
+                'message': 'Customer name and email are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Prepare email content
+        subject = f"New Service Booking Request – {service.name}"
+        
+        email_body = f"""
+Hello {business.business_name},
+
+You have received a new service booking request through FaithConnect:
+
+SERVICE DETAILS:
+- Service: {service.name}
+- Description: {service.description or 'No description provided'}
+- Price Range: {service.price_range or 'Contact for pricing'}
+- Duration: {service.duration or 'Not specified'}
+
+CUSTOMER DETAILS:
+- Name: {customer_name}
+- Email: {customer_email}
+- Phone: {customer_phone or 'Not provided'}
+
+CUSTOMER MESSAGE:
+{message or 'No additional message provided'}
+
+Please contact the customer directly to discuss the booking details.
+
+Best regards,
+FaithConnect Team
+
+---
+This email was sent from FaithConnect Business Directory.
+Please do not reply to this email directly.
+        """
+        
+        # Send email
+        try:
+            send_mail(
+                subject=subject,
+                message=email_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[business.email],
+                fail_silently=False,
+            )
+            
+            # Log the booking request for analytics
+            logger.info(f"Service booking request sent: Service {service.id}, Business {business.id}, Customer {customer_email}")
+            
+            return Response({
+                'success': True,
+                'message': 'Booking request sent successfully'
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as email_error:
+            logger.error(f"Failed to send booking email: {str(email_error)}")
+            return Response({
+                'success': False,
+                'message': 'Failed to send booking request. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    except Service.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Service not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error in book_service: {str(e)}")
+        return Response({
+            'success': False,
+            'message': 'An error occurred while processing your request'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_business_contact(request, business_id):
+    """
+    Get business contact details for display
+    """
+    try:
+        business = get_object_or_404(Business, id=business_id, is_active=True)
+        
+        # Only return contact details for verified businesses
+        if not business.is_verified:
+            return Response({
+                'success': False,
+                'message': 'Business contact details not available'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        contact_details = {
+            'business_name': business.business_name,
+            'phone': business.phone,
+            'email': business.email,
+            'whatsapp': business.whatsapp,
+            'address': business.address,
+            'city': business.city,
+            'website': business.website
+        }
+        
+        return Response({
+            'success': True,
+            'contact_details': contact_details
+        }, status=status.HTTP_200_OK)
+        
+    except Business.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Business not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error in get_business_contact: {str(e)}")
+        return Response({
+            'success': False,
+            'message': 'An error occurred while fetching contact details'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def check_whatsapp_number(request):
+    """
+    Check if a phone number is registered on WhatsApp using 2Chat API
+    """
+    try:
+        phone_number = request.data.get('phone')
+        
+        if not phone_number:
+            return Response({
+                'success': False,
+                'message': 'Phone number is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Clean the phone number (remove spaces, dashes, etc.)
+        clean_number = phone_number.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+        
+        # Ensure it starts with + for international format
+        if not clean_number.startswith('+'):
+            # Assume Kenya number if no country code
+            if clean_number.startswith('0'):
+                clean_number = '+254' + clean_number[1:]
+            elif clean_number.startswith('254'):
+                clean_number = '+' + clean_number
+            else:
+                clean_number = '+254' + clean_number
+        
+        # Check cache first
+        cache_key = f"whatsapp_check_{clean_number}"
+        cached_result = cache.get(cache_key)
+        
+        if cached_result is not None:
+            logger.info(f"WhatsApp check cache hit for {clean_number}: {cached_result}")
+            return Response({
+                'success': True,
+                'phone': clean_number,
+                'is_whatsapp': cached_result,
+                'cached': True
+            })
+        
+        # Get 2Chat API configuration from settings
+        chat_api_key = getattr(settings, 'CHAT_API_KEY', None)
+        chat_phone = getattr(settings, 'CHAT_PHONE', None)
+        
+        if not chat_api_key or not chat_phone:
+            logger.warning("2Chat API credentials not configured, skipping WhatsApp check")
+            # Return optimistic result if API not configured
+            return Response({
+                'success': True,
+                'phone': clean_number,
+                'is_whatsapp': True,
+                'message': 'WhatsApp check not configured, assuming number is valid'
+            })
+        
+        # Call 2Chat API
+        api_url = f"https://api.p.2chat.io/open/whatsapp/check-number/{chat_phone}/{clean_number}"
+        headers = {
+            'X-User-API-Key': chat_api_key
+        }
+        
+        try:
+            response = requests.get(api_url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Extract WhatsApp status
+            is_whatsapp = data.get('on_whatsapp', False)
+            is_valid = data.get('is_valid', False)
+            
+            # Cache the result for 24 hours
+            cache.set(cache_key, is_whatsapp, 86400)
+            
+            # Log the result
+            if is_whatsapp:
+                logger.info(f"WhatsApp check successful for {clean_number}: registered")
+            else:
+                logger.warning(f"WhatsApp check failed for {clean_number}: not registered or invalid")
+            
+            return Response({
+                'success': True,
+                'phone': clean_number,
+                'is_whatsapp': is_whatsapp,
+                'is_valid': is_valid,
+                'cached': False,
+                'whatsapp_info': data.get('whatsapp_info', {}) if is_whatsapp else None
+            })
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"2Chat API request failed for {clean_number}: {str(e)}")
+            
+            # Return optimistic result on API failure
+            return Response({
+                'success': True,
+                'phone': clean_number,
+                'is_whatsapp': True,
+                'message': 'WhatsApp check service unavailable, assuming number is valid',
+                'error': str(e)
+            })
+            
+    except Exception as e:
+        logger.error(f"Error in check_whatsapp_number: {str(e)}")
+        return Response({
+            'success': False,
+            'message': 'An error occurred while checking WhatsApp registration'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

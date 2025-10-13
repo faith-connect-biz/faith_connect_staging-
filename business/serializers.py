@@ -30,12 +30,24 @@ class ServiceSerializer(serializers.ModelSerializer):
     def get_business(self, obj):
         """Return business information"""
         if obj.business:
+            # Log if business email is missing for debugging
+            if not obj.business.email:
+                import logging
+                logger = logging.getLogger('business')
+                logger.warning(f"Business {obj.business.id} ({obj.business.business_name}) has no email address")
+            
             return {
                 'id': str(obj.business.id),
                 'business_name': obj.business.business_name,
                 'category': obj.business.category.name if obj.business.category else None,
                 'city': obj.business.city,
-                'county': obj.business.county
+                'county': obj.business.county,
+                'email': obj.business.email,
+                'phone': obj.business.phone,
+                'whatsapp': obj.business.whatsapp,
+                'address': obj.business.address,
+                'website': obj.business.website,
+                'is_verified': obj.business.is_verified
             }
         return None
     
@@ -67,7 +79,13 @@ class ProductSerializer(serializers.ModelSerializer):
                 'business_name': obj.business.business_name,
                 'category': obj.business.category.name if obj.business.category else None,
                 'city': obj.business.city,
-                'county': obj.business.county
+                'county': obj.business.county,
+                'email': obj.business.email,
+                'phone': obj.business.phone,
+                'whatsapp': obj.business.whatsapp,
+                'address': obj.business.address,
+                'website': obj.business.website,
+                'is_verified': obj.business.is_verified
             }
         return None
     
@@ -258,7 +276,7 @@ class BusinessSerializer(serializers.ModelSerializer):
         model = Business
         fields = [
             'id', 'user', 'business_name', 'category', 'category_id', 'description', 'long_description',
-            'business_type', 'phone', 'email', 'website', 'address', 'city', 'county', 'state', 'zip_code',
+            'business_type', 'phone', 'email', 'whatsapp', 'website', 'address', 'city', 'county', 'state', 'zip_code',
             'latitude', 'longitude', 'rating', 'review_count', 'is_verified', 'is_featured',
             'is_active', 'business_image_url', 'business_logo_url', 'facebook_url',
             'instagram_url', 'twitter_url', 'youtube_url', 'created_at', 'updated_at',

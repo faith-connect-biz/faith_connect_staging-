@@ -12,7 +12,8 @@ from .views import (
     update_business_profile_image, get_business_logo_upload_url, update_business_logo,
     ServiceReviewListCreateView, ServiceReviewUpdateDeleteView, ProductReviewListCreateView, ProductReviewUpdateDeleteView,
     UserLikedReviewsView, ProductDetailByCategoryView, ServiceDetailByCategoryView,
-    BusinessRegistrationStep1APIView, BusinessRegistrationStep2APIView, FEMChurchListAPIView
+    BusinessRegistrationStep1APIView, BusinessRegistrationStep2APIView, FEMChurchListAPIView,
+    book_service, get_business_contact, check_whatsapp_number
 )
 
 urlpatterns = [
@@ -75,4 +76,11 @@ urlpatterns = [
     path('favorites/', UserFavoritesView.as_view(), name="user-favorites"),
     path('user-reviews/', UserReviewsView.as_view(), name="user-reviews"),
     path('user-liked-reviews/', UserLikedReviewsView.as_view(), name="user-liked-reviews"),
+    
+    # Service Booking URLs
+    path('services/<int:service_id>/book/', book_service, name="book-service"),
+    path('<uuid:business_id>/contact/', get_business_contact, name="business-contact"),
+    
+    # WhatsApp Check URL
+    path('check-whatsapp/', check_whatsapp_number, name="check-whatsapp"),
 ]

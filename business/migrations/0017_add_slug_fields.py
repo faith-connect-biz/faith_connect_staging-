@@ -7,7 +7,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('business', '0016_alter_businesslike_user'),
+        ('business', '0013_alter_business_city_alter_product_price_currency'),
     ]
 
     operations = [
@@ -22,6 +22,11 @@ class Migration(migrations.Migration):
             field=models.SlugField(blank=True, unique=True),
         ),
     ]
+
+
+
+
+
 
 
 

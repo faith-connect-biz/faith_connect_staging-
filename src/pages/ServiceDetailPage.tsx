@@ -18,32 +18,16 @@ import {
   Share2,
   Heart,
   Star,
-  Building2
+  Building2,
+  Eye,
+  MessageSquare
 } from 'lucide-react';
-import { apiService } from '@/services/api';
+import { apiService, Service } from '@/services/api';
 import { formatToBritishDate } from '@/utils/dateUtils';
 import { toast } from '@/hooks/use-toast';
-
-interface Service {
-  id: string;
-  name: string;
-  description?: string;
-  price_range?: string;
-  duration?: string;
-  service_image_url?: string;
-  images?: string[];
-  is_active?: boolean;
-  created_at?: string;
-  business?: {
-    id: string;
-    business_name: string;
-    city?: string;
-    county?: string;
-    phone?: string;
-    email?: string;
-    business_image_url?: string;
-  };
-}
+import { BookingModal } from '@/components/modals/BookingModal';
+import { ContactModal } from '@/components/modals/ContactModal';
+import { analytics } from '@/services/analytics';
 
 export const ServiceDetailPage: React.FC = () => {
   const { id, categorySlug, serviceSlug } = useParams<{ 
@@ -56,6 +40,9 @@ export const ServiceDetailPage: React.FC = () => {
   const [business, setBusiness] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [contactDetails, setContactDetails] = useState<any>(null);
 
   useEffect(() => {
     if (id || (categorySlug && serviceSlug)) {
@@ -83,6 +70,13 @@ export const ServiceDetailPage: React.FC = () => {
       if (serviceData.business) {
         setBusiness(serviceData.business);
       }
+      
+      // Track service view - simplified to avoid type issues
+      analytics.trackServiceView(
+        String(serviceData.id || ''), 
+        serviceData.name, 
+        ''
+      );
     } catch (error) {
       console.error('Error loading service details:', error);
       toast({
@@ -112,6 +106,129 @@ export const ServiceDetailPage: React.FC = () => {
       setCurrentImageIndex((prev) => 
         prev === 0 ? allImages.length - 1 : prev - 1
       );
+    }
+  };
+
+  const handleBookService = () => {
+    if (!business?.email) {
+      // Show alternative contact options when email is not available
+      toast({
+        title: "Email Not Available",
+        description: "This business hasn't provided an email. Try 'Show Contact' for phone number or 'Start Chat' for WhatsApp.",
+        variant: "destructive",
+        duration: 5000
+      });
+      
+      // Automatically open the contact modal to show alternative options
+      setTimeout(() => {
+        handleShowContact();
+      }, 1000);
+      return;
+    }
+    
+    // Track analytics
+    analytics.trackServiceBookingClick(service?.id?.toString() || '', service?.name || '', business?.id || '');
+    
+    // Create mailto link with pre-filled subject and body
+    const subject = `Service Booking Request`;
+    const body = `Hello, I would like to book your service: ${service?.name || 'your service'}.`;
+    
+    // Open default email client
+    const mailtoLink = `mailto:${business.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(mailtoLink);
+    
+    toast({
+      title: "Email Client Opened",
+      description: "Your default email client has been opened with a pre-filled booking request.",
+    });
+  };
+
+  const handleShowContact = async () => {
+    if (!business?.id) return;
+    
+    try {
+      // Track analytics
+      analytics.trackContactShowClick(business.id, business.business_name);
+      
+      // For now, we'll use the business data we already have
+      // In a real implementation, you'd call the API endpoint
+      const contactData = {
+        business_name: business.business_name,
+        phone: business.phone,
+        email: business.email,
+        whatsapp: business.phone, // Use phone number for WhatsApp
+        address: business.address,
+        city: business.city,
+        website: business.website
+      };
+      
+      setContactDetails(contactData);
+      setIsContactModalOpen(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load contact details.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleStartChat = async () => {
+    if (!business?.phone) {
+      toast({
+        title: "Phone Not Available",
+        description: "This business has not provided a phone number.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      // Show loading state
+      toast({
+        title: "Checking WhatsApp...",
+        description: "Verifying if this number is registered on WhatsApp.",
+      });
+      
+      // Check if the number is registered on WhatsApp
+      const result = await apiService.checkWhatsAppNumber(business.phone);
+      
+      if (result.success && result.is_whatsapp) {
+        // Track analytics
+        analytics.trackWhatsAppClick(business.id, business.business_name, business.phone);
+        
+        // Clean the number and open WhatsApp
+        const cleanNumber = business.phone.replace(/\D/g, '');
+        const message = `Hello, I'm interested in your ${service?.name || 'service'}.`;
+        window.open(`https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`);
+        
+        toast({
+          title: "WhatsApp Opened",
+          description: "WhatsApp has been opened with your message.",
+        });
+      } else {
+        // Number is not registered on WhatsApp
+        toast({
+          title: "WhatsApp Not Available",
+          description: "The phone number listed by this business is not registered on WhatsApp.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('WhatsApp check error:', error);
+      
+      // On error, still try to open WhatsApp (fallback behavior)
+      toast({
+        title: "Opening WhatsApp...",
+        description: "Unable to verify WhatsApp registration, opening WhatsApp anyway.",
+      });
+      
+      // Track analytics
+      analytics.trackWhatsAppClick(business.id, business.business_name, business.phone);
+      
+      const cleanNumber = business.phone.replace(/\D/g, '');
+      const message = `Hello, I'm interested in your ${service?.name || 'service'}.`;
+      window.open(`https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`);
     }
   };
 
@@ -176,17 +293,9 @@ export const ServiceDetailPage: React.FC = () => {
             </Button>
           </div>
 
-          {/* Service Gallery Section */}
-          <Card className="mb-8">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Settings className="h-5 w-5 text-fem-terracotta" />
-                <h2 className="text-xl font-semibold text-gray-900">Service Gallery</h2>
-              </div>
-              
-              <div className="flex gap-4">
-                {/* Main Image - Smaller, more visible */}
-                <div className="relative w-64 h-48 bg-white rounded-xl shadow-md overflow-hidden flex-shrink-0">
+          {/* Hero Section - Large Image Gallery */}
+          <div className="mb-8">
+            <div className="relative w-full h-96 bg-white rounded-xl shadow-lg overflow-hidden">
                   {allImages.length > 0 ? (
                     <img 
                       src={allImages[currentImageIndex] || allImages[0]} 
@@ -196,8 +305,8 @@ export const ServiceDetailPage: React.FC = () => {
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                       <div className="text-center">
-                        <Settings className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                        <p className="text-gray-500 text-sm">No images available</p>
+                    <Settings className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500 text-lg">No images available</p>
                       </div>
                     </div>
                   )}
@@ -208,80 +317,81 @@ export const ServiceDetailPage: React.FC = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg rounded-full p-2"
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg rounded-full p-3"
                         onClick={() => handleImageNavigation('prev')}
                       >
-                        <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-5 w-5" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg rounded-full p-2"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg rounded-full p-3"
                         onClick={() => handleImageNavigation('next')}
                       >
-                        <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-5 w-5" />
                       </Button>
                     </>
                   )}
                   
                   {/* Image Counter */}
                   {allImages.length > 1 && (
-                    <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium">
+                <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-medium">
                       {currentImageIndex + 1} / {allImages.length}
                     </div>
                   )}
+
+              {/* Status Badge */}
+              <div className="absolute top-4 left-4">
+                <Badge className="bg-gradient-to-r from-fem-terracotta to-fem-gold text-white">
+                  {service.is_active ? "Available" : "Unavailable"}
+                </Badge>
+              </div>
                 </div>
 
-                {/* Thumbnail Gallery - Vertical */}
+            {/* Thumbnail Gallery */}
                 {allImages.length > 1 && (
-                  <div className="flex flex-col gap-2 overflow-y-auto max-h-48">
-                    {allImages.slice(0, 6).map((image, index) => (
+              <div className="flex gap-3 mt-4 overflow-x-auto pb-2">
+                {allImages.slice(0, 8).map((image, index) => (
                       <button
                         key={index}
                         onClick={() => setCurrentImageIndex(index)}
                         className={`flex-shrink-0 relative group ${
                           index === currentImageIndex 
-                            ? 'ring-2 ring-fem-terracotta ring-offset-1' 
-                            : 'hover:ring-2 hover:ring-gray-300 ring-offset-1'
+                        ? 'ring-2 ring-fem-terracotta ring-offset-2' 
+                        : 'hover:ring-2 hover:ring-gray-300 ring-offset-2'
                         }`}
                       >
                         <img
                           src={image}
                           alt={`${service.name} thumbnail ${index + 1}`}
-                          className="w-16 h-16 object-cover rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-colors"
+                      className="w-20 h-20 object-cover rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-colors"
                         />
                         {index === currentImageIndex && (
                           <div className="absolute inset-0 bg-fem-terracotta/20 rounded-lg flex items-center justify-center">
-                            <div className="w-1.5 h-1.5 bg-fem-terracotta rounded-full"></div>
+                        <div className="w-2 h-2 bg-fem-terracotta rounded-full"></div>
                           </div>
                         )}
                       </button>
                     ))}
-                    {allImages.length > 6 && (
-                      <div className="flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg border-2 border-gray-200 flex items-center justify-center">
-                        <span className="text-xs font-medium text-gray-600">+{allImages.length - 6}</span>
-                      </div>
-                    )}
+                {allImages.length > 8 && (
+                  <div className="flex-shrink-0 w-20 h-20 bg-gray-100 rounded-lg border-2 border-gray-200 flex items-center justify-center">
+                    <span className="text-sm font-medium text-gray-600">+{allImages.length - 8}</span>
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
 
-          {/* Reviews moved to bottom for improved hierarchy. */}
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Left Side - Service Details */}
-            <div className="space-y-6">
+          {/* Main Content Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column - Service Details */}
+            <div className="lg:col-span-2 space-y-6">
               {/* Service Title & Meta */}
               <div>
-                <div className="flex items-start justify-between mb-2">
+                <div className="flex items-start justify-between mb-3">
                   <h1 className="text-3xl font-bold text-gray-900 leading-tight">{service.name}</h1>
-                  <Badge variant="outline" className="bg-gradient-to-r from-fem-terracotta/10 to-fem-gold/10 text-fem-terracotta border-fem-terracotta/30">
-                    {service.is_active ? "Active" : "Inactive"}
-                  </Badge>
                 </div>
-                <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                <div className="flex items-center gap-6 text-sm text-gray-500 mb-4">
                   <span className="flex items-center gap-1">
                     <MapPin className="h-4 w-4" />
                     {business?.city}, {business?.county}
@@ -290,100 +400,167 @@ export const ServiceDetailPage: React.FC = () => {
                     <Clock className="h-4 w-4" />
                     {service.created_at ? formatToBritishDate(service.created_at) : 'Recently added'}
                   </span>
+                  <span className="flex items-center gap-1">
+                    <Eye className="h-4 w-4" />
+                    154 views
+                  </span>
+              </div>
+
+                {/* Service Tags */}
+                <div className="flex gap-2 mb-4">
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    Local Service
+                  </Badge>
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    Professional
+                  </Badge>
                 </div>
               </div>
 
-              {/* Price Section */}
-              <Card className="p-6 bg-gradient-to-r from-fem-terracotta/5 to-fem-gold/5 border-fem-terracotta/20">
-                <div className="flex items-baseline gap-3 mb-2">
-                  <span className="text-4xl font-bold text-fem-terracotta">
-                    {service.price_range || 'Contact for pricing'}
-                  </span>
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                    Service
-                  </Badge>
-                </div>
-                <p className="text-sm text-gray-600">Price is negotiable</p>
-              </Card>
 
-              {/* Description */}
+              {/* Description Section */}
               <Card className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Service Description</h3>
-                <p className="text-gray-700 leading-relaxed">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Service Description</h3>
+                <div className="prose prose-gray max-w-none">
+                  <p className="text-gray-700 leading-relaxed mb-4">
                   {service.description || 'No detailed description available for this service.'}
                 </p>
-              </Card>
-
-              {/* Service Details - cleaner structured layout */}
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Service Details</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="rounded-lg border border-gray-100 p-4 bg-white">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Duration</div>
-                    <div className="mt-1 font-semibold text-fem-navy">{service.duration || 'Not specified'}</div>
+                  
+                  {/* Service Features */}
+                  <div className="mt-6">
+                    <h4 className="font-semibold text-gray-900 mb-3">What's Included:</h4>
+                    <ul className="space-y-2 text-gray-700">
+                      <li className="flex items-start gap-2">
+                        <div className="w-1.5 h-1.5 bg-fem-terracotta rounded-full mt-2 flex-shrink-0"></div>
+                        <span>Professional service delivery</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <div className="w-1.5 h-1.5 bg-fem-terracotta rounded-full mt-2 flex-shrink-0"></div>
+                        <span>Quality assurance guarantee</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <div className="w-1.5 h-1.5 bg-fem-terracotta rounded-full mt-2 flex-shrink-0"></div>
+                        <span>Customer support</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <div className="w-1.5 h-1.5 bg-fem-terracotta rounded-full mt-2 flex-shrink-0"></div>
+                        <span>Flexible scheduling</span>
+                      </li>
+                    </ul>
                   </div>
-                  <div className="rounded-lg border border-gray-100 p-4 bg-white">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Status</div>
-                    <div className="mt-1">
-                      <Badge variant={service.is_active ? 'default' : 'secondary'}>
-                        {service.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
-                  </div>
-                  {service.created_at && (
-                    <div className="rounded-lg border border-gray-100 p-4 bg-white sm:col-span-2">
-                      <div className="text-xs uppercase tracking-wide text-gray-500">Listed</div>
-                      <div className="mt-1 font-semibold text-fem-navy">{formatToBritishDate(service.created_at)}</div>
-                    </div>
-                  )}
                 </div>
               </Card>
 
-              {/* Business Information */}
+
+
+              {/* Social Sharing */}
+              <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
+                <span className="text-sm text-gray-600">Share this service:</span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white">
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                  <Button size="sm" variant="outline" className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white">
+                    <MessageSquare className="h-4 w-4" />
+                  </Button>
+                  <Button size="sm" variant="outline" className="border-gray-600 text-gray-600 hover:bg-gray-600 hover:text-white">
+                    <Mail className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+                    </div>
+
+            {/* Right Column - Pricing & Actions */}
+            <div className="space-y-6">
+              {/* Pricing Section */}
+              <Card className="p-6 bg-gradient-to-r from-fem-terracotta/5 to-fem-gold/5 border-fem-terracotta/20">
+                <div className="text-center mb-4">
+                  <div className="text-3xl font-bold text-fem-terracotta mb-2">
+                    {service.price_range || 'Contact for pricing'}
+                  </div>
+                  <p className="text-sm text-gray-600">Negotiable</p>
+                    </div>
+                
+                <div className="space-y-3">
+                  <Button 
+                    onClick={handleBookService}
+                    className="w-full bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Book Service Now
+                  </Button>
+                  <Button 
+                    onClick={handleShowContact}
+                    variant="outline" 
+                    className="w-full border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
+                  >
+                    <Phone className="h-4 w-4 mr-2" />
+                    Show Contact
+                  </Button>
+                  <Button 
+                    onClick={handleStartChat}
+                    variant="outline" 
+                    className="w-full border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Start Chat
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Provider Quick Info */}
               {business && (
-                <Card className="p-6 bg-gray-50">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Service Provider</h3>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center">
-                      <span className="text-white font-bold text-lg">
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Provider Details</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-r from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center">
+                        <span className="text-white font-bold">
                         {business.business_name?.charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900">{business.business_name}</p>
-                      <p className="text-sm text-gray-600">Verified Business</p>
+                        <p className="text-sm text-gray-600">Verified Provider</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button className="flex-1 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white">
-                      <Phone className="h-4 w-4 mr-2" />
-                      Contact Provider
-                    </Button>
-                    <Button variant="outline" className="flex-1 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white">
-                      <Mail className="h-4 w-4 mr-2" />
-                      Send Message
-                    </Button>
-                  </div>
-                </Card>
-              )}
+                    
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2 text-gray-700">
+                        <MapPin className="h-4 w-4 text-fem-terracotta" />
+                        <span>{business.city}, {business.county}</span>
+                      </div>
+                        {business.phone && (
+                            <div className="flex items-center gap-2 text-gray-700">
+                              <Phone className="h-4 w-4 text-fem-terracotta" />
+                          <span>{business.phone}</span>
+                          </div>
+                        )}
+                        {business.email && (
+                            <div className="flex items-center gap-2 text-gray-700">
+                              <Mail className="h-4 w-4 text-fem-terracotta" />
+                          <span>{business.email}</span>
+                          </div>
+                        )}
+                      </div>
 
-              
+                    <div className="pt-3 border-t border-gray-200">
+                      <Link to={`/business/${business.id}`} className="block">
+                        <Button className="w-full bg-fem-terracotta hover:bg-fem-terracotta/90 text-white">
+                          <Building2 className="h-4 w-4 mr-2" />
+                          Visit Business Profile
+                        </Button>
+                        </Link>
+                      </div>
+                  </div>
+                  </Card>
+                )}
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
-                <Button className="flex-1 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white">
-                  <Heart className="h-4 w-4 mr-2" />
-                  Save to Favorites
-                </Button>
-                <Button variant="outline" className="flex-1 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white">
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share
-                </Button>
-              </div>
             </div>
           </div>
 
-          {/* Service Reviews Section - placed at the bottom */}
+        {/* Service Reviews Section - placed at the bottom */}
+        <div className="container mx-auto px-4 pb-12">
           <Card className="mt-8">
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-6">
@@ -441,8 +618,29 @@ export const ServiceDetailPage: React.FC = () => {
             </CardContent>
           </Card>
         </div>
+        </div>
       </main>
       <Footer />
+      
+      {/* Modals */}
+      <BookingModal
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        serviceName={service?.name || ''}
+        businessEmail={business?.email || ''}
+        onBookingSuccess={() => {
+          toast({
+            title: "Booking Request Sent",
+            description: "Your booking request has been sent to the business.",
+          });
+        }}
+      />
+      
+      <ContactModal
+        isOpen={isContactModalOpen}
+        onClose={() => setIsContactModalOpen(false)}
+        contactDetails={contactDetails}
+      />
     </div>
   );
 };

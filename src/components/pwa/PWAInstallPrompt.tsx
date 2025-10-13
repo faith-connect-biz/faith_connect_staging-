@@ -125,7 +125,7 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ className = 
 
   return (
     <div className={`fixed bottom-4 left-4 right-4 z-50 max-w-sm mx-auto ${className}`}>
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 relative">
+      <div className="bg-white dark:bg-gray-800 border border-fem-terracotta/20 dark:border-gray-700 rounded-lg shadow-lg p-4 relative">
         {/* Close button */}
         <button
           onClick={handleDismiss}
@@ -137,8 +137,8 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ className = 
 
         <div className="flex items-start gap-3 pr-6">
           <div className="flex-shrink-0">
-            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-              <Smartphone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <div className="w-10 h-10 bg-gradient-to-r from-fem-terracotta/10 to-fem-gold/10 rounded-lg flex items-center justify-center">
+              <Smartphone className="w-5 h-5 text-fem-terracotta" />
             </div>
           </div>
           
@@ -154,7 +154,7 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ className = 
               <Button
                 size="sm"
                 onClick={handleInstall}
-                className="flex-1 text-xs"
+                className="flex-1 text-xs bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
               >
                 <Download className="w-3 h-3 mr-1" />
                 Install
@@ -163,7 +163,7 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ className = 
                 size="sm"
                 variant="outline"
                 onClick={handleNotNow}
-                className="text-xs px-3"
+                className="text-xs px-3 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
               >
                 Not Now
               </Button>
