@@ -23,3 +23,28 @@
     animation: logo-spin infinite 20s linear;
   }
 }
+
+/* Scroll Animation Styles */
+.animate-revealed.animate-fade-in {
+  opacity: 1;
+}
+
+.animate-revealed.animate-slide-up {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.animate-revealed.animate-slide-left {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.animate-revealed.animate-slide-right {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.animate-revealed.animate-scale-in {
+  opacity: 1;
+  transform: scale(1);
+}

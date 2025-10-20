@@ -1,18 +1,18 @@
-
 import { Link } from "react-router-dom";
-import { useAuth } from '@/contexts/AuthContext';
-import { FooterLogo } from '@/components/ui/Logo';
 
 export const Footer = () => {
-  const { user, isAuthenticated, isBusiness, isCommunity } = useAuth();
-
   return (
     <footer className="bg-fem-navy text-white py-4">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="space-y-2">
             <Link to="/" className="flex items-center gap-3 group">
-              <FooterLogo />
+              <img
+                src="/android-chrome-192x192-removebg-preview.png"
+                alt="Faith Connect Logo"
+                className="h-16 w-auto"
+                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}
+              />
               <div className="flex flex-col">
                 <span className="font-heading font-semibold group-hover:text-fem-gold transition-colors duration-300">Faith Connect</span>
                 <span className="text-xs text-gray-300 group-hover:text-gray-200 transition-colors duration-300">Business Connect</span>
@@ -24,42 +24,28 @@ export const Footer = () => {
           </div>
           
           <div>
-            <h3 className="font-heading font-semibold mb-2 text-fem-gold text-sm">For Community Members</h3>
+            <h3 className="font-heading font-semibold mb-2 text-fem-gold text-sm">Explore</h3>
             <ul className="space-y-1 text-xs text-gray-300">
-              <li><Link to="/directory" className="hover:text-fem-gold transition-colors">Explore Services</Link></li>
-              <li><Link to="/profile" className="hover:text-fem-gold transition-colors">Profile</Link></li>
-              <li><Link to="/about" className="hover:text-fem-gold transition-colors">Learn More</Link></li>
-            </ul>
-          </div>
-          
-          <div>
-            <h3 className="font-heading font-semibold mb-2 text-fem-gold text-sm">
-              {isAuthenticated && isCommunity ? "For Community Members" : "For Business Owners"}
-            </h3>
-            <ul className="space-y-1 text-xs text-gray-300">
-              {isAuthenticated && isCommunity ? (
-                <>
-                  <li className="text-gray-400">Community members support businesses</li>
-                  <li className="text-gray-400">Find and review trusted services</li>
-                  <li><Link to="/directory" className="hover:text-fem-gold transition-colors">Browse Directory</Link></li>
-                </>
-              ) : (
-                <>
-                  <li><Link to="/register-business" className="hover:text-fem-gold transition-colors">List Your Business</Link></li>
-                  <li><Link to="/profile" className="hover:text-fem-gold transition-colors">Manage Profile</Link></li>
-                  <li><Link to="/about" className="hover:text-fem-gold transition-colors">Learn More</Link></li>
-                </>
-              )}
-            </ul>
-          </div>
-          
-          <div>
-            <h3 className="font-heading font-semibold mb-2 text-fem-gold text-sm">Contact</h3>
-            <ul className="space-y-1 text-xs text-gray-300">
+              <li><Link to="/directory" className="hover:text-fem-gold transition-colors">Business Directory</Link></li>
               <li><Link to="/about" className="hover:text-fem-gold transition-colors">About Us</Link></li>
+              <li><Link to="/contact" className="hover:text-fem-gold transition-colors">Contact</Link></li>
+            </ul>
+          </div>
+          
+          <div>
+            <h3 className="font-heading font-semibold mb-2 text-fem-gold text-sm">Resources</h3>
+            <ul className="space-y-1 text-xs text-gray-300">
               <li><Link to="/faq" className="hover:text-fem-gold transition-colors">FAQ</Link></li>
               <li><Link to="/privacy-policy" className="hover:text-fem-gold transition-colors">Privacy Policy</Link></li>
               <li><Link to="/terms-and-conditions" className="hover:text-fem-gold transition-colors">Terms & Conditions</Link></li>
+            </ul>
+          </div>
+          
+          <div>
+            <h3 className="font-heading font-semibold mb-2 text-fem-gold text-sm">Connect</h3>
+            <ul className="space-y-1 text-xs text-gray-300">
+              <li><Link to="/contact" className="hover:text-fem-gold transition-colors">Get in Touch</Link></li>
+              <li><Link to="/about" className="hover:text-fem-gold transition-colors">Learn More</Link></li>
             </ul>
           </div>
         </div>

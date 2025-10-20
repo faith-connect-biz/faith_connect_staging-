@@ -50,6 +50,17 @@ button:focus, a:focus, input:focus, textarea:focus, select:focus {
   color: white;
 }
 
+/* Faith Connect Logo Styling - Remove white background */
+img[src*="android-chrome-192x192-removebg-preview.png"] {
+  background: transparent !important;
+  mix-blend-mode: normal;
+}
+
+/* Ensure SVG logos have no background */
+svg, img[src$=".svg"] {
+  background: transparent !important;
+}
+
 /* Prevent layout shifts and stabilize animations */
 .grid {
   contain: layout;

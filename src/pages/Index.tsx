@@ -14,6 +14,7 @@ import { SearchDemo } from '@/components/search/SearchDemo';
 import { OnboardingCheck } from '@/components/OnboardingCheck';
 import HelpButton from '@/components/onboarding/HelpButton';
 import ScrollToTop from '@/components/ui/ScrollToTop';
+import { FadeIn, SlideUp, ScaleIn } from '@/components/ui/ScrollAnimation';
 // import { DataDebugger } from "@/components/debug/DataDebugger";
 // import { ApiTester } from "@/components/debug/ApiTester";
 
@@ -128,12 +129,22 @@ const Index = () => {
          <Hero />
          {/* <ApiTester />
          <DataDebugger /> */}
-         <BusinessCategories />
+         <FadeIn delay={200}>
+           <BusinessCategories />
+         </FadeIn>
          {/* <SearchDemo /> */}
-         <ProductServiceCarousel />
-         <BusinessLogosCarousel />
-         <CommunityStats />
-         <CallToAction />
+         <SlideUp delay={400}>
+           <ProductServiceCarousel />
+         </SlideUp>
+         <FadeIn delay={600}>
+           <BusinessLogosCarousel />
+         </FadeIn>
+         <ScaleIn delay={800}>
+           <CommunityStats />
+         </ScaleIn>
+         <SlideUp delay={1000}>
+           <CallToAction />
+         </SlideUp>
        </main>
       <Footer />
       <ScrollToTop />

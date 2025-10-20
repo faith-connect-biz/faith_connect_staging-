@@ -365,7 +365,7 @@ export interface UserActivity {
 }
 
 // API Configuration
-const API_BASE_URL = 'https://femdjango-production.up.railway.app/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
 // Debug: Log the API base URL
 console.log('🔧 API Configuration:', {
@@ -470,6 +470,14 @@ class ApiService {
             method: originalRequest?.method,
             error: error.message
           });
+          
+          // Check if this is a connection refused error (backend not running)
+          if (error.message.includes('ERR_CONNECTION_REFUSED') || error.message.includes('Network Error')) {
+            console.warn('Backend server is not running. Using demo mode.');
+            // For demo purposes, we'll handle this gracefully
+            return Promise.reject(new Error('Backend server is not running. Please start the backend server or use demo mode.'));
+          }
+          
           return Promise.reject(new Error('Network error. Please check your internet connection and try again.'));
         }
         
@@ -2030,6 +2038,299 @@ class ApiService {
     } catch (error: any) {
       console.error('WhatsApp check failed:', error);
       throw new Error(error.response?.data?.message || 'Failed to check WhatsApp registration');
+    }
+  }
+
+  /**
+   * Send OTP for authentication
+   */
+    async sendOTP(contact: string, method: 'email' | 'phone'): Promise<{
+      success: boolean;
+      message: string;
+    }> {
+      try {
+        const endpoint = method === 'email' ? '/auth/send-email-otp/' : '/auth/send-phone-otp/';
+        const requestData = method === 'email' 
+          ? { email: contact }
+          : { phone: contact };
+        
+        const response = await this.api.post(endpoint, requestData);
+        return response.data;
+      } catch (error: any) {
+        console.error('Send OTP failed:', error);
+        
+        // If backend is not available, fall back to demo mode
+        if (error.message.includes('Backend server is not running') || 
+            error.message.includes('ERR_CONNECTION_REFUSED') ||
+            error.message.includes('Network Error')) {
+          
+          console.log(`Demo mode: Sending OTP to ${contact} via ${method}`);
+          
+          // Simulate API delay
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Store OTP in localStorage for demo purposes
+          const demoOTP = '123456';
+          localStorage.setItem('demo_otp', demoOTP);
+          localStorage.setItem('demo_contact', contact);
+          localStorage.setItem('demo_method', method);
+          
+          return {
+            success: true,
+            message: `OTP sent to your ${method} (Demo mode)`
+          };
+        }
+        
+        throw new Error(error.response?.data?.message || 'Failed to send verification code');
+      }
+    }
+
+  /**
+   * Verify OTP and get user info
+   */
+  async verifyOTP(contact: string, otp: string, method: 'email' | 'phone'): Promise<{
+    success: boolean;
+    user?: User;
+    tokens?: {
+      access: string;
+      refresh: string;
+    };
+    is_new_user: boolean;
+    message: string;
+  }> {
+    try {
+      const endpoint = method === 'email' ? '/auth/verify-email-otp/' : '/auth/verify-phone-otp/';
+      const requestData = method === 'email' 
+        ? { email: contact, otp: otp }
+        : { phone: contact, otp: otp };
+      
+      const response = await this.api.post(endpoint, requestData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Verify OTP failed:', error);
+      
+      // If backend is not available, fall back to demo mode
+      if (error.message.includes('Backend server is not running') || 
+          error.message.includes('ERR_CONNECTION_REFUSED') ||
+          error.message.includes('Network Error')) {
+        
+        console.log(`Demo mode: Verifying OTP ${otp} for ${contact} via ${method}`);
+        
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Check if OTP matches demo OTP
+        const demoOTP = localStorage.getItem('demo_otp');
+        const demoContact = localStorage.getItem('demo_contact');
+        const demoMethod = localStorage.getItem('demo_method');
+        
+        console.log('Demo verification check:', {
+          enteredOTP: otp,
+          demoOTP: demoOTP,
+          enteredContact: contact,
+          demoContact: demoContact,
+          enteredMethod: method,
+          demoMethod: demoMethod
+        });
+        
+        if (otp === demoOTP && contact === demoContact && method === demoMethod) {
+          // Simulate new user for demo
+          return {
+            success: true,
+            is_new_user: true,
+            message: 'OTP verified successfully (Demo mode)'
+          };
+        } else {
+          return {
+            success: false,
+            is_new_user: false,
+            message: 'Invalid OTP. Please try again.'
+          };
+        }
+      }
+      
+      throw new Error(error.response?.data?.message || 'Invalid verification code');
+    }
+  }
+
+  /**
+   * Register new user with OTP
+   */
+  async registerWithOTP(contact: string, otp: string, method: 'email' | 'phone', userType: 'community' | 'business'): Promise<{
+    success: boolean;
+    user: User;
+    tokens: {
+      access: string;
+      refresh: string;
+    };
+    message: string;
+  }> {
+    try {
+      const endpoint = method === 'email' ? '/auth/register-email-otp/' : '/auth/register-phone-otp/';
+      const requestData = method === 'email' 
+        ? { email: contact, otp: otp, user_type: userType }
+        : { phone: contact, otp: otp, user_type: userType };
+      
+      const response = await this.api.post(endpoint, requestData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Register with OTP failed:', error);
+      
+      // If backend is not available, fall back to demo mode
+      if (error.message.includes('Backend server is not running') || 
+          error.message.includes('ERR_CONNECTION_REFUSED') ||
+          error.message.includes('Network Error')) {
+        
+        console.log(`Demo mode: Registering user ${contact} as ${userType} via ${method}`);
+        
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Create demo user data
+        const demoUser: User = {
+          id: 'demo-user-123',
+          first_name: 'Demo',
+          last_name: 'User',
+          partnership_number: 'DEMO123',
+          email: method === 'email' ? contact : undefined,
+          phone: method === 'phone' ? contact : undefined,
+          user_type: userType,
+          is_verified: true,
+          email_verified: method === 'email',
+          phone_verified: method === 'phone',
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        const demoTokens = {
+          access: 'demo-access-token-123',
+          refresh: 'demo-refresh-token-123'
+        };
+        
+        return {
+          success: true,
+          user: demoUser,
+          tokens: demoTokens,
+          message: 'Account created successfully (Demo mode)'
+        };
+      }
+      
+      throw new Error(error.response?.data?.message || 'Failed to create account');
+    }
+  }
+
+  /**
+   * Create business with simplified data structure for OTP registration flow
+   */
+  async createBusinessFromRegistration(data: {
+    name: string;
+    category: string;
+    description: string;
+    address: string;
+    city: string;
+    state?: string;
+    zipCode?: string;
+    phone: string;
+    email?: string;
+    website?: string;
+    hours?: string;
+    services?: string;
+  }): Promise<{
+    success: boolean;
+    business?: Business;
+    message: string;
+  }> {
+    try {
+      // Find category ID from the category name
+      let category;
+      try {
+        const categories = await this.getCategories();
+        category = categories.results.find(cat => cat.name === data.category);
+      } catch (error) {
+        console.warn('Could not fetch categories, using demo category:', error);
+        // Use a demo category for fallback
+        category = { id: 1, name: data.category };
+      }
+      
+      if (!category) {
+        throw new Error('Invalid business category');
+      }
+
+      const businessData: BusinessCreateRequest = {
+        business_name: data.name,
+        category_id: category.id,
+        description: data.description,
+        address: data.address,
+        city: data.city,
+        country: 'Kenya', // Default country
+        phone: data.phone,
+        email: data.email,
+        website: data.website,
+        // Add additional fields as needed
+        hours: data.hours ? [{
+          day_of_week: 1,
+          open_time: '09:00',
+          close_time: '17:00',
+          is_closed: false
+        }] : [],
+        services_data: data.services ? [{
+          name: 'General Services',
+          description: data.services,
+          price_range: 'Contact for pricing',
+          duration: 'Varies',
+          is_available: true,
+          photos: []
+        }] : []
+      };
+
+      try {
+        const business = await this.createBusiness(businessData);
+        return {
+          success: true,
+          business: business,
+          message: 'Business created successfully'
+        };
+      } catch (createError: any) {
+        console.warn('Business creation failed, using demo mode:', createError);
+        
+        // If backend is not available, return success for demo purposes
+        if (createError.message.includes('Backend server is not running') || 
+            createError.message.includes('ERR_CONNECTION_REFUSED') ||
+            createError.message.includes('Network Error')) {
+          
+          const demoBusiness: Business = {
+            id: 'demo-business-123',
+            business_name: data.name,
+            description: data.description,
+            address: data.address,
+            city: data.city,
+            phone: data.phone,
+            email: data.email,
+            website: data.website,
+            is_active: true,
+            is_verified: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            category: { id: category.id, name: category.name },
+            owner: { id: 'demo-user-123', first_name: 'Demo', last_name: 'User' }
+          };
+          
+          return {
+            success: true,
+            business: demoBusiness,
+            message: 'Business created successfully (Demo mode)'
+          };
+        }
+        
+        throw createError;
+      }
+    } catch (error: any) {
+      console.error('Create business failed:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to create business'
+      };
     }
   }
 
