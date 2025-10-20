@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, ChevronDown, MapPin } from "lucide-react";
+import { Search, ChevronDown, MapPin, Heart, Star, FileText, ArrowRight, User, Building, Globe, Handshake } from "lucide-react";
 import { 
   MdRestaurant, MdShoppingBag, MdLocalHospital, MdDirectionsCar, MdHotel,
   MdComputer, MdConstruction, MdLocalShipping, MdBusiness, MdSchool,
@@ -243,8 +243,8 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
           className="w-full h-full object-cover"
           fullScreen={true}
         />
-        {/* Dark overlay for better text contrast */}
-        <div className="absolute inset-0 bg-black/70" />
+        {/* Light overlay for better text contrast while keeping background visible */}
+        <div className="absolute inset-0 bg-black/30" />
       </div>
 
       {/* Main Content Container */}
@@ -258,9 +258,12 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
             <div className="text-white font-medium text-xl md:text-2xl lg:text-3xl xl:text-4xl drop-shadow-lg">
               Welcome to
             </div>
-            <h1 className="font-black bg-gradient-to-r from-fem-gold via-fem-terracotta to-fem-gold bg-clip-text text-transparent text-3xl md:text-4xl lg:text-5xl xl:text-6xl leading-tight drop-shadow-lg">
-              Faith Connect
-            </h1>
+            {/* Faith Connect Text */}
+            <div className="flex justify-center mb-4">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black bg-gradient-to-r from-fem-gold via-fem-terracotta to-fem-gold bg-clip-text text-transparent leading-tight">
+                Faith Connect
+              </h1>
+            </div>
             <div className="text-white font-bold text-xl md:text-2xl lg:text-3xl xl:text-4xl drop-shadow-lg">
               Business Directory
             </div>
@@ -360,28 +363,19 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
             )}
           </div>
 
-
-          {/* Stats Row */}
-          <div className="mt-6 md:mt-8 flex flex-wrap items-center justify-center gap-x-1 sm:gap-x-2 md:gap-x-4 gap-y-1 text-white font-semibold text-[10px] sm:text-xs md:text-sm lg:text-base drop-shadow-lg bg-black/20 backdrop-blur-sm rounded-lg px-2 sm:px-3 md:px-6 py-2 md:py-3 mx-2 sm:mx-4 md:mx-0">
-            <span className="whitespace-nowrap">69+ Local Businesses</span>
-            <span className="text-gray-300 hidden sm:inline">•</span>
-            <span className="whitespace-nowrap">Active Community</span>
-            <span className="text-gray-300 hidden sm:inline">•</span>
-            <span className="whitespace-nowrap">Kenya-wide</span>
-            <span className="text-gray-300 hidden sm:inline">•</span>
-            <span className="whitespace-nowrap">Network Reach</span>
-          </div>
         </div>
 
-        {/* Footer Attribution */}
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-          <div className="flex items-center gap-2 text-white/60 text-sm">
-            <span>Image Courtesy Of Seattle Opera</span>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
+        {/* Stats Row */}
+        <div className="mt-6 md:mt-8 flex flex-wrap items-center justify-center gap-x-1 sm:gap-x-2 md:gap-x-4 gap-y-1 text-white font-semibold text-[10px] sm:text-xs md:text-sm lg:text-base drop-shadow-lg bg-black/20 backdrop-blur-sm rounded-lg px-2 sm:px-3 md:px-6 py-2 md:py-3 mx-2 sm:mx-4 md:mx-0">
+          <span className="whitespace-nowrap">69+ Local Businesses</span>
+          <span className="text-gray-300 hidden sm:inline">•</span>
+          <span className="whitespace-nowrap">Active Community</span>
+          <span className="text-gray-300 hidden sm:inline">•</span>
+          <span className="whitespace-nowrap">Kenya-wide</span>
+          <span className="text-gray-300 hidden sm:inline">•</span>
+          <span className="whitespace-nowrap">Network Reach</span>
         </div>
+
       </div>
     </div>
   );

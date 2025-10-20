@@ -1,82 +1,30 @@
-
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import AuthModal from '@/components/auth/AuthModal';
-import { NavbarLogo } from '@/components/ui/Logo';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   Menu, 
-  X, 
-  User, 
-  Loader2,
-  Building2,
-  AlertCircle,
-  Home
+  X,
+  LogIn,
+  User
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { apiService } from '@/services/api';
-import { toast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Navbar: React.FC = () => {
-  const { user, isAuthenticated, isBusiness, logout, isLoggingOut } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalTab, setAuthModalTab] = useState<'login' | 'signup'>('login');
-  const [hasExistingBusiness, setHasExistingBusiness] = useState(false);
-  const [isCheckingBusiness, setIsCheckingBusiness] = useState(false);
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
+  const { isAuthenticated, user, logout } = useAuth();
 
-  // Check if user already has a business
+  // Scroll detection for glass effect
   useEffect(() => {
-    const checkExistingBusiness = async () => {
-      if (isAuthenticated && isBusiness) {
-        setIsCheckingBusiness(true);
-        try {
-          const existingBusiness = await apiService.getUserBusiness();
-          setHasExistingBusiness(!!existingBusiness);
-        } catch (error) {
-          console.error('Error checking existing business:', error);
-          setHasExistingBusiness(false);
-        } finally {
-          setIsCheckingBusiness(false);
-        }
-      }
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      setIsScrolled(scrollTop > 50);
     };
 
-    checkExistingBusiness();
-  }, [isAuthenticated, isBusiness]);
-
-  // Ensure we have the latest user data
-  const isCommunity = user?.user_type === 'community';
-
-  // Force re-render when user changes
-  useEffect(() => {
-    console.log('Navbar: User state changed:', {
-      user: user,
-      isAuthenticated,
-      isBusiness,
-      isCommunity,
-      userType: user?.user_type
-    });
-  }, [user, isAuthenticated, isBusiness, isCommunity]);
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      setIsMenuOpen(false);
-      navigate("/");
-    } catch (error) {
-      console.error('Logout failed:', error);
-      toast({
-        title: "Logout Failed",
-        description: "There was an error logging out. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -86,276 +34,150 @@ const Navbar: React.FC = () => {
     setIsMenuOpen(false);
   };
 
-  const openAuthModal = (tab: 'login' | 'signup' = 'login') => {
-    setAuthModalTab(tab);
-    setIsAuthModalOpen(true);
-  };
-
-  const closeAuthModal = () => {
-    setIsAuthModalOpen(false);
-  };
-
-  // Auto-open login modal when instructed (e.g., after password reset)
-  useEffect(() => {
-    const shouldOpen = localStorage.getItem('open_login_modal');
-    // Only open the modal if the user is NOT authenticated
-    if (shouldOpen && !isAuthenticated) {
-      setAuthModalTab('login');
-      setIsAuthModalOpen(true);
-    }
-    // Always clear the flag once checked to avoid stale triggers
-    if (shouldOpen) {
-      localStorage.removeItem('open_login_modal');
-    }
-  }, [isAuthenticated]);
-
   return (
-    <nav className="sticky top-0 bg-gradient-to-r from-slate-100 via-blue-50 to-slate-100 py-4 z-40 transition-all duration-300 shadow-sm border-b border-gray-200/50 backdrop-blur-sm">
+    <nav className={`sticky top-0 py-4 z-40 transition-all duration-700 ${
+      isScrolled 
+        ? 'bg-white/15 backdrop-blur-xl shadow-2xl border-b border-white/30' 
+        : 'bg-white/10 backdrop-blur-lg shadow-lg border-b border-white/20'
+    }`}>
       <div className="container mx-auto px-4 flex justify-between items-center">
-        <Link to="/" className="flex items-center group" onClick={closeMenu}>
-          <NavbarLogo />
-        </Link>
+            <Link to="/" className="flex items-center group" onClick={closeMenu}>
+              <img
+                src="/android-chrome-192x192-removebg-preview.png"
+                alt="Faith Connect Logo"
+                className="h-16 w-auto"
+                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}
+              />
+            </Link>
         
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-8">
-          <Link to="/" className={`text-gray-700 transition-all duration-300 relative group px-3 py-2 rounded-md ${location.pathname === '/' ? 'text-fem-terracotta font-semibold bg-white/50' : 'hover:text-fem-terracotta hover:bg-white/30'}`}>
+          <Link to="/" className={`text-fem-navy transition-all duration-500 relative group px-4 py-2 rounded-xl backdrop-blur-sm ${location.pathname === '/' ? 'text-fem-terracotta font-semibold bg-white/20 shadow-lg' : 'hover:text-fem-terracotta hover:bg-white/10 hover:shadow-md'}`}>
             Home
-            <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-300 ${location.pathname === '/' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+            <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-500 ${location.pathname === '/' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
           </Link>
-          <Link to="/directory" className={`text-gray-700 transition-all duration-300 relative group px-3 py-2 rounded-md ${location.pathname === '/directory' ? 'text-fem-terracotta font-semibold bg-white/50' : 'hover:text-fem-terracotta hover:bg-white/30'}`}>
+          <Link to="/directory" className={`text-fem-navy transition-all duration-500 relative group px-4 py-2 rounded-xl backdrop-blur-sm ${location.pathname === '/directory' ? 'text-fem-terracotta font-semibold bg-white/20 shadow-lg' : 'hover:text-fem-terracotta hover:bg-white/10 hover:shadow-md'}`}>
             Business Directory
-            <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-300 ${location.pathname === '/directory' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+            <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-500 ${location.pathname === '/directory' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
           </Link>
-          {/* Business Management Links - Only for Business Users */}
-          {isAuthenticated && isBusiness && (
-            <>
-              {isCheckingBusiness ? (
-                <div className="text-gray-700 opacity-50 px-3 py-2">
-                  <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
-                  Loading...
-                </div>
-              ) : !hasExistingBusiness ? (
-                <Link to="/register-business" className={`text-gray-700 transition-all duration-300 relative group px-3 py-2 rounded-md ${location.pathname === '/register-business' ? 'text-fem-terracotta font-semibold bg-white/50' : 'hover:text-fem-terracotta hover:bg-white/30'}`}>
-                  List Business
-                  <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-300 ${location.pathname === '/register-business' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
-                </Link>
-              ) : (
-                <Link to="/manage-business" className={`text-gray-700 transition-all duration-300 relative group px-3 py-2 rounded-md ${location.pathname === '/manage-business' ? 'text-fem-terracotta font-semibold bg-white/50' : 'hover:text-fem-terracotta hover:bg-white/30'}`}>
-                  Manage Business
-                  <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-300 ${location.pathname === '/manage-business' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
-                </Link>
-              )}
-            </>
-          )}
-          <Link to="/about" className={`text-gray-700 transition-all duration-300 relative group px-3 py-2 rounded-md ${location.pathname === '/about' ? 'text-fem-terracotta font-semibold bg-white/50' : 'hover:text-fem-terracotta hover:bg-white/30'}`}>
+          <Link to="/about" className={`text-fem-navy transition-all duration-500 relative group px-4 py-2 rounded-xl backdrop-blur-sm ${location.pathname === '/about' ? 'text-fem-terracotta font-semibold bg-white/20 shadow-lg' : 'hover:text-fem-terracotta hover:bg-white/10 hover:shadow-md'}`}>
             About
-            <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-300 ${location.pathname === '/about' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+            <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-500 ${location.pathname === '/about' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
           </Link>
-          <Link to="/contact" className={`text-gray-700 transition-all duration-300 relative group px-3 py-2 rounded-md ${location.pathname === '/contact' ? 'text-fem-terracotta font-semibold bg-white/50' : 'hover:text-fem-terracotta hover:bg-white/30'}`}>
+          <Link to="/contact" className={`text-fem-navy transition-all duration-500 relative group px-4 py-2 rounded-xl backdrop-blur-sm ${location.pathname === '/contact' ? 'text-fem-terracotta font-semibold bg-white/20 shadow-lg' : 'hover:text-fem-terracotta hover:bg-white/10 hover:shadow-md'}`}>
             Contact
-            <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-300 ${location.pathname === '/contact' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+            <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-500 ${location.pathname === '/contact' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
           </Link>
-          {/* Favorites - Only when authenticated */}
-          {isAuthenticated && (
-            <Link to="/favorites" className={`text-gray-700 transition-all duration-300 relative group px-3 py-2 rounded-md ${location.pathname === '/favorites' ? 'text-fem-terracotta font-semibold bg-white/50' : 'hover:text-fem-terracotta hover:bg-white/30'}`}>
-              Favorites
-              <span className={`absolute bottom-0 left-0 h-0.5 bg-fem-terracotta transition-all duration-300 ${location.pathname === '/favorites' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
-            </Link>
-          )}
-        </div>
-        
-        {/* Desktop Actions */}
-        <div className="hidden md:flex items-center gap-4">
+          
+          {/* Authentication Section */}
           {isAuthenticated ? (
-            <div className="flex items-center gap-2">
-              <Link to="/profile">
-                <Button variant="outline" className="flex items-center gap-2 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white">
-                  <User className="h-4 w-4" />
-                  <span>Profile</span>
-                </Button>
+            <div className="flex items-center space-x-4">
+              <Link to="/profile" className="flex items-center space-x-2 text-gray-700 hover:text-fem-terracotta transition-colors">
+                <User className="w-5 h-5" />
+                <span className="font-medium">{user?.firstName || 'Profile'}</span>
               </Link>
               <Button 
-                variant="ghost" 
-                className="text-fem-navy hover:text-fem-terracotta"
-                onClick={handleLogout}
-                disabled={isLoggingOut}
+                onClick={logout}
+                variant="outline" 
+                size="sm"
+                className="border-gray-300 hover:border-red-500 hover:text-red-500"
               >
-                {isLoggingOut ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    <span>Logging out...</span>
-                  </>
-                ) : (
-                  <>
-                    <X className="h-4 w-4 mr-2" />
-                    <span>Logout</span>
-                  </>
-                )}
+                Logout
               </Button>
             </div>
           ) : (
-                         <>
-               <Button 
-                 variant="outline" 
-                 className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
-                 onClick={() => openAuthModal('login')}
-               >
-                 Sign In
-               </Button>
-               <Button 
-                 className="bg-fem-terracotta hover:bg-fem-terracotta/90 text-white"
-                 onClick={() => openAuthModal('signup')}
-               >
-                 Register
-               </Button>
-             </>
+            <Link to="/login">
+              <Button className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500 border border-white/20">
+                <LogIn className="w-4 h-4 mr-2" />
+                Login
+              </Button>
+            </Link>
           )}
         </div>
 
         {/* Mobile Menu Button */}
         <div className="md:hidden flex items-center gap-2">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="text-fem-navy"
+          <button 
+            className="text-fem-navy p-2"
             onClick={toggleMenu}
           >
             {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </Button>
+          </button>
         </div>
       </div>
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 bg-gradient-to-r from-slate-100 via-blue-50 to-slate-100 shadow-lg border-t border-gray-200/50 z-50">
-          <div className="container mx-auto px-4 py-4 space-y-4">
+        <div className="md:hidden absolute top-full left-0 right-0 bg-white/20 backdrop-blur-xl shadow-2xl border-t border-white/30 z-50 rounded-b-2xl mx-2 mt-2">
+          <div className="container mx-auto px-6 py-6 space-y-4">
             {/* Mobile Navigation Links */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <Link 
                 to="/" 
-                className="block py-2 px-3 text-gray-700 hover:text-fem-terracotta hover:bg-white/30 rounded-md transition-colors"
+                className="block py-3 px-4 text-fem-navy hover:text-fem-terracotta hover:bg-white/10 rounded-xl transition-all duration-500 font-medium backdrop-blur-sm"
                 onClick={closeMenu}
               >
                 Home
               </Link>
               <Link 
                 to="/directory" 
-                className="block py-2 px-3 text-gray-700 hover:text-fem-terracotta hover:bg-white/30 rounded-md transition-colors"
+                className="block py-3 px-4 text-fem-navy hover:text-fem-terracotta hover:bg-white/10 rounded-xl transition-all duration-500 font-medium backdrop-blur-sm"
                 onClick={closeMenu}
               >
                 Business Directory
               </Link>
-              {/* Business Management Links - Only for Business Users */}
-              {isAuthenticated && isBusiness && (
-                <>
-                  {isCheckingBusiness ? (
-                    <div className="block py-2 px-3 text-gray-700 opacity-50">
-                      <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
-                      Loading...
-                    </div>
-                  ) : !hasExistingBusiness ? (
-                    <Link 
-                      to="/register-business" 
-                      className="block py-2 px-3 text-gray-700 hover:text-fem-terracotta hover:bg-white/30 rounded-md transition-colors"
-                      onClick={closeMenu}
-                    >
-                      List Business
-                    </Link>
-                  ) : (
-                    <Link 
-                      to="/manage-business" 
-                      className="block py-2 px-3 text-gray-700 hover:text-fem-terracotta hover:bg-white/30 rounded-md transition-colors"
-                      onClick={closeMenu}
-                    >
-                      Manage Business
-                    </Link>
-                  )}
-                </>
-              )}
               <Link 
                 to="/about" 
-                className="block py-2 px-3 text-gray-700 hover:text-fem-terracotta hover:bg-white/30 rounded-md transition-colors"
+                className="block py-3 px-4 text-fem-navy hover:text-fem-terracotta hover:bg-white/10 rounded-xl transition-all duration-500 font-medium backdrop-blur-sm"
                 onClick={closeMenu}
               >
                 About
               </Link>
               <Link 
                 to="/contact" 
-                className="block py-2 px-3 text-gray-700 hover:text-fem-terracotta hover:bg-white/30 rounded-md transition-colors"
+                className="block py-3 px-4 text-fem-navy hover:text-fem-terracotta hover:bg-white/10 rounded-xl transition-all duration-500 font-medium backdrop-blur-sm"
                 onClick={closeMenu}
               >
                 Contact
               </Link>
-              {isAuthenticated && (
-                <Link 
-                  to="/favorites" 
-                  className="block py-2 px-3 text-gray-700 hover:text-fem-terracotta hover:bg-white/30 rounded-md transition-colors"
-                  onClick={closeMenu}
-                >
-                  Favorites
-                </Link>
-              )}
-
-            </div>
-
-            {/* Mobile Actions */}
-            <div className="pt-4 border-t border-gray-100 space-y-3">
-              {isAuthenticated ? (
-                <>
-                  <Link to="/profile" onClick={closeMenu}>
-                    <Button variant="outline" className="w-full border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white">
-                      <User className="h-4 w-4 mr-2" />
-                      Profile
-                    </Button>
+              
+              {/* Mobile Authentication */}
+              <div className="pt-4 border-t border-gray-200">
+                {isAuthenticated ? (
+                  <div className="space-y-2">
+                    <Link 
+                      to="/profile" 
+                      className="flex items-center space-x-2 py-3 px-4 text-gray-800 hover:text-fem-terracotta hover:bg-fem-terracotta/10 rounded-xl transition-all duration-200 font-medium"
+                      onClick={closeMenu}
+                    >
+                      <User className="w-5 h-5" />
+                      <span>{user?.firstName || 'Profile'}</span>
+                    </Link>
+                    <button 
+                      onClick={() => {
+                        logout();
+                        closeMenu();
+                      }}
+                      className="w-full text-left py-3 px-4 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all duration-200 font-medium"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                ) : (
+                  <Link 
+                    to="/login" 
+                    className="block py-3 px-4 bg-gradient-to-r from-fem-terracotta to-fem-gold text-white hover:from-fem-terracotta/90 hover:to-fem-gold/90 rounded-xl transition-all duration-500 font-medium text-center backdrop-blur-sm shadow-lg hover:shadow-xl border border-white/20"
+                    onClick={closeMenu}
+                  >
+                    <LogIn className="w-5 h-5 inline mr-2" />
+                    Login
                   </Link>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full text-fem-navy hover:text-fem-terracotta"
-                    onClick={handleLogout}
-                    disabled={isLoggingOut}
-                  >
-                    {isLoggingOut ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        <span>Logging out...</span>
-                      </>
-                    ) : (
-                      <>
-                        <X className="h-4 w-4 mr-2" />
-                        <span>Logout</span>
-                      </>
-                    )}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button 
-                    variant="outline" 
-                    className="w-full border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
-                    onClick={() => openAuthModal('login')}
-                  >
-                    Sign In
-                  </Button>
-                  <Button 
-                    className="w-full bg-fem-terracotta hover:bg-fem-terracotta/90 text-white"
-                    onClick={() => openAuthModal('signup')}
-                  >
-                    Register
-                  </Button>
-                </>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* Auth Modal */}
-      <AuthModal 
-        isOpen={isAuthModalOpen}
-        onClose={closeAuthModal}
-        defaultTab={authModalTab}
-        hideTabs={true}
-      />
     </nav>
   );
 };

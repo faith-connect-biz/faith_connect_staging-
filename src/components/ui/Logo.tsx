@@ -10,10 +10,10 @@ interface LogoProps {
 }
 
 const sizeClasses = {
-  sm: 'h-6 w-auto',
-  md: 'h-8 w-auto sm:h-10',
-  lg: 'h-10 w-auto sm:h-12',
-  xl: 'h-12 w-auto sm:h-16'
+  sm: 'h-8 w-auto',
+  md: 'h-12 w-auto sm:h-14',
+  lg: 'h-16 w-auto sm:h-18',
+  xl: 'h-20 w-auto sm:h-24'
 };
 
 export const Logo: React.FC<LogoProps> = ({ 
@@ -32,7 +32,7 @@ export const Logo: React.FC<LogoProps> = ({
   if (variant === 'minimal') {
     return (
       <img 
-        src="/lovable-uploads/NewFaithConnect.png" 
+        src="/android-chrome-192x192-removebg-preview.png" 
         alt="Faith Connect Logo" 
         className={cn(baseClasses, 'filter drop-shadow-sm')}
       />
@@ -46,7 +46,7 @@ export const Logo: React.FC<LogoProps> = ({
           <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg group-hover:shadow-2xl transition-all duration-300 -m-2 p-2"></div>
         )}
         <img 
-          src="/lovable-uploads/NewFaithConnect.png" 
+          src="/android-chrome-192x192-removebg-preview.png" 
           alt="Faith Connect Logo" 
           className={cn(
             baseClasses,
@@ -67,7 +67,7 @@ export const Logo: React.FC<LogoProps> = ({
         <div className="absolute inset-0 bg-white/90 backdrop-blur-sm rounded-lg shadow-md group-hover:shadow-lg transition-all duration-300 -m-1 p-1"></div>
       )}
       <img 
-        src="/lovable-uploads/NewFaithConnect.png" 
+        src="/android-chrome-192x192-removebg-preview.png" 
         alt="Faith Connect Logo" 
         className={cn(
           baseClasses,

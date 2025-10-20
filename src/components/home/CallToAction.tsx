@@ -1,52 +1,18 @@
-
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
-import { apiService } from '@/services/api';
-import AuthModal from '@/components/auth/AuthModal';
 import { 
   UserPlus, 
   Briefcase, 
-  ArrowRight,
-  AlertCircle
+  ArrowRight
 } from 'lucide-react';
 
 export const CallToAction = () => {
-  const { user, isAuthenticated, isBusinessUser } = useAuth();
   const navigate = useNavigate();
-  const [hasBusiness, setHasBusiness] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-
-  const handleOpenAuthModal = () => {
-    setIsAuthModalOpen(true);
-  };
 
   const handleListBusinessClick = () => {
-    // If user is authenticated and is a business user, navigate directly
-    if (isAuthenticated && isBusinessUser()) {
-      navigate('/register-business');
-    } else {
-      // Otherwise, open the auth modal
-      handleOpenAuthModal();
-    }
+    navigate('/register-business');
   };
-
-  useEffect(() => {
-    const checkBusiness = async () => {
-      if (user && user.user_type === 'business') {
-        try {
-          const existingBusiness = await apiService.getUserBusiness();
-          setHasBusiness(!!existingBusiness);
-        } catch (error) {
-          console.error('Error checking business:', error);
-          setHasBusiness(false);
-        }
-      }
-    };
-
-    checkBusiness();
-  }, [user]);
 
   return (
     <section className="section-full relative overflow-hidden">
@@ -139,28 +105,16 @@ export const CallToAction = () => {
                      </p>
                    </div>
                    
-                   {hasBusiness ? (
-                     <div className="flex items-center justify-center gap-2 text-gray-600 text-xs lg:text-sm">
-                       <AlertCircle className="w-3 h-3 lg:w-4 lg:h-4" />
-                       You already have a business listed on Faith Connect.
+                   <Button 
+                     onClick={handleListBusinessClick}
+                     variant="outline" 
+                     className="w-full text-base lg:text-lg py-4 lg:py-6 rounded-xl lg:rounded-2xl border-2 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white group-hover:scale-105 transition-all duration-300"
+                   >
+                     <div className="flex items-center justify-center gap-2 lg:gap-3">
+                       <span>List Your Business</span>
+                       <ArrowRight className="w-4 h-4 lg:w-5 lg:h-5" />
                      </div>
-                   ) : user && user.user_type === 'community' ? (
-                     <div className="flex items-center justify-center gap-2 text-gray-600 text-xs lg:text-sm">
-                       <AlertCircle className="w-3 h-3 lg:w-4 lg:h-4" />
-                       Community members cannot list businesses.
-                     </div>
-                   ) : (
-                     <Button 
-                       onClick={handleListBusinessClick}
-                       variant="outline" 
-                       className="w-full text-base lg:text-lg py-4 lg:py-6 rounded-xl lg:rounded-2xl border-2 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white group-hover:scale-105 transition-all duration-300"
-                     >
-                       <div className="flex items-center justify-center gap-2 lg:gap-3">
-                         <span>List Your Business</span>
-                         <ArrowRight className="w-4 h-4 lg:w-5 lg:h-5" />
-                       </div>
-                     </Button>
-                   )}
+                   </Button>
                  </div>
                </div>
              </div>
@@ -174,13 +128,6 @@ export const CallToAction = () => {
           </div>
         </div>
       </div>
-      
-      {/* Auth Modal */}
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)}
-        hideTabs={true}
-      />
     </section>
   );
 };

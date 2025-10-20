@@ -2,17 +2,13 @@ import { useState, useRef } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
-import AuthModal from "@/components/auth/AuthModal";
-import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Mail, Phone, MapPin, Clock, MessageCircle, Heart, Zap, Users, ChevronUp, CheckCircle, AlertCircle } from "lucide-react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useAutoSave, useAutoSaveStatus } from '@/utils/autoSaveUtils';
 
 const ContactPage = () => {
-  const { isAuthenticated, isBusinessUser } = useAuth();
   const navigate = useNavigate();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -37,18 +33,8 @@ const ContactPage = () => {
   
   const { statusText } = useAutoSaveStatus('contact_form');
 
-  const handleOpenAuthModal = () => {
-    setIsAuthModalOpen(true);
-  };
-
   const handleRegisterBusinessClick = () => {
-    // If user is authenticated and is a business user, navigate directly
-    if (isAuthenticated && isBusinessUser()) {
-      navigate('/register-business');
-    } else {
-      // Otherwise, open the auth modal
-      handleOpenAuthModal();
-    }
+    navigate('/register-business');
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -385,10 +371,10 @@ const ContactPage = () => {
                     Register Your Business
                   </Button>
                   <Button 
-                    onClick={handleOpenAuthModal}
+                    onClick={() => navigate('/directory')}
                     className="bg-fem-navy text-white px-8 py-4 rounded-lg font-semibold hover:bg-fem-navy/90 transition-colors text-lg"
                   >
-                    Join Our Community
+                    Browse Directory
                   </Button>
                 </div>
               </div>
@@ -397,13 +383,6 @@ const ContactPage = () => {
         </section>
       </main>
       <Footer />
-      
-      {/* Auth Modal */}
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)}
-        hideTabs={true}
-      />
     </div>
   );
 };

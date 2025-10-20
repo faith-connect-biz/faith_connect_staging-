@@ -3,34 +3,24 @@ import { useState, useEffect, useRef } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
-import AuthModal from "@/components/auth/AuthModal";
-import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Users, Building, Star, Globe, Heart, Shield, Handshake, Target, Check, ArrowRight, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 
 const AboutPage = () => {
-  const { isAuthenticated, isBusinessUser } = useAuth();
   const navigate = useNavigate();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [stats, setStats] = useState<any>(null);
   
   // Container ref for the hero section
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleOpenAuthModal = () => {
-    setIsAuthModalOpen(true);
+  const handleRegisterBusinessClick = () => {
+    navigate('/register-business');
   };
 
-  const handleRegisterBusinessClick = () => {
-    // If user is authenticated and is a business user, navigate directly
-    if (isAuthenticated && isBusinessUser()) {
-      navigate('/register-business');
-    } else {
-      // Otherwise, open the auth modal
-      handleOpenAuthModal();
-    }
+  const handleOpenAuthModal = () => {
+    navigate('/login');
   };
 
   // Enhanced carousel images with more creative content
@@ -730,12 +720,6 @@ const AboutPage = () => {
       
       <Footer />
       
-      {/* Auth Modal */}
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)}
-        hideTabs={true}
-      />
     </div>
   );
 };
