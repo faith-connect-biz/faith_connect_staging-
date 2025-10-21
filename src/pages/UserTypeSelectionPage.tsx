@@ -61,20 +61,20 @@ const UserTypeSelectionPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-fem-gray via-white to-fem-lightgold flex items-center justify-center p-4">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-fem-terracotta/20 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-fem-gold/20 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
+    <div className="min-h-screen bg-white relative flex items-center justify-center p-4 sm:p-6 lg:p-8">
+      {/* Orange background effects */}
+      <div className="absolute inset-0">
+        <div className="absolute top-1/4 left-0 w-96 h-96 bg-gradient-radial from-fem-terracotta/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-gradient-radial from-fem-terracotta/20 to-transparent rounded-full blur-3xl" />
       </div>
 
-      <div className="w-full max-w-4xl relative z-10">
+      <div className="w-full max-w-4xl sm:max-w-5xl relative z-10 mx-4 sm:mx-0">
         <Card className="shadow-2xl border-0 bg-white/15 backdrop-blur-xl border border-white/20">
-          <CardHeader className="text-center pb-8 pt-8">
-            <h1 className="text-3xl font-bold text-fem-navy mb-2">
+          <CardHeader className="text-center pb-8 pt-8 px-6 sm:px-8">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fem-navy mb-2">
               Select Account Type
             </h1>
-            <p className="text-fem-darkgray text-sm max-w-md mx-auto">
+            <p className="text-fem-darkgray text-sm sm:text-base max-w-md mx-auto">
               Choose how you'd like to use Faith Connect. You can always change this later in your profile settings.
             </p>
           </CardHeader>
@@ -146,14 +146,9 @@ const UserTypeSelectionPage: React.FC = () => {
               <Button
                 onClick={handleContinue}
                 disabled={!selectedType || isLoading}
-                className={cn(
-                  'h-12 px-8 bg-gradient-to-r rounded-xl shadow-lg hover:shadow-xl transition-all duration-500 transform hover:scale-[1.02] backdrop-blur-sm border border-white/20',
-                  selectedType === 'community' 
-                    ? 'from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90'
-                    : selectedType === 'business'
-                    ? 'from-fem-navy to-fem-terracotta hover:from-fem-navy/90 hover:to-fem-terracotta/90'
-                    : 'from-gray-400 to-gray-500'
-                )}
+                size="lg"
+                variant={selectedType === 'community' ? 'default' : selectedType === 'business' ? 'navy' : 'secondary'}
+                className="w-full sm:w-auto"
               >
                 {isLoading ? (
                   <>

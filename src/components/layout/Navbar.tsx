@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Menu, 
-  X,
+  X, 
   LogIn,
   User
 } from 'lucide-react';
@@ -41,14 +41,14 @@ const Navbar: React.FC = () => {
         : 'bg-white/10 backdrop-blur-lg shadow-lg border-b border-white/20'
     }`}>
       <div className="container mx-auto px-4 flex justify-between items-center">
-            <Link to="/" className="flex items-center group" onClick={closeMenu}>
+        <Link to="/" className="flex items-center group" onClick={closeMenu}>
               <img
-                src="/android-chrome-192x192-removebg-preview.png"
+                src="/NewFaithConnect (1).png"
                 alt="Faith Connect Logo"
                 className="h-16 w-auto"
                 style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}
               />
-            </Link>
+        </Link>
         
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-8">
@@ -90,7 +90,7 @@ const Navbar: React.FC = () => {
               <Button className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500 border border-white/20">
                 <LogIn className="w-4 h-4 mr-2" />
                 Login
-              </Button>
+               </Button>
             </Link>
           )}
         </div>
@@ -145,14 +145,14 @@ const Navbar: React.FC = () => {
               <div className="pt-4 border-t border-gray-200">
                 {isAuthenticated ? (
                   <div className="space-y-2">
-                    <Link 
+                <Link 
                       to="/profile" 
                       className="flex items-center space-x-2 py-3 px-4 text-gray-800 hover:text-fem-terracotta hover:bg-fem-terracotta/10 rounded-xl transition-all duration-200 font-medium"
-                      onClick={closeMenu}
-                    >
+                  onClick={closeMenu}
+                >
                       <User className="w-5 h-5" />
                       <span>{user?.firstName || 'Profile'}</span>
-                    </Link>
+                </Link>
                     <button 
                       onClick={() => {
                         logout();
@@ -162,7 +162,7 @@ const Navbar: React.FC = () => {
                     >
                       Logout
                     </button>
-                  </div>
+            </div>
                 ) : (
                   <Link 
                     to="/login" 

@@ -2226,12 +2226,18 @@ class ApiService {
   async createBusinessFromRegistration(data: {
     name: string;
     category: string;
+    subcategory?: string;
     description: string;
-    address: string;
-    city: string;
+    businessType?: string;
+    address?: string;
+    city?: string;
     state?: string;
     zipCode?: string;
-    phone: string;
+    country?: string;
+    onlinePresence?: string;
+    churchAffiliation?: string;
+    businessTypeRadio?: string;
+    phone?: string;
     email?: string;
     website?: string;
     hours?: string;
@@ -2261,10 +2267,10 @@ class ApiService {
         business_name: data.name,
         category_id: category.id,
         description: data.description,
-        address: data.address,
-        city: data.city,
-        country: 'Kenya', // Default country
-        phone: data.phone,
+        address: data.address || '',
+        city: data.city || '',
+        country: data.country || 'Kenya',
+        phone: data.phone || '',
         email: data.email,
         website: data.website,
         // Add additional fields as needed

@@ -207,21 +207,21 @@ const ProfileUpdatePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-fem-gray via-white to-fem-lightgold">
-      <Navbar />
-      <div className="flex items-center justify-center p-4 pt-20">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-fem-terracotta/20 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-fem-gold/20 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
+    <div className="min-h-screen bg-white relative">
+      {/* Orange background effects */}
+      <div className="absolute inset-0">
+        <div className="absolute top-1/4 left-0 w-96 h-96 bg-gradient-radial from-fem-terracotta/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-gradient-radial from-fem-terracotta/20 to-transparent rounded-full blur-3xl" />
       </div>
+      <Navbar />
+      <div className="flex items-center justify-center p-4 sm:p-6 lg:p-8 pt-20 relative z-10 min-h-screen">
 
-      <Card className="w-full max-w-2xl relative z-10 shadow-2xl border-0 bg-white/15 backdrop-blur-xl border border-white/20">
-        <CardHeader className="text-center pb-8 pt-8">
-          <h1 className="text-3xl font-bold text-fem-navy mb-2">
+      <Card className="w-full max-w-2xl sm:max-w-3xl relative z-10 shadow-2xl border-0 bg-white/15 backdrop-blur-xl border border-white/20 mx-4 sm:mx-0">
+        <CardHeader className="text-center pb-8 pt-8 px-6 sm:px-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fem-navy mb-2">
             Complete Your Profile
           </h1>
-          <p className="text-fem-darkgray text-sm">
+          <p className="text-fem-darkgray text-sm sm:text-base">
             Add some details to personalize your {userType === 'business' ? 'business' : 'community'} experience
           </p>
         </CardHeader>
@@ -415,7 +415,8 @@ const ProfileUpdatePage: React.FC = () => {
             <Button
               onClick={handleSkip}
               variant="outline"
-              className="h-12 px-8 border-white/20 hover:border-white/30 hover:bg-white/10 rounded-xl transition-all duration-500 backdrop-blur-sm"
+              size="lg"
+              className="w-full sm:w-auto"
             >
               Skip for Now
             </Button>
@@ -423,7 +424,8 @@ const ProfileUpdatePage: React.FC = () => {
             <Button
               onClick={handleSubmit}
               disabled={isLoading}
-              className="flex-1 h-12 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-500 transform hover:scale-[1.02] backdrop-blur-sm border border-white/20"
+              size="lg"
+              className="flex-1 w-full sm:w-auto"
             >
               {isLoading ? (
                 <>

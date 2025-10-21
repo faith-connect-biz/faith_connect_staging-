@@ -145,32 +145,32 @@ const OTPVerificationPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-fem-gray via-white to-fem-lightgold flex items-center justify-center p-4">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-fem-terracotta/20 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-fem-gold/20 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
+    <div className="min-h-screen bg-white relative flex items-center justify-center p-4 sm:p-6 lg:p-8">
+      {/* Orange background effects */}
+      <div className="absolute inset-0">
+        <div className="absolute top-1/4 left-0 w-96 h-96 bg-gradient-radial from-fem-terracotta/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-gradient-radial from-fem-terracotta/20 to-transparent rounded-full blur-3xl" />
       </div>
 
-      <Card className="w-full max-w-md relative z-10 shadow-2xl border-0 bg-white/15 backdrop-blur-xl border border-white/20">
-        <CardHeader className="text-center pb-8 pt-8">
-          <h1 className="text-3xl font-bold text-fem-navy mb-2">
+      <Card className="w-full max-w-md sm:max-w-lg relative z-10 shadow-2xl border-0 bg-white/15 backdrop-blur-xl border border-white/20 mx-4 sm:mx-0">
+        <CardHeader className="text-center pb-8 pt-8 px-6 sm:px-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fem-navy mb-2">
             {isVerified ? 'Verified! ✅' : 'Enter Verification Code 🔐'}
           </h1>
-          <p className="text-fem-darkgray text-sm">
+          <p className="text-fem-darkgray text-sm sm:text-base">
             {isVerified 
               ? 'Redirecting you to the next step...'
               : `We've sent a 6-digit code to your ${otpData.method === 'email' ? 'email' : 'phone'}`
             }
           </p>
           {!isVerified && otpData && (
-            <p className="text-fem-terracotta font-medium text-sm mt-2">
+            <p className="text-fem-terracotta font-medium text-sm sm:text-base mt-2">
               {maskContact(otpData.contact, otpData.method)}
             </p>
           )}
         </CardHeader>
 
-        <CardContent className="px-8 pb-8">
+        <CardContent className="px-6 sm:px-8 pb-8">
           {!isVerified && (
             <>
               <div className="mb-8">
@@ -192,7 +192,8 @@ const OTPVerificationPage: React.FC = () => {
                 <Button
                   onClick={() => handleOTPComplete(otp)}
                   disabled={otp.length !== 6 || isVerifying}
-                  className="w-full h-12 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-500 backdrop-blur-sm border border-white/20"
+                  size="lg"
+                  className="w-full"
                 >
                   {isVerifying ? (
                     <>
@@ -211,7 +212,8 @@ const OTPVerificationPage: React.FC = () => {
                   onClick={handleResendOTP}
                   disabled={resendTimer > 0 || isResending}
                   variant="outline"
-                  className="w-full h-12 border-white/20 hover:border-fem-terracotta hover:bg-white/10 rounded-xl transition-all duration-500 backdrop-blur-sm"
+                  size="lg"
+                  className="w-full"
                 >
                   {isResending ? (
                     <>

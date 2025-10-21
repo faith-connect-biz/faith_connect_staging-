@@ -74,26 +74,26 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-fem-gray via-white to-fem-lightgold">
-      <Navbar />
-      <div className="flex items-center justify-center p-4 pt-20">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-fem-terracotta/20 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-fem-gold/20 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
+    <div className="min-h-screen bg-white relative">
+      {/* Orange background effects */}
+      <div className="absolute inset-0">
+        <div className="absolute top-1/4 left-0 w-96 h-96 bg-gradient-radial from-fem-terracotta/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-gradient-radial from-fem-terracotta/20 to-transparent rounded-full blur-3xl" />
       </div>
+      <Navbar />
+      <div className="flex items-center justify-center p-4 sm:p-6 lg:p-8 pt-20 relative z-10 min-h-screen">
 
-      <Card className="w-full max-w-md relative z-10 shadow-2xl border-0 bg-white/15 backdrop-blur-xl border border-white/20">
-        <CardHeader className="text-center pb-6 pt-8">
-          <h1 className="text-3xl font-bold text-fem-navy mb-3">
+      <Card className="w-full max-w-md sm:max-w-lg relative z-10 shadow-2xl border-0 bg-white/15 backdrop-blur-xl border border-white/20 mx-4 sm:mx-0">
+        <CardHeader className="text-center pb-6 pt-8 px-6 sm:px-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fem-navy mb-3">
             Welcome Back 👋
           </h1>
-          <p className="text-fem-darkgray text-sm leading-relaxed">
+          <p className="text-fem-darkgray text-sm sm:text-base leading-relaxed">
             Sign in instantly using your phone number or email
           </p>
         </CardHeader>
 
-        <CardContent className="px-8 pb-8 space-y-6">
+        <CardContent className="px-6 sm:px-8 pb-8 space-y-6">
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'email' | 'phone')} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/10 backdrop-blur-sm p-1 rounded-xl border border-white/20">
               <TabsTrigger 
@@ -118,7 +118,7 @@ const LoginPage: React.FC = () => {
                   Email Address
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-fem-darkgray w-5 h-5" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-fem-darkgray w-4 h-4 sm:w-5 sm:h-5" />
                   <Input
                     id="email"
                     type="email"
@@ -126,7 +126,7 @@ const LoginPage: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    className="pl-10 h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm"
+                    className="pl-10 h-12 sm:h-14 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm text-sm sm:text-base"
                     disabled={isLoading}
                   />
                 </div>
@@ -139,7 +139,7 @@ const LoginPage: React.FC = () => {
                   Phone Number
                 </label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-fem-darkgray w-5 h-5" />
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-fem-darkgray w-4 h-4 sm:w-5 sm:h-5" />
                   <Input
                     id="phone"
                     type="tel"
@@ -158,7 +158,7 @@ const LoginPage: React.FC = () => {
                       setPhone(value);
                     }}
                     onKeyPress={handleKeyPress}
-                    className="pl-10 h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm"
+                    className="pl-10 h-12 sm:h-14 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm text-sm sm:text-base"
                     disabled={isLoading}
                     inputMode="tel"
                     autoComplete="tel"
@@ -173,17 +173,18 @@ const LoginPage: React.FC = () => {
             <Button
             onClick={handleSendOTP}
             disabled={isLoading || (activeTab === 'email' ? !email.trim() : !phone.trim())}
-            className="w-full h-12 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-500 transform hover:scale-[1.02] backdrop-blur-sm border border-white/20"
+            size="lg"
+            className="w-full"
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
                 Sending OTP...
               </>
             ) : (
               <>
                 Send OTP
-                <ArrowRight className="w-5 h-5 ml-2" />
+                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
               </>
             )}
             </Button>
