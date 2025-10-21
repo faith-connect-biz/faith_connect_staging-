@@ -31,7 +31,6 @@ export const CallToAction = () => {
       {/* Background Elements */}
       <div className="absolute inset-0">
         <div className="absolute top-1/4 left-0 w-96 h-96 bg-gradient-radial from-fem-gold/20 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-gradient-radial from-fem-terracotta/20 to-transparent rounded-full blur-3xl" />
       </div>
 
       <div className="container-modern section-padding relative z-10">

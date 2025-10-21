@@ -8,7 +8,7 @@ export const Footer = () => {
           <div className="space-y-2">
             <Link to="/" className="flex items-center gap-3 group">
               <img
-                src="/android-chrome-192x192-removebg-preview.png"
+                src="/NewFaithConnect (1).png"
                 alt="Faith Connect Logo"
                 className="h-16 w-auto"
                 style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}
