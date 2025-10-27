@@ -615,7 +615,7 @@ export function BusinessRegistrationForm({ initialData, onComplete }: BusinessRe
         <Button 
           type="submit" 
           size="lg" 
-          className="px-8 bg-[#c74a33] hover:bg-[#b8422e] text-white transition-colors duration-200"
+          className="px-8 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500 border border-white/20"
         >
           Register the Business
         </Button>

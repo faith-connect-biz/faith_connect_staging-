@@ -69,8 +69,15 @@ const OTPVerificationPage: React.FC = () => {
           login(response.user, response.tokens);
           clearOTPData();
           toast.success('Welcome back!');
+          
+          // Check user type and redirect accordingly
+          const userType = response.user.userType;
           setTimeout(() => {
-            navigate('/');
+            if (userType === 'business' || userType === 'business_owner') {
+              navigate('/manage-business');
+            } else {
+              navigate('/');
+            }
           }, 1500);
         }
       } else {

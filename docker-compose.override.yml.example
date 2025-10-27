@@ -1,0 +1,18 @@
+# Copy this file to docker-compose.override.yml and customize as needed
+# docker-compose will automatically use this file when present
+
+version: '3.8'
+
+services:
+  postgres:
+    environment:
+      # Override default credentials
+      POSTGRES_PASSWORD: your_secure_password_here
+    volumes:
+      # Mount custom init scripts
+      - ./custom-init:/docker-entrypoint-initdb.d
+
+  pgadmin:
+    environment:
+      # Override default credentials
+      PGADMIN_DEFAULT_PASSWORD: your_admin_password_here

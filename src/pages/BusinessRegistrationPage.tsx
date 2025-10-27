@@ -7,19 +7,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { Building2, MapPin, Globe, Church, Loader2, CheckCircle } from 'lucide-react';
 import { apiService } from '@/services/api';
 import { toast } from 'sonner';
 import { Navbar } from '@/components/layout/Navbar';
+import { ProductServiceManager } from '@/components/ProductServiceManager';
 
 export interface ProductService {
   id: string;
   name: string;
   description: string;
   price: string;
+  currency?: 'KES' | 'USD';
+  negotiable?: boolean;
   type: 'product' | 'service';
   images: Array<{
     id: string;
@@ -295,6 +297,15 @@ const BusinessRegistrationPage: React.FC = () => {
 
   const handleFinalSubmit = async (finalData: Partial<BusinessData>) => {
     const completeData = { ...businessData, ...finalData };
+    
+    // Check if user is authenticated
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      toast.error('Please log in to continue');
+      navigate('/login');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -314,22 +325,35 @@ const BusinessRegistrationPage: React.FC = () => {
         businessTypeRadio: completeData.businessType,
         phone: completeData.contactDetails.phone,
         email: completeData.contactDetails.email,
-        website: completeData.contactDetails.website
+        website: completeData.contactDetails.website,
+        productsServices: completeData.productsServices
       });
 
       if (response.success) {
         setIsSuccess(true);
         toast.success('Business registered successfully!');
         
+        // Redirect to Business Management page after 1 second
         setTimeout(() => {
-          navigate('/business-management');
-        }, 2000);
+          navigate('/manage-business');
+        }, 1000);
       } else {
         toast.error(response.message || 'Failed to register business');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error registering business:', error);
-      toast.error('Something went wrong. Please try again.');
+      
+      // Handle authentication errors specifically
+      if (error.response?.status === 401) {
+        toast.error('Your session has expired. Please log in again.');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        navigate('/login');
+      } else if (error.message?.includes('Network Error') || error.message?.includes('ERR_NETWORK')) {
+        toast.error('Unable to connect to server. Please check your connection.');
+      } else {
+        toast.error(error.response?.data?.message || 'Something went wrong. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -514,7 +538,7 @@ const BusinessRegistrationPage: React.FC = () => {
               {currentStep === 1 && (
                 <form onSubmit={handleSubmit} className="space-y-8">
                   {/* Basic Business Information */}
-                  <Card className="shadow-lg border-0 bg-white/10 backdrop-blur-sm border border-white/20">
+                  <Card className="shadow-lg border-0 bg-white border border-white/20">
                     <CardHeader className="pb-4">
                       <CardTitle className="flex items-center gap-3 text-fem-navy text-xl">
                         <div className="p-2 bg-gradient-to-r from-fem-terracotta to-fem-gold rounded-lg">
@@ -532,7 +556,7 @@ const BusinessRegistrationPage: React.FC = () => {
                             value={businessData.businessName}
                             onChange={(e) => updateFormData('businessName', e.target.value)}
           placeholder="Enter your business name"
-                            className={`h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm transition-all duration-300 ${
+                            className={`h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300 ${
                               errors.businessName ? 'border-red-500' : ''
                             }`}
                           />
@@ -544,7 +568,7 @@ const BusinessRegistrationPage: React.FC = () => {
                         <div className="space-y-2">
                           <Label htmlFor="category" className="text-fem-navy font-semibold">Business Category *</Label>
                           <Select value={businessData.category} onValueChange={(value) => updateFormData('category', value)}>
-                            <SelectTrigger className={`h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm transition-all duration-300 ${
+                            <SelectTrigger className={`h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300 ${
                               errors.category ? 'border-red-500' : ''
                             }`}>
                               <SelectValue placeholder="Select a category" />
@@ -568,7 +592,7 @@ const BusinessRegistrationPage: React.FC = () => {
                         <div className="space-y-2">
                           <Label htmlFor="subcategory" className="text-fem-navy font-semibold">Business Subcategory *</Label>
                           <Select value={businessData.subcategory} onValueChange={(value) => updateFormData('subcategory', value)}>
-                            <SelectTrigger className={`h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm transition-all duration-300 ${
+                            <SelectTrigger className={`h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300 ${
                               errors.subcategory ? 'border-red-500' : ''
                             }`}>
                               <SelectValue placeholder="Select a subcategory" />
@@ -595,7 +619,7 @@ const BusinessRegistrationPage: React.FC = () => {
                           onChange={(e) => updateFormData('businessDescription', e.target.value)}
                           placeholder="Describe your business, what you do, and what makes you unique..."
                           rows={4}
-                          className={`border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm transition-all duration-300 resize-none ${
+                          className={`border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300 resize-none ${
                             errors.businessDescription ? 'border-red-500' : ''
                           }`}
                         />
@@ -607,7 +631,7 @@ const BusinessRegistrationPage: React.FC = () => {
                   </Card>
 
                   {/* Business Address */}
-                  <Card className="shadow-lg border-0 bg-white/10 backdrop-blur-sm border border-white/20">
+                  <Card className="shadow-lg border-0 bg-white border border-white/20">
                     <CardHeader className="pb-4">
                       <CardTitle className="flex items-center gap-3 text-fem-navy text-xl">
                         <div className="p-2 bg-gradient-to-r from-fem-terracotta to-fem-gold rounded-lg">
@@ -617,26 +641,75 @@ const BusinessRegistrationPage: React.FC = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 p-6 bg-white/5 rounded-xl border border-white/10">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-2 bg-fem-lightgold/20 rounded-lg">
-                            <Globe className="h-5 w-5 text-fem-terracotta" />
-          </div>
-                          <Label htmlFor="addressType" className="text-fem-navy font-semibold">Online Business</Label>
-          </div>
-                        <Switch
-                          id="addressType"
-                          checked={businessData.isPhysicalAddress}
-                          onCheckedChange={(checked) => updateFormData('isPhysicalAddress', checked)}
-                          className="data-[state=checked]:bg-fem-terracotta"
-                        />
-                        <div className="flex items-center space-x-3">
-                          <div className="p-2 bg-fem-lightgold/20 rounded-lg">
-                            <MapPin className="h-5 w-5 text-fem-terracotta" />
-          </div>
-                          <Label htmlFor="addressType" className="text-fem-navy font-semibold">Physical Location</Label>
-        </div>
-        </div>
+                      <RadioGroup
+                        value={businessData.isPhysicalAddress ? 'physical' : 'online'}
+                        onValueChange={(value) => updateFormData('isPhysicalAddress', value === 'physical')}
+                        className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 sm:p-6"
+                      >
+                        {/* Online Business Option */}
+                        <div className={`relative flex items-center p-4 sm:p-6 border-2 rounded-xl cursor-pointer transition-all duration-300 hover:border-fem-terracotta/50 hover:bg-fem-terracotta/5 ${
+                          !businessData.isPhysicalAddress
+                            ? 'border-fem-terracotta bg-fem-terracotta/10 shadow-lg'
+                            : 'border-gray-300 bg-white'
+                        }`}>
+                          <RadioGroupItem 
+                            value="online" 
+                            id="online-address" 
+                            className="absolute opacity-0 pointer-events-none"
+                          />
+                          <label htmlFor="online-address" className="flex items-center gap-3 sm:gap-4 w-full cursor-pointer">
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                              !businessData.isPhysicalAddress
+                                ? 'border-fem-terracotta bg-fem-terracotta'
+                                : 'border-gray-400 bg-transparent'
+                            }`}>
+                              {!businessData.isPhysicalAddress && (
+                                <div className="w-2.5 h-2.5 rounded-full bg-white"></div>
+                              )}
+                            </div>
+                            <div className="p-2 bg-fem-lightgold/20 rounded-lg shrink-0">
+                              <Globe className="h-5 w-5 text-fem-terracotta" />
+                            </div>
+                            <span className={`font-semibold text-base sm:text-lg transition-colors ${
+                              !businessData.isPhysicalAddress ? 'text-fem-terracotta' : 'text-fem-navy'
+                            }`}>
+                              Online Business
+                            </span>
+                          </label>
+                        </div>
+
+                        {/* Physical Location Option */}
+                        <div className={`relative flex items-center p-4 sm:p-6 border-2 rounded-xl cursor-pointer transition-all duration-300 hover:border-fem-terracotta/50 hover:bg-fem-terracotta/5 ${
+                          businessData.isPhysicalAddress
+                            ? 'border-fem-terracotta bg-fem-terracotta/10 shadow-lg'
+                            : 'border-gray-300 bg-white'
+                        }`}>
+                          <RadioGroupItem 
+                            value="physical" 
+                            id="physical-address" 
+                            className="absolute opacity-0 pointer-events-none"
+                          />
+                          <label htmlFor="physical-address" className="flex items-center gap-3 sm:gap-4 w-full cursor-pointer">
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                              businessData.isPhysicalAddress
+                                ? 'border-fem-terracotta bg-fem-terracotta'
+                                : 'border-gray-400 bg-transparent'
+                            }`}>
+                              {businessData.isPhysicalAddress && (
+                                <div className="w-2.5 h-2.5 rounded-full bg-white"></div>
+                              )}
+                            </div>
+                            <div className="p-2 bg-fem-lightgold/20 rounded-lg shrink-0">
+                              <MapPin className="h-5 w-5 text-fem-terracotta" />
+                            </div>
+                            <span className={`font-semibold text-base sm:text-lg transition-colors ${
+                              businessData.isPhysicalAddress ? 'text-fem-terracotta' : 'text-fem-navy'
+                            }`}>
+                              Physical Location
+                            </span>
+                          </label>
+                        </div>
+                      </RadioGroup>
 
                       {!businessData.isPhysicalAddress ? (
                         <div className="space-y-2">
@@ -647,7 +720,7 @@ const BusinessRegistrationPage: React.FC = () => {
                             onChange={(e) => updateFormData('onlineAddress', e.target.value)}
                             placeholder="Describe how customers can reach you online (website, social media, etc.)"
                             rows={3}
-                            className={`border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm transition-all duration-300 resize-none ${
+                            className={`border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300 resize-none ${
                               errors.onlineAddress ? 'border-red-500' : ''
                             }`}
                           />
@@ -664,7 +737,7 @@ const BusinessRegistrationPage: React.FC = () => {
                               value={businessData.physicalAddress.street}
                               onChange={(e) => updatePhysicalAddress('street', e.target.value)}
                               placeholder="123 Main Street"
-                              className={`h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm transition-all duration-300 ${
+                              className={`h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300 ${
                                 errors.street ? 'border-red-500' : ''
                               }`}
                             />
@@ -680,7 +753,7 @@ const BusinessRegistrationPage: React.FC = () => {
                               value={businessData.physicalAddress.city}
                               onChange={(e) => updatePhysicalAddress('city', e.target.value)}
                               placeholder="City"
-                              className={`h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm transition-all duration-300 ${
+                              className={`h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300 ${
                                 errors.city ? 'border-red-500' : ''
                               }`}
                             />
@@ -696,7 +769,7 @@ const BusinessRegistrationPage: React.FC = () => {
                               value={businessData.physicalAddress.state}
                               onChange={(e) => updatePhysicalAddress('state', e.target.value)}
                               placeholder="State"
-                              className={`h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm transition-all duration-300 ${
+                              className={`h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300 ${
                                 errors.state ? 'border-red-500' : ''
                               }`}
                             />
@@ -712,7 +785,7 @@ const BusinessRegistrationPage: React.FC = () => {
                               value={businessData.physicalAddress.zipCode}
                               onChange={(e) => updatePhysicalAddress('zipCode', e.target.value)}
                               placeholder="12345"
-                              className={`h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm transition-all duration-300 ${
+                              className={`h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300 ${
                                 errors.zipCode ? 'border-red-500' : ''
                               }`}
                             />
@@ -728,7 +801,7 @@ const BusinessRegistrationPage: React.FC = () => {
                               value={businessData.physicalAddress.country}
                               onChange={(e) => updatePhysicalAddress('country', e.target.value)}
                               placeholder="United States"
-                              className={`h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm transition-all duration-300 ${
+                              className={`h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300 ${
                                 errors.country ? 'border-red-500' : ''
                               }`}
                             />
@@ -742,7 +815,7 @@ const BusinessRegistrationPage: React.FC = () => {
                   </Card>
 
                   {/* Additional Information */}
-                  <Card className="shadow-lg border-0 bg-white/10 backdrop-blur-sm border border-white/20">
+                  <Card className="shadow-lg border-0 bg-white border border-white/20">
                     <CardHeader className="pb-4">
                       <CardTitle className="flex items-center gap-3 text-fem-navy text-xl">
                         <div className="p-2 bg-gradient-to-r from-fem-terracotta to-fem-gold rounded-lg">
@@ -759,7 +832,7 @@ const BusinessRegistrationPage: React.FC = () => {
                           value={businessData.churchAffiliation}
                           onChange={(e) => updateFormData('churchAffiliation', e.target.value)}
                           placeholder="Enter church name or affiliation"
-                          className="h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm transition-all duration-300"
+                          className="h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300"
                         />
         </div>
 
@@ -888,7 +961,7 @@ const BusinessRegistrationPage: React.FC = () => {
                   <Button
                       type="submit" 
                       size="lg" 
-                      className="w-full sm:w-auto"
+                      className="w-full sm:w-auto bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500 border border-white/20"
                     >
                       Register the Business
                   </Button>
@@ -908,7 +981,7 @@ const BusinessRegistrationPage: React.FC = () => {
           </div>
 
                   {/* Services Description */}
-                  <Card className="shadow-lg border-0 bg-white/10 backdrop-blur-sm border border-white/20">
+                  <Card className="shadow-lg border-0 bg-white border border-white/20">
                     <CardHeader className="pb-4">
                       <CardTitle className="flex items-center gap-3 text-fem-navy text-xl">
                         <div className="p-2 bg-gradient-to-r from-fem-terracotta to-fem-gold rounded-lg">
@@ -918,17 +991,23 @@ const BusinessRegistrationPage: React.FC = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="services" className="text-fem-navy font-semibold">Services Description *</Label>
-                        <Textarea
-                          id="services"
-                          value={businessData.services}
-                          onChange={(e) => updateFormData('services', e.target.value)}
-                          placeholder="Describe your main services, products, or what you offer to customers..."
-                          rows={4}
-                          className="border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm transition-all duration-300 resize-none"
+                      {/* Products & Services Manager */}
+                      <div className="space-y-3">
+                        <Label className="text-fem-navy font-semibold text-base">
+                          {businessData.businessType === 'products' ? 'Add Your Products (Name, Description & Price)' : 
+                           businessData.businessType === 'services' ? 'Add Your Services (Name, Description & Price)' : 
+                           'Add Your Products & Services (Name, Description & Price)'}
+                        </Label>
+                        <ProductServiceManager
+                          items={businessData.productsServices || []}
+                          onItemsChange={(items) => updateFormData('productsServices', items)}
+                          maxItems={20}
+                          businessType={businessData.businessType || ''}
                         />
                       </div>
+
+                      {/* Separator */}
+                      <div className="border-t border-gray-200 pt-6"></div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -939,7 +1018,7 @@ const BusinessRegistrationPage: React.FC = () => {
                             value={businessData.contactDetails.email}
                             onChange={(e) => updateFormData('contactDetails', { ...businessData.contactDetails, email: e.target.value })}
                             placeholder="your@email.com"
-                            className="h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm transition-all duration-300"
+                            className="h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300"
                   />
                 </div>
 
@@ -951,7 +1030,7 @@ const BusinessRegistrationPage: React.FC = () => {
                             value={businessData.contactDetails.phone}
                             onChange={(e) => updateFormData('contactDetails', { ...businessData.contactDetails, phone: e.target.value })}
                             placeholder="+1 (555) 123-4567"
-                            className="h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm transition-all duration-300"
+                            className="h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300"
                           />
               </div>
           </div>
@@ -964,7 +1043,7 @@ const BusinessRegistrationPage: React.FC = () => {
                           value={businessData.contactDetails.website}
                           onChange={(e) => updateFormData('contactDetails', { ...businessData.contactDetails, website: e.target.value })}
                           placeholder="https://your-website.com"
-                          className="h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm transition-all duration-300"
+                          className="h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300"
               />
             </div>
                     </CardContent>
@@ -985,7 +1064,7 @@ const BusinessRegistrationPage: React.FC = () => {
                       onClick={() => handleFinalSubmit(businessData)}
                       disabled={isLoading}
                       size="lg"
-                      className="w-full sm:w-auto"
+                      className="w-full sm:w-auto bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500 border border-white/20"
                     >
                       {isLoading ? (
                         <>

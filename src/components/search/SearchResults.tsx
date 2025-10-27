@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { useNavigate } from 'react-router-dom';
+import { usePrefetchBusiness } from '@/hooks/useBusinessQuery';
 
 interface SearchResultsProps {
   searchTerm: string;
@@ -40,6 +41,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
   const { businesses, services, products } = useBusiness();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
+  const prefetchBusiness = usePrefetchBusiness();
 
   // Transform data into unified search results
   const searchResults = useMemo(() => {
@@ -214,11 +216,20 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
   };
 
   // Render result card
-  const ResultCard = ({ result }: { result: SearchResult }) => (
-    <Card 
-      className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer hover:scale-[1.02] rounded-xl"
-      onClick={() => handleResultClick(result)}
-    >
+  const ResultCard = ({ result }: { result: SearchResult }) => {
+    const handleMouseEnter = () => {
+      // Only prefetch for business results
+      if (result.type === 'business') {
+        prefetchBusiness(result.id);
+      }
+    };
+
+    return (
+      <Card 
+        className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer hover:scale-[1.02] rounded-xl"
+        onClick={() => handleResultClick(result)}
+        onMouseEnter={handleMouseEnter}
+      >
       <CardContent className="p-4">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
@@ -304,7 +315,8 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
         )}
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">

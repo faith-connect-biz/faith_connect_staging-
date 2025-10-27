@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Phone, Mail, ArrowRight, Loader2 } from 'lucide-react';
+import { Phone, Mail, ArrowRight, Loader2, UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/services/api';
 import { toast } from 'sonner';
@@ -174,7 +174,7 @@ const LoginPage: React.FC = () => {
             onClick={handleSendOTP}
             disabled={isLoading || (activeTab === 'email' ? !email.trim() : !phone.trim())}
             size="lg"
-            className="w-full"
+            className="w-full bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500 border border-white/20"
           >
             {isLoading ? (
               <>
@@ -187,6 +187,18 @@ const LoginPage: React.FC = () => {
                 <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
               </>
             )}
+            </Button>
+          </div>
+
+          <div className="mt-4">
+            <Button
+              onClick={() => navigate('/user-type-selection')}
+              size="lg"
+              className="w-full bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500 border border-white/20"
+            >
+              <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+              Sign Up
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
             </Button>
           </div>
 
@@ -210,3 +222,5 @@ const LoginPage: React.FC = () => {
 };
 
 export default LoginPage;
+
+

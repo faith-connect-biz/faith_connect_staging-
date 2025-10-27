@@ -61,26 +61,26 @@ const UserTypeSelectionPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white relative flex items-center justify-center p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-white relative flex items-center justify-center p-4 sm:p-6 lg:p-8 py-8 sm:py-12">
       {/* Orange background effects */}
       <div className="absolute inset-0">
         <div className="absolute top-1/4 left-0 w-96 h-96 bg-gradient-radial from-fem-terracotta/20 to-transparent rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-gradient-radial from-fem-terracotta/20 to-transparent rounded-full blur-3xl" />
       </div>
 
-      <div className="w-full max-w-4xl sm:max-w-5xl relative z-10 mx-4 sm:mx-0">
+      <div className="w-full max-w-6xl relative z-10 mx-auto">
         <Card className="shadow-2xl border-0 bg-white/15 backdrop-blur-xl border border-white/20">
-          <CardHeader className="text-center pb-8 pt-8 px-6 sm:px-8">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fem-navy mb-2">
+          <CardHeader className="text-center pb-6 sm:pb-8 pt-6 sm:pt-8 px-4 sm:px-6 lg:px-8">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fem-navy mb-3 sm:mb-4">
               Select Account Type
             </h1>
-            <p className="text-fem-darkgray text-sm sm:text-base max-w-md mx-auto">
+            <p className="text-fem-darkgray text-sm sm:text-base max-w-2xl mx-auto px-2">
               Choose how you'd like to use Faith Connect. You can always change this later in your profile settings.
             </p>
           </CardHeader>
 
-          <CardContent className="px-8 pb-8">
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <CardContent className="px-4 sm:px-6 lg:px-8 pb-6 sm:pb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
               {userTypes.map((type) => {
                 const Icon = type.icon;
                 const isSelected = selectedType === type.id;
@@ -89,42 +89,43 @@ const UserTypeSelectionPage: React.FC = () => {
                   <Card
                     key={type.id}
                     className={cn(
-                      'cursor-pointer transition-all duration-500 transform hover:scale-105',
+                      'cursor-pointer transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]',
                       'border-2 hover:shadow-xl backdrop-blur-sm',
+                      'min-h-[280px] sm:min-h-[320px]',
                       isSelected
-                        ? `${type.borderColor} shadow-xl scale-105 bg-white/20`
-                        : 'border-white/20 hover:border-white/30 bg-white/10'
+                        ? `${type.borderColor} shadow-xl bg-white/20 scale-[1.02]`
+                        : 'border-gray-300 hover:border-fem-terracotta/50 bg-white/10 hover:bg-white/15'
                     )}
                     onClick={() => handleTypeSelection(type.id)}
                   >
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
+                    <CardContent className="p-4 sm:p-5 lg:p-6">
+                      <div className="flex items-start justify-between mb-4 sm:mb-5">
                         <div className={cn(
-                          'w-12 h-12 rounded-xl flex items-center justify-center',
-                          `bg-gradient-to-br ${type.color}`
+                          'w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center',
+                          `bg-gradient-to-br ${type.color} shadow-lg`
                         )}>
-                          <Icon className="w-6 h-6 text-white" />
+                          <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
                         </div>
                         {isSelected && (
-                          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                            <Check className="w-4 h-4 text-white" />
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-green-500 rounded-full flex items-center justify-center shadow-md">
+                            <Check className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                           </div>
                         )}
                       </div>
 
-                      <h3 className="text-xl font-semibold text-fem-navy mb-2">
+                      <h3 className="text-lg sm:text-xl font-bold text-fem-navy mb-2 sm:mb-3">
                         {type.title}
                       </h3>
                       
-                      <p className="text-fem-darkgray text-sm mb-4">
+                      <p className="text-fem-darkgray text-sm sm:text-base mb-4 sm:mb-5 leading-relaxed">
                         {type.description}
                       </p>
 
-                      <ul className="space-y-2">
+                      <ul className="space-y-2 sm:space-y-3">
                         {type.features.map((feature, index) => (
-                          <li key={index} className="flex items-center text-sm text-fem-darkgray">
-                            <div className="w-1.5 h-1.5 bg-fem-terracotta rounded-full mr-3 flex-shrink-0"></div>
-                            {feature}
+                          <li key={index} className="flex items-start text-sm sm:text-base text-fem-darkgray">
+                            <div className="w-2 h-2 bg-fem-terracotta rounded-full mr-2.5 sm:mr-3 mt-0.5 flex-shrink-0"></div>
+                            <span className="leading-snug">{feature}</span>
                           </li>
                         ))}
                       </ul>
@@ -134,11 +135,11 @@ const UserTypeSelectionPage: React.FC = () => {
               })}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <Button
                 onClick={() => navigate('/login')}
                 variant="outline"
-                className="h-12 px-8 border-white/20 hover:border-white/30 hover:bg-white/10 rounded-xl transition-all duration-500 backdrop-blur-sm"
+                className="h-12 px-6 sm:px-8 border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 rounded-xl transition-all duration-300 w-full sm:w-auto"
               >
                 Back to Login
               </Button>
@@ -147,8 +148,7 @@ const UserTypeSelectionPage: React.FC = () => {
                 onClick={handleContinue}
                 disabled={!selectedType || isLoading}
                 size="lg"
-                variant={selectedType === 'community' ? 'default' : selectedType === 'business' ? 'navy' : 'secondary'}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto h-12 px-6 sm:px-8 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white shadow-lg hover:shadow-xl transition-all duration-500 border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <>

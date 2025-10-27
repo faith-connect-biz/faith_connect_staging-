@@ -13,6 +13,7 @@ import LikeButton from "@/components/LikeButton";
 import ShareModal from "@/components/ui/ShareModal";
 import { type ShareData } from "@/utils/sharing";
 import { getBusinessImageUrl } from '@/utils/imageUtils';
+import { usePrefetchBusiness } from '@/hooks/useBusinessQuery';
 
 interface BusinessListProps {
   filters: {
@@ -48,6 +49,7 @@ export const BusinessList: React.FC<BusinessListProps> = ({
   const { isAuthenticated } = useAuth();
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [currentShareData, setCurrentShareData] = useState<ShareData | null>(null);
+  const prefetchBusiness = usePrefetchBusiness();
 
   // Shuffle function to randomize order and prevent bias
   const shuffleArray = (array: any[]) => {
@@ -148,11 +150,16 @@ export const BusinessList: React.FC<BusinessListProps> = ({
   };
 
   const BusinessCard = ({ business }: { business: Business }) => {
+    const handleMouseEnter = () => {
+      prefetchBusiness(business.id);
+    };
+
     return (
       <Card 
         key={business.id} 
         className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer hover:scale-[1.02] rounded-2xl"
         onClick={() => handleBusinessClick(business)}
+        onMouseEnter={handleMouseEnter}
       >
         {/* Business Image */}
         <div className="relative h-48 overflow-hidden">

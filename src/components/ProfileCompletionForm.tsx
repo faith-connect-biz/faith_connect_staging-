@@ -116,49 +116,82 @@ export function ProfileCompletionForm({ initialData, onComplete, onBack }: Profi
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {/* Services/Projects Setup */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Services & Projects
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="services">Describe Your Services or Projects *</Label>
-            <Textarea
-              id="services"
-              value={formData.services}
-              onChange={(e) => setFormData(prev => ({ ...prev, services: e.target.value }))}
-              placeholder="Describe what services you offer, types of projects you work on, your specialties, etc."
-              rows={4}
-              className={errors.services ? 'border-red-500' : ''}
-            />
-            {errors.services && (
-              <p className="text-red-500 text-sm">{errors.services}</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Products & Services Manager */}
+      {/* Services & Contact Information */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShoppingBag className="h-5 w-5" />
-            {initialData.businessType === 'products' ? 'Your Products' : 
-             initialData.businessType === 'services' ? 'Your Services' : 
-             'Your Products & Services'}
+            Services & Contact Information
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <ProductServiceManager
-            items={formData.productsServices}
-            onItemsChange={handleProductsServicesChange}
-            maxItems={5}
-            businessType={initialData.businessType}
-          />
+        <CardContent className="space-y-6">
+          {/* Products & Services Manager */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">
+              {initialData.businessType === 'products' ? 'Add Your Products (Name, Description & Price)' : 
+               initialData.businessType === 'services' ? 'Add Your Services (Name, Description & Price)' : 
+               'Add Your Products & Services (Name, Description & Price)'}
+            </Label>
+            <ProductServiceManager
+              items={formData.productsServices}
+              onItemsChange={handleProductsServicesChange}
+              maxItems={20}
+              businessType={initialData.businessType as 'products' | 'services' | 'both' | ''}
+            />
+          </div>
+
+          {/* Contact Details */}
+          <div className="space-y-4 border-t pt-6 mt-6">
+            <Label className="text-base font-semibold block mb-4">Contact Details</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number *</Label>
+                <Input
+                  id="phone"
+                  value={formData.contactDetails.phone}
+                  onChange={(e) => {
+                    updateContactDetails('phone', e.target.value);
+                    if (errors.phone) setErrors(prev => ({ ...prev, phone: '' }));
+                  }}
+                  placeholder="+1 (555) 123-4567"
+                  className={`bg-white text-gray-900 border-gray-300 ${errors.phone ? 'border-red-500' : ''}`}
+                />
+                {errors.phone && (
+                  <p className="text-red-500 text-sm">{errors.phone}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.contactDetails.email}
+                  onChange={(e) => {
+                    updateContactDetails('email', e.target.value);
+                    if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+                  }}
+                  placeholder="your@email.com"
+                  className={`bg-white text-gray-900 border-gray-300 ${errors.email ? 'border-red-500' : ''}`}
+                />
+                {errors.email && (
+                  <p className="text-red-500 text-sm">{errors.email}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="website">Website (Optional)</Label>
+              <Input
+                id="website"
+                type="url"
+                value={formData.contactDetails.website}
+                onChange={(e) => updateContactDetails('website', e.target.value)}
+                placeholder="https://your-website.com"
+                className="bg-white text-gray-900 border-gray-300"
+              />
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -180,27 +213,27 @@ export function ProfileCompletionForm({ initialData, onComplete, onBack }: Profi
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
-                    checked={!dayData.closed}
-                    onCheckedChange={(checked) => updateWorkingHours(key, 'closed', !checked)}
+                    checked={dayData.isOpen}
+                    onCheckedChange={(checked) => updateWorkingHours(key, 'isOpen', checked)}
                   />
                   <span className="text-sm text-muted-foreground">
-                    {dayData.closed ? 'Closed' : 'Open'}
+                    {dayData.isOpen ? 'Open' : 'Closed'}
                   </span>
                 </div>
-                {!dayData.closed && (
+                {dayData.isOpen && (
                   <div className="flex items-center gap-2">
                     <Input
                       type="time"
-                      value={dayData.open}
-                      onChange={(e) => updateWorkingHours(key, 'open', e.target.value)}
-                      className="w-32"
+                      value={dayData.openTime}
+                      onChange={(e) => updateWorkingHours(key, 'openTime', e.target.value)}
+                      className="w-32 bg-white text-gray-900 border-gray-300"
                     />
                     <span className="text-muted-foreground">to</span>
                     <Input
                       type="time"
-                      value={dayData.close}
-                      onChange={(e) => updateWorkingHours(key, 'close', e.target.value)}
-                      className="w-32"
+                      value={dayData.closeTime}
+                      onChange={(e) => updateWorkingHours(key, 'closeTime', e.target.value)}
+                      className="w-32 bg-white text-gray-900 border-gray-300"
                     />
                   </div>
                 )}
@@ -210,59 +243,6 @@ export function ProfileCompletionForm({ initialData, onComplete, onBack }: Profi
         </CardContent>
       </Card>
 
-      {/* Contact Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Phone className="h-5 w-5" />
-            Contact Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number *</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.contactDetails.phone}
-                onChange={(e) => updateContactDetails('phone', e.target.value)}
-                placeholder="+1 (555) 123-4567"
-                className={errors.phone ? 'border-red-500' : ''}
-              />
-              {errors.phone && (
-                <p className="text-red-500 text-sm">{errors.phone}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.contactDetails.email}
-                onChange={(e) => updateContactDetails('email', e.target.value)}
-                placeholder="business@example.com"
-                className={errors.email ? 'border-red-500' : ''}
-              />
-              {errors.email && (
-                <p className="text-red-500 text-sm">{errors.email}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="website">Website (Optional)</Label>
-            <Input
-              id="website"
-              type="url"
-              value={formData.contactDetails.website}
-              onChange={(e) => updateContactDetails('website', e.target.value)}
-              placeholder="https://www.yourbusiness.com"
-            />
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Social Media Links */}
       <Card>
@@ -281,6 +261,7 @@ export function ProfileCompletionForm({ initialData, onComplete, onBack }: Profi
                 value={formData.socialMedia.facebook}
                 onChange={(e) => updateSocialMedia('facebook', e.target.value)}
                 placeholder="https://facebook.com/yourbusiness"
+                className="bg-white text-gray-900 border-gray-300"
               />
             </div>
 
@@ -294,6 +275,7 @@ export function ProfileCompletionForm({ initialData, onComplete, onBack }: Profi
                 value={formData.socialMedia.instagram}
                 onChange={(e) => updateSocialMedia('instagram', e.target.value)}
                 placeholder="https://instagram.com/yourbusiness"
+                className="bg-white text-gray-900 border-gray-300"
               />
             </div>
 
@@ -307,6 +289,7 @@ export function ProfileCompletionForm({ initialData, onComplete, onBack }: Profi
                 value={formData.socialMedia.twitter}
                 onChange={(e) => updateSocialMedia('twitter', e.target.value)}
                 placeholder="https://twitter.com/yourbusiness"
+                className="bg-white text-gray-900 border-gray-300"
               />
             </div>
 
@@ -320,6 +303,7 @@ export function ProfileCompletionForm({ initialData, onComplete, onBack }: Profi
                 value={formData.socialMedia.linkedin}
                 onChange={(e) => updateSocialMedia('linkedin', e.target.value)}
                 placeholder="https://linkedin.com/company/yourbusiness"
+                className="bg-white text-gray-900 border-gray-300"
               />
             </div>
           </div>

@@ -63,6 +63,7 @@ import ShareModal from "@/components/ui/ShareModal";
 import { type ShareData } from "@/utils/sharing";
 import { ProtectedContactInfo } from "@/components/ui/ProtectedContactInfo";
 import { formatToBritishDate } from '@/utils/dateUtils';
+import { useBusinessQuery } from "@/hooks/useBusinessQuery";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
@@ -72,14 +73,13 @@ const BusinessDetailPage = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   
-  const [business, setBusiness] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use React Query hook for business data
+  const { business, reviews, isBusinessOwner: queryIsBusinessOwner, isLoading, error } = useBusinessQuery(id);
+  
   const [isFavorite, setIsFavorite] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [userRating, setUserRating] = useState(0);
   const [userReview, setUserReview] = useState("");
-  const [reviews, setReviews] = useState<Review[]>([]);
   const [userReviewData, setUserReviewData] = useState<Review | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
@@ -98,7 +98,7 @@ const BusinessDetailPage = () => {
   const [services, setServices] = useState<any[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
 
-  // Business ownership state
+  // Business ownership state - now managed by useBusinessQuery
   const [isBusinessOwner, setIsBusinessOwner] = useState(false);
   
   // Share functionality state
@@ -132,85 +132,32 @@ const BusinessDetailPage = () => {
   const headerRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
 
-  // Fetch business data and reviews
+  // Sync ownership state from query
   useEffect(() => {
-    const fetchBusinessData = async () => {
-      if (!id) return;
+    setIsBusinessOwner(queryIsBusinessOwner);
+  }, [queryIsBusinessOwner]);
+
+  // Fetch services when business loads
+  useEffect(() => {
+    const fetchServices = async () => {
+      if (!id || !business) return;
       
       try {
-        setIsLoading(true);
-        const businessData = await apiService.getBusiness(id);
-        if (!businessData) {
-          throw new Error('Failed to fetch business data');
-        }
-        setBusiness(businessData);
-        
-        // Extract reviews from business data
-        let reviewsArray: Review[] = [];
-        if (businessData.reviews && Array.isArray(businessData.reviews)) {
-          reviewsArray = businessData.reviews;
-          setReviews(reviewsArray);
-          console.log('Reviews loaded from business data:', reviewsArray);
-        } else {
-          // If no reviews in business data, try to get them from analytics
-          try {
-            const analyticsData = await apiService.getBusinessAnalytics(id);
-            if (analyticsData.recent_reviews && Array.isArray(analyticsData.recent_reviews)) {
-              reviewsArray = analyticsData.recent_reviews.map((review: any) => ({
-                id: review.id,
-                user: review.user,
-                rating: review.rating,
-                review_text: review.review_text,
-                created_at: review.created_at || new Date().toISOString(),
-                updated_at: review.updated_at || new Date().toISOString(),
-                business: id,
-                is_verified: false
-              }));
-              setReviews(reviewsArray);
-              console.log('Reviews loaded from analytics:', reviewsArray);
-            } else {
-              setReviews([]);
-              console.log('No reviews found in business data or analytics');
-            }
-          } catch (error) {
-            console.error('Failed to fetch reviews from analytics:', error);
-            setReviews([]);
-            console.log('Reviews not available - using empty array');
-          }
-        }
-        
-        // Check if current user has already reviewed this business
-        if (user && reviewsArray.length > 0) {
-          const userReview = reviewsArray.find((review: Review) => review.user === user.partnership_number);
-          if (userReview) {
-            setUserReviewData(userReview);
-            setUserRating(userReview.rating);
-            setUserReview(userReview.review_text || '');
-          }
-        }
-        
-        // Fetch services for this business
         setIsLoadingServices(true);
         const servicesData = await apiService.getBusinessServices(id);
-        // Ensure servicesData is an array
         const servicesArray = Array.isArray(servicesData) ? servicesData : [];
         setServices(servicesArray);
-        
       } catch (error) {
-        console.error('Error fetching business data:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load business information. Please try again.",
-          variant: "destructive"
-        });
+        console.error('Error fetching services:', error);
       } finally {
-        setIsLoading(false);
         setIsLoadingServices(false);
       }
     };
 
-    fetchBusinessData();
-  }, [id, user]);
+    if (business) {
+      fetchServices();
+    }
+  }, [id, business]);
 
   // GSAP Animations
   useEffect(() => {
@@ -245,29 +192,17 @@ const BusinessDetailPage = () => {
     };
   }, [business]);
 
-  // Check if current user owns this business
+  // Initialize user review data when reviews load
   useEffect(() => {
-    const checkBusinessOwnership = async () => {
-      if (user && business) {
-        try {
-          const ownsBusiness = await apiService.isBusinessOwner(business.id);
-          setIsBusinessOwner(ownsBusiness);
-        } catch (error) {
-          console.error('Error checking business ownership:', error);
-          setIsBusinessOwner(false);
-        }
+    if (user && reviews.length > 0) {
+      const userReview = reviews.find((review: Review) => review.user === user.partnership_number);
+      if (userReview) {
+        setUserReviewData(userReview);
+        setUserRating(userReview.rating);
+        setUserReview(userReview.review_text || '');
       }
-    };
-
-    checkBusinessOwnership();
-  }, [user, business]);
-
-  // Debug reviews state
-  useEffect(() => {
-    console.log('Reviews state changed:', reviews);
-    console.log('Reviews length:', reviews.length);
-    console.log('Business review count:', business?.review_count);
-  }, [reviews, business?.review_count]);
+    }
+  }, [reviews, user]);
 
   // Debug logging for business data
   useEffect(() => {

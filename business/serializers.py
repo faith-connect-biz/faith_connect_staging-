@@ -41,7 +41,7 @@ class ServiceSerializer(serializers.ModelSerializer):
                 'business_name': obj.business.business_name,
                 'category': obj.business.category.name if obj.business.category else None,
                 'city': obj.business.city,
-                'county': obj.business.county,
+                'country': obj.business.country,
                 'email': obj.business.email,
                 'phone': obj.business.phone,
                 'whatsapp': obj.business.whatsapp,
@@ -79,7 +79,7 @@ class ProductSerializer(serializers.ModelSerializer):
                 'business_name': obj.business.business_name,
                 'category': obj.business.category.name if obj.business.category else None,
                 'city': obj.business.city,
-                'county': obj.business.county,
+                'country': obj.business.country,
                 'email': obj.business.email,
                 'phone': obj.business.phone,
                 'whatsapp': obj.business.whatsapp,
@@ -276,11 +276,11 @@ class BusinessSerializer(serializers.ModelSerializer):
         model = Business
         fields = [
             'id', 'user', 'business_name', 'category', 'category_id', 'description', 'long_description',
-            'business_type', 'phone', 'email', 'whatsapp', 'website', 'address', 'city', 'county', 'state', 'zip_code',
+            'business_type', 'phone', 'email', 'whatsapp', 'website', 'address', 'office_address', 'city', 'country',
             'latitude', 'longitude', 'rating', 'review_count', 'is_verified', 'is_featured',
             'is_active', 'business_image_url', 'business_logo_url', 'facebook_url',
             'instagram_url', 'twitter_url', 'youtube_url', 'created_at', 'updated_at',
-            'hours', 'services', 'products', 'reviews'
+            'hours', 'services', 'products', 'reviews', 'subcategory'
         ]
         read_only_fields = ['id', 'rating', 'created_at', 'updated_at', 'user']
     

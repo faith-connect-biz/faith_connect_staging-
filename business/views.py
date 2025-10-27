@@ -38,6 +38,7 @@ from user_auth.utils import success_response, error_response
 from user_auth.models import User
 from utils.s3_service import S3Service
 from core.pagination import CustomLimitOffsetPagination
+from .filters import BusinessFilter
 from .permissions import CanCreateReviewPermission, CanCreateServiceReviewPermission, CanCreateProductReviewPermission
 
 
@@ -60,7 +61,7 @@ class BusinessListCreateAPIView(generics.ListCreateAPIView):
     queryset = Business.objects.filter(is_active=True).select_related('category', 'user').order_by('-created_at')
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category', 'city', 'county']
+    filterset_class = BusinessFilter
     search_fields = ['business_name', 'description', 'city']
     ordering_fields = ['created_at', 'rating']
     

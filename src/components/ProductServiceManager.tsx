@@ -28,6 +28,8 @@ export function ProductServiceManager({
     name: '',
     description: '',
     price: '',
+    currency: 'KES',
+    negotiable: false,
     type: businessType === 'both' ? 'product' : businessType === 'products' ? 'product' : 'service',
     images: []
   });
@@ -42,6 +44,8 @@ export function ProductServiceManager({
       name: '',
       description: '',
       price: '',
+      currency: 'KES',
+      negotiable: false,
       type: businessType === 'both' ? 'product' : businessType === 'products' ? 'product' : 'service',
       images: []
     });
@@ -61,6 +65,15 @@ export function ProductServiceManager({
 
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required';
+    } else if (formData.description.length > 500) {
+      newErrors.description = 'Description must be no more than 500 characters';
+    }
+
+    if (formData.price && formData.price.trim()) {
+      const priceNum = parseFloat(formData.price);
+      if (isNaN(priceNum) || priceNum <= 0) {
+        newErrors.price = 'Price must be a positive number';
+      }
     }
 
     setErrors(newErrors);
@@ -95,6 +108,8 @@ export function ProductServiceManager({
       name: item.name,
       description: item.description,
       price: item.price,
+      currency: item.currency || 'KES',
+      negotiable: item.negotiable || false,
       type: item.type,
       images: item.images
     });
@@ -144,8 +159,8 @@ export function ProductServiceManager({
       acceptedTypes.includes(file.type) && file.size <= 5 * 1024 * 1024 // 5MB limit
     );
 
-    if (formData.images.length + validFiles.length > 3) {
-      alert('You can only upload up to 3 images per item.');
+    if (formData.images.length + validFiles.length > 5) {
+      alert('You can only upload up to 5 images per item.');
       return;
     }
 
@@ -165,8 +180,8 @@ export function ProductServiceManager({
 
   const handleUrlAdd = () => {
     if (!urlInput.trim()) return;
-    if (formData.images.length >= 3) {
-      alert('You can only add up to 3 images per item.');
+    if (formData.images.length >= 5) {
+      alert('You can only add up to 5 images per item.');
       return;
     }
 
@@ -215,7 +230,7 @@ export function ProductServiceManager({
           <Button
             type="button"
             onClick={handleStartAdd}
-            className="bg-[#c74a33] hover:bg-[#b8422e] text-white"
+            className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white shadow-lg hover:shadow-xl transition-all duration-500"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add {businessType === 'products' ? 'Product' : businessType === 'services' ? 'Service' : 'Item'}
@@ -250,10 +265,10 @@ export function ProductServiceManager({
                     setFormData(prev => ({ ...prev, type: value }))
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white text-gray-900 border-gray-300">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white">
                     <SelectItem value="product">
                       <div className="flex items-center gap-2">
                         <Package className="h-4 w-4" />
@@ -281,7 +296,7 @@ export function ProductServiceManager({
                   if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
                 }}
                 placeholder={`Enter ${formData.type} name`}
-                className={errors.name ? 'border-red-500' : ''}
+                className={`bg-white text-gray-900 border-gray-300 ${errors.name ? 'border-red-500' : ''}`}
               />
               {errors.name && (
                 <p className="text-red-500 text-sm">{errors.name}</p>
@@ -289,7 +304,7 @@ export function ProductServiceManager({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="item-description">Description *</Label>
+              <Label htmlFor="item-description">Description * (Max 500 characters)</Label>
               <Textarea
                 id="item-description"
                 value={formData.description}
@@ -298,30 +313,69 @@ export function ProductServiceManager({
                   if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
                 }}
                 placeholder={`Describe your ${formData.type}...`}
-                rows={3}
-                className={errors.description ? 'border-red-500' : ''}
+                rows={4}
+                maxLength={500}
+                className={`bg-white text-gray-900 border-gray-300 ${errors.description ? 'border-red-500' : ''}`}
               />
-              {errors.description && (
-                <p className="text-red-500 text-sm">{errors.description}</p>
-              )}
+              <div className="flex justify-between items-center text-xs">
+                <p className={formData.description.length > 500 ? 'text-red-500' : 'text-gray-500'}>
+                  {formData.description.length}/500 characters
+                </p>
+                {errors.description && (
+                  <p className="text-red-500">{errors.description}</p>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label htmlFor="item-price">Price (Optional)</Label>
-              <Input
-                id="item-price"
-                value={formData.price}
-                onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                placeholder="e.g., $99 or Starting at $50"
-              />
-              <p className="text-xs text-muted-foreground">
-                Enter a specific price or price range
-              </p>
+              <div className="flex gap-2">
+                <Select
+                  value={formData.currency}
+                  onValueChange={(value: 'KES' | 'USD') =>
+                    setFormData(prev => ({ ...prev, currency: value }))
+                  }
+                >
+                  <SelectTrigger className="w-24 bg-white text-gray-900 border-gray-300">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="KES">KES</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  id="item-price"
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, price: e.target.value }));
+                    if (errors.price) setErrors(prev => ({ ...prev, price: '' }));
+                  }}
+                  placeholder="Amount"
+                  className={`flex-1 bg-white text-gray-900 border-gray-300 ${errors.price ? 'border-red-500' : ''}`}
+                />
+              </div>
+              {errors.price && (
+                <p className="text-red-500 text-sm">{errors.price}</p>
+              )}
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="negotiable"
+                  checked={formData.negotiable}
+                  onChange={(e) => setFormData(prev => ({ ...prev, negotiable: e.target.checked }))}
+                  className="w-4 h-4 rounded border-gray-300"
+                />
+                <label htmlFor="negotiable" className="text-sm text-gray-700 cursor-pointer">
+                  Price is negotiable
+                </label>
+              </div>
             </div>
 
             {/* Image Upload Section */}
             <div className="space-y-3">
-              <Label>Images (Optional, up to 3)</Label>
+              <Label>Images (Optional, up to 5)</Label>
               
               {/* Drag and Drop Area */}
               <div 
@@ -365,7 +419,7 @@ export function ProductServiceManager({
                   variant="outline"
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={formData.images.length >= 3}
+                  disabled={formData.images.length >= 5}
                 >
                   <ImageIcon className="h-4 w-4 mr-2" />
                   Upload
@@ -375,7 +429,7 @@ export function ProductServiceManager({
                   variant="outline"
                   size="sm"
                   onClick={() => setShowUrlInput(!showUrlInput)}
-                  disabled={formData.images.length >= 3}
+                  disabled={formData.images.length >= 5}
                 >
                   <LinkIcon className="h-4 w-4 mr-2" />
                   Add URL
@@ -389,14 +443,14 @@ export function ProductServiceManager({
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
                     placeholder="https://example.com/image.jpg"
-                    className="flex-1"
+                    className="flex-1 bg-white text-gray-900 border-gray-300"
                   />
                   <Button 
                     type="button" 
                     onClick={handleUrlAdd}
                     size="sm"
                     disabled={!urlInput.trim()}
-                    className="bg-[#c74a33] hover:bg-[#b8422e] text-white"
+                    className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
                   >
                     Add
                   </Button>
@@ -566,9 +620,16 @@ export function ProductServiceManager({
                     )}
 
                     {item.price && (
-                      <p className="text-sm text-[#c74a33]">
-                        {item.price}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-[#c74a33]">
+                          {item.currency || 'KES'} {item.price}
+                        </p>
+                        {item.negotiable && (
+                          <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                            Negotiable
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

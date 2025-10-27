@@ -3,6 +3,8 @@ export interface ProductService {
   name: string;
   description: string;
   price: string;
+  currency?: 'KES' | 'USD';
+  negotiable?: boolean;
   type: 'product' | 'service';
   images: Array<{
     id: string;

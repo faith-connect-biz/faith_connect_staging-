@@ -168,7 +168,7 @@ const ProfileUpdatePage: React.FC = () => {
             const existingBusinesses = await apiService.getUserBusinesses();
             if (existingBusinesses && existingBusinesses.length > 0) {
               // User has existing businesses, go to business management
-              navigate('/business-management');
+              navigate('/manage-business');
             } else {
               // New business user, go to registration
               navigate('/business-registration');

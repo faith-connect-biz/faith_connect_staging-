@@ -291,6 +291,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8080",
     "https://femdjango-production.up.railway.app",
     "https://fem-family-business-directory-kappa.vercel.app"
+    "https://fem-connect-1.onrender.com"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
