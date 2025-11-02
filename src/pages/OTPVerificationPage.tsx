@@ -58,20 +58,93 @@ const OTPVerificationPage: React.FC = () => {
       if (response.success) {
         setIsVerified(true);
         
-        if (response.is_new_user) {
-          // New user - redirect to user type selection
-          toast.success('OTP verified! Please complete your profile.');
+        // Handle different response structures from backend
+        // Expected format: { success, message, data: { access_token, refresh_token, user, requires_profile_completion, first_time } }
+        const responseData = (response as any).data || response;
+        const user = responseData.user || (response as any).user;
+        
+        // Extract requires_profile_completion - check multiple locations
+        const requiresProfileCompletion = 
+          responseData.requires_profile_completion ?? 
+          responseData.user?.requires_profile_completion ?? 
+          (response as any).requires_profile_completion ?? 
+          false;
+        
+        // Extract first_time flag
+        const firstTime = responseData.first_time ?? (response as any).is_new_user ?? false;
+        
+        // Extract tokens - handle both access_token/refresh_token and tokens.access/tokens.refresh formats
+        let tokens: { access: string; refresh: string } | undefined;
+        
+        if (responseData.access_token && responseData.refresh_token) {
+          // New format: access_token and refresh_token directly in data object
+          tokens = {
+            access: responseData.access_token,
+            refresh: responseData.refresh_token
+          };
+        } else if ((response as any).tokens) {
+          // Old format: tokens.access and tokens.refresh at root level
+          tokens = (response as any).tokens;
+        } else if (responseData.tokens) {
+          // Format: tokens nested in data object
+          tokens = responseData.tokens;
+        }
+        
+        console.log('Extracted data:', {
+          user: !!user,
+          tokens: !!tokens,
+          requiresProfileCompletion,
+          firstTime
+        });
+        
+        if (user && tokens) {
+          // Log the user in first
+          login(user, tokens);
+          clearOTPData();
+          
+          // Get user type from user object
+          const userType = (user as any).user_type || user.userType;
+          
+          // For first-time users, always require user type selection
+          // (Even if backend has a default 'community', user should explicitly choose)
+          if (firstTime) {
+            // First-time user must select user type first
+            console.log('First-time user - redirecting to /user-type-selection');
+            toast.success('OTP verified! Please select your user type to continue.');
+            setTimeout(() => {
+              navigate('/user-type-selection');
+            }, 1500);
+          } else if (requiresProfileCompletion) {
+            // User has type but needs to complete profile
+            console.log('Profile completion required - redirecting to /profile-update');
+            toast.success(response.message || 'Phone verified successfully! Please complete your profile.');
+            setTimeout(() => {
+              // Pass user type if available
+              navigate('/profile-update', {
+                state: {
+                  userType: userType || 'community'
+                }
+              });
+            }, 1500);
+          } else {
+            // Profile is complete - go to home
+            console.log('Profile complete - redirecting to home');
+            toast.success(response.message || 'Welcome back!');
+            setTimeout(() => {
+              navigate('/');
+            }, 1500);
+          }
+        } else if (firstTime || (response as any).is_new_user) {
+          // New user without tokens yet - redirect to user type selection
+          console.log('New user - redirecting to /user-type-selection');
+          toast.success('OTP verified! Please select your user type to continue.');
           setTimeout(() => {
             navigate('/user-type-selection');
           }, 1500);
-        } else if (response.user && response.tokens) {
-          // Existing user - log them in
-          login(response.user, response.tokens);
-          clearOTPData();
-          toast.success('Welcome back!');
-          setTimeout(() => {
-            navigate('/');
-          }, 1500);
+        } else {
+          console.error('Missing required data:', { user: !!user, tokens: !!tokens });
+          toast.error('Unexpected response format. Please try again.');
+          setOtp('');
         }
       } else {
         toast.error(response.message || 'Invalid OTP. Please try again.');

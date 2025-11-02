@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,11 +15,30 @@ import { Navbar } from '@/components/layout/Navbar';
 const ProfileUpdatePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { getOTPData, clearOTPData, login } = useAuth();
+  const { getOTPData, clearOTPData, login, user, updateUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const firstNameInputRef = useRef<HTMLInputElement>(null);
   
-  const userType = location.state?.userType as 'community' | 'business';
+  // Get user type from location state, authenticated user
+  // If no user type is set, redirect to user type selection (for first-time users)
+  const userTypeFromState = location.state?.userType;
+  const userTypeFromUser = user?.userType || (user as any)?.user_type;
+  const userType = (userTypeFromState || userTypeFromUser) as 'community' | 'business' | null;
   const otpData = getOTPData();
+  
+  // Redirect to user type selection if user type is not set (first-time users)
+  useEffect(() => {
+    // If user is authenticated but no user type is set, redirect to selection
+    if (user && !userTypeFromState && !userTypeFromUser) {
+      console.log('No user type set - redirecting to user type selection');
+      navigate('/user-type-selection', { replace: true });
+      return;
+    }
+  }, [user, userTypeFromState, userTypeFromUser, navigate]);
+  
+  // Use 'community' as default only if explicitly set or if coming from state
+  // Don't default if user type selection is required
+  const finalUserType = userType || (userTypeFromState ? 'community' : null);
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -34,6 +53,31 @@ const ProfileUpdatePage: React.FC = () => {
   
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Pre-populate form with user data if already authenticated
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        firstName: prev.firstName || user.firstName || (user as any).first_name || '',
+        lastName: prev.lastName || user.lastName || (user as any).last_name || '',
+        email: prev.email || user.email || '',
+        phone: prev.phone || user.phone || '',
+        partnershipNumber: prev.partnershipNumber || (user as any).partnership_number || '',
+        bio: prev.bio || user.bio || '',
+        profilePictureUrl: prev.profilePictureUrl || user.profilePicture || ''
+      }));
+    }
+  }, [user]);
+
+  // Auto-focus first name input when component mounts
+  useEffect(() => {
+    // Small delay to ensure the input is rendered
+    const timer = setTimeout(() => {
+      firstNameInputRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -94,14 +138,7 @@ const ProfileUpdatePage: React.FC = () => {
       toast.error('Last name is required');
       return false;
     }
-    if (!formData.partnershipNumber.trim()) {
-      toast.error('Partnership number is required');
-      return false;
-    }
-    if (!formData.email.trim() && !formData.phone.trim()) {
-      toast.error('Either email or phone number is required');
-      return false;
-    }
+    // Partnership number is optional, email/phone should already be set from OTP
     return true;
   };
 
@@ -111,99 +148,111 @@ const ProfileUpdatePage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Create FormData for file upload
-      const submitData = new FormData();
-      submitData.append('firstName', formData.firstName);
-      submitData.append('lastName', formData.lastName);
-      submitData.append('email', formData.email);
-      submitData.append('phone', formData.phone);
-      submitData.append('partnershipNumber', formData.partnershipNumber);
-      submitData.append('bio', formData.bio);
-      submitData.append('userType', userType);
+      console.log('Updating profile with data:', formData);
       
-      if (formData.profilePicture) {
-        submitData.append('profilePicture', formData.profilePicture);
+      // Prepare data in the format expected by the backend API (snake_case)
+      const updateData: any = {
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
+        bio: formData.bio.trim() || undefined,
+      };
+
+      // Add optional fields only if they have values
+      if (formData.email.trim()) {
+        updateData.email = formData.email.trim();
       }
+      if (formData.phone.trim()) {
+        updateData.phone = formData.phone.trim();
+      }
+      if (formData.partnershipNumber.trim()) {
+        updateData.partnership_number = formData.partnershipNumber.trim();
+      }
+      // Always include user type in the update
+      updateData.user_type = finalUserType;
 
-      // Register user with OTP
-      const response = await apiService.registerWithOTP(
-        otpData?.contact || '',
-        localStorage.getItem('demo_otp') || '123456', // Use demo OTP
-        otpData?.method || 'email',
-        userType
-      );
+      console.log('Sending profile update request:', updateData);
 
-      if (response.success) {
-        // Login the user first
-        login(response.user, response.tokens);
-        clearOTPData();
+      // Call the profile update API directly since user is already authenticated
+      const updateResponse = await apiService.updateProfile(updateData);
+
+      if (updateResponse.success) {
+        // Update the user context with the new data
+        if (updateResponse.user) {
+          // Map backend response to frontend user format
+          const updatedUserData = {
+            id: updateResponse.user.id?.toString() || user?.id || '',
+            firstName: updateResponse.user.first_name || updateResponse.user.firstName,
+            lastName: updateResponse.user.last_name || updateResponse.user.lastName,
+            email: updateResponse.user.email,
+            phone: updateResponse.user.phone,
+            userType: updateResponse.user.user_type || updateResponse.user.userType,
+            bio: updateResponse.user.bio,
+            profilePicture: updateResponse.user.profile_image_url || updateResponse.user.profilePicture
+          };
+          updateUser(updatedUserData);
+        }
         
-        // Try to update profile, but don't fail if backend is not available
-        try {
-          const updateResponse = await apiService.updateProfile({
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            phone: formData.phone,
-            partnershipNumber: formData.partnershipNumber,
-            bio: formData.bio,
-            userType: userType
-          });
-
-          if (updateResponse.success) {
-            toast.success('Profile created successfully!');
-          } else {
-            toast.success('Profile created successfully! (Demo mode)');
-          }
-        } catch (error) {
-          // If profile update fails (backend not running), still proceed
-          console.warn('Profile update failed, but continuing in demo mode:', error);
-          toast.success('Profile created successfully! (Demo mode)');
+        toast.success(updateResponse.message || 'Profile updated successfully!');
+        
+        // Clear OTP data if it exists
+        if (otpData) {
+          clearOTPData();
         }
         
         // Redirect based on user type
-        if (userType === 'business') {
-          // Check if user already has businesses
-          try {
-            const existingBusinesses = await apiService.getUserBusinesses();
-            if (existingBusinesses && existingBusinesses.length > 0) {
-              // User has existing businesses, go to business management
-              navigate('/business-management');
-            } else {
-              // New business user, go to registration
+        setTimeout(async () => {
+          if (finalUserType === 'business') {
+            // Check if user already has businesses
+            try {
+              const existingBusinesses = await apiService.getUserBusinesses();
+              if (existingBusinesses && existingBusinesses.length > 0) {
+                // User has existing businesses, go to business management
+                navigate('/manage-business');
+              } else {
+                // New business user, go to registration
+                navigate('/business-registration');
+              }
+            } catch (error) {
+              // If we can't check, default to registration
+              console.warn('Could not check existing businesses, defaulting to registration:', error);
               navigate('/business-registration');
             }
-          } catch (error) {
-            // If we can't check, default to registration
-            console.warn('Could not check existing businesses, defaulting to registration:', error);
-            navigate('/business-registration');
+          } else {
+            // Community member - go to home
+            navigate('/');
           }
-        } else {
-          // Community member - go to community dashboard
-          navigate('/');
-        }
+        }, 1500);
       } else {
-        toast.error(response.message || 'Failed to create profile');
+        toast.error(updateResponse.message || 'Failed to update profile. Please try again.');
       }
-    } catch (error) {
-      console.error('Error creating profile:', error);
-      toast.error('Something went wrong. Please try again.');
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          'Something went wrong. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSkip = () => {
-    if (userType === 'business') {
+    if (finalUserType === 'business') {
       navigate('/business-registration');
     } else {
       navigate('/');
     }
   };
 
-  if (!userType) {
-    navigate('/user-type-selection');
-    return null;
+  // Show loading or redirect if user type is not available
+  if (!finalUserType) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-fem-navy">Redirecting to user type selection...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -222,7 +271,7 @@ const ProfileUpdatePage: React.FC = () => {
             Complete Your Profile
           </h1>
           <p className="text-fem-darkgray text-sm sm:text-base">
-            Add some details to personalize your {userType === 'business' ? 'business' : 'community'} experience
+            Add some details to personalize your {finalUserType === 'business' ? 'business' : 'community'} experience
           </p>
         </CardHeader>
 
@@ -297,12 +346,14 @@ const ProfileUpdatePage: React.FC = () => {
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-fem-darkgray w-5 h-5" />
                   <Input
+                    ref={firstNameInputRef}
                     id="firstName"
                     type="text"
-                    placeholder="Enter your first name"
+                    placeholder="e.g., John"
                     value={formData.firstName}
                     onChange={(e) => handleInputChange('firstName', e.target.value)}
                     className="pl-10 h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm"
+                    autoFocus
                   />
                 </div>
               </div>
@@ -316,7 +367,7 @@ const ProfileUpdatePage: React.FC = () => {
                   <Input
                     id="lastName"
                     type="text"
-                    placeholder="Enter your last name"
+                    placeholder="e.g., Doe"
                     value={formData.lastName}
                     onChange={(e) => handleInputChange('lastName', e.target.value)}
                     className="pl-10 h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm"
@@ -328,14 +379,14 @@ const ProfileUpdatePage: React.FC = () => {
             {/* Partnership Number */}
             <div className="space-y-2">
               <Label htmlFor="partnershipNumber" className="text-sm font-medium text-fem-navy">
-                Partnership Number *
+                Partnership Number <span className="text-xs text-fem-darkgray font-normal">(Optional)</span>
               </Label>
               <div className="relative">
                 <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-fem-darkgray w-5 h-5" />
                 <Input
                   id="partnershipNumber"
                   type="text"
-                  placeholder="Enter your partnership number"
+                  placeholder="e.g., PART123456 (if applicable)"
                   value={formData.partnershipNumber}
                   onChange={(e) => handleInputChange('partnershipNumber', e.target.value)}
                   className="pl-10 h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm"
@@ -354,7 +405,7 @@ const ProfileUpdatePage: React.FC = () => {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="Enter your email"
+                    placeholder="e.g., john.doe@example.com"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     className="pl-10 h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm"
@@ -375,7 +426,7 @@ const ProfileUpdatePage: React.FC = () => {
                   <Input
                     id="phone"
                     type="tel"
-                    placeholder="Enter your phone number"
+                    placeholder="e.g., 254712345678"
                     value={formData.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
                     className="pl-10 h-12 border-white/20 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white/10 backdrop-blur-sm"

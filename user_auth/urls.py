@@ -5,7 +5,8 @@ from .views import (
     RegisterAPIView, LoginView, LogoutAPIView, CustomTokenRefreshView,
     ForgotPasswordOTPView, ResetPasswordWithOTPView, SendEmailVerificationView,
     SendPhoneOTPView, ConfirmEmailVerificationView, ConfirmPhoneOTPView,
-    VerifyRegistrationOTPView, ResendRegistrationOTPView, SignupView, ResendOTPView
+    VerifyRegistrationOTPView, ResendRegistrationOTPView, SignupView, ResendOTPView,
+    VerifyEmailOTPView, VerifyPhoneOTPView
 )
 
 urlpatterns = [
@@ -23,6 +24,12 @@ urlpatterns = [
     path('verify-email-confirm', ConfirmEmailVerificationView.as_view(),name='confirm_email'),
     path('verify-phone', SendPhoneOTPView.as_view(), name='verify_phone'),
     path('verify-phone-confirm', ConfirmPhoneOTPView.as_view(), name='confirm_phone'),
+    
+    # New /api/auth/ endpoints for frontend OTP flow
+    path('auth/send-email-otp/', SendEmailVerificationView.as_view(), name='auth_send_email_otp'),
+    path('auth/send-phone-otp/', SendPhoneOTPView.as_view(), name='auth_send_phone_otp'),
+    path('auth/verify-email-otp/', VerifyEmailOTPView.as_view(), name='auth_verify_email_otp'),
+    path('auth/verify-phone-otp/', VerifyPhoneOTPView.as_view(), name='auth_verify_phone_otp'),
 
     
     # Include user management URLs

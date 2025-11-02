@@ -572,6 +572,184 @@ class ConfirmPhoneOTPView(APIView):
         return success_response(message="Phone number verified successfully! Your account is now active.")
 
 
+# New views for /api/auth/ endpoints expected by frontend
+
+class VerifyEmailOTPView(APIView):
+    """
+    Verify email OTP and return user data with tokens
+    Endpoint: /api/auth/verify-email-otp/
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        email = request.data.get("email")
+        otp = request.data.get("otp")
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return error_response(message="User not found")
+
+        # Verify OTP
+        if str(user.email_token) == str(otp):
+            # Determine if this is a new user before activation
+            is_new_user = not user.is_active
+            
+            # Clear OTP token
+            user.email_token = None
+            
+            # Activate user if inactive
+            if not user.is_active:
+                user.email_verified = True
+                user.is_active = True
+                user.is_verified = True
+                
+                # Send welcome email
+                try:
+                    send_welcome_email(email, f"{user.first_name} {user.last_name}")
+                    logger.info(f"Welcome email sent to {email}")
+                except Exception as e:
+                    logger.warning(f"Failed to send welcome email: {str(e)}")
+            
+            user.save()
+            
+            # Generate tokens
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+            
+            # Check if profile is complete
+            is_profile_complete = True
+            if user.user_type == 'business':
+                from business.models import Business
+                has_business = Business.objects.filter(user=user, is_active=True).exists()
+                is_profile_complete = has_business
+            else:
+                is_profile_complete = bool(user.first_name and user.last_name)
+            
+            logger.info(f"[EMAIL OTP SUCCESS] - User {user.id}, Email: {email}, Profile Complete: {is_profile_complete}, New User: {is_new_user}")
+            
+            return Response({
+                'success': True,
+                'message': 'OTP verified successfully!',
+                'user': {
+                    'id': user.id,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'partnership_number': user.partnership_number,
+                    'email': user.email,
+                    'phone': user.phone,
+                    'user_type': user.user_type,
+                    'is_active': user.is_active,
+                    'is_verified': user.is_verified
+                },
+                'tokens': {
+                    'access': access_token,
+                    'refresh': refresh_token
+                },
+                'is_profile_complete': is_profile_complete,
+                'is_new_user': is_new_user
+            }, status=status.HTTP_200_OK)
+        
+        return error_response(message="Invalid verification token.")
+
+
+class VerifyPhoneOTPView(APIView):
+    """
+    Verify phone OTP and return user data with tokens
+    Endpoint: /api/auth/verify-phone-otp/
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        phone = request.data.get("phone")
+        otp = request.data.get("otp")
+
+        if not phone or not otp:
+            return error_response(message="Phone number and OTP are required")
+
+        try:
+            normalized_phone = normalize_phone(phone)
+        except Exception:
+            normalized_phone = phone
+
+        try:
+            user = User.objects.filter(phone=normalized_phone).order_by('-id').first()
+            if not user:
+                raise User.DoesNotExist
+        except User.DoesNotExist:
+            logger.debug(f"🔧 DEV TESTING - User not found for phone: {phone}")
+            return error_response(message="User not found.")
+
+        # Verify OTP
+        if str(user.otp) != str(otp):
+            logger.debug(f"🔧 DEV TESTING - OTP Verification Failed: Expected {user.otp}, Got {otp}")
+            return error_response(message="Invalid OTP.")
+
+        # Determine if this is a new user before activation
+        is_new_user = not user.is_active
+        
+        # Clear OTP and activate user
+        user.otp = None
+        
+        if not user.is_active:
+            user.phone_verified = True
+            user.is_active = True
+            user.is_verified = True
+            
+            # Send welcome SMS
+            try:
+                send_welcome_message(normalized_phone, f"{user.first_name} {user.last_name}")
+                logger.info(f"Welcome SMS sent to {normalized_phone}")
+            except Exception as e:
+                logger.warning(f"Failed to send welcome SMS: {str(e)}")
+        
+        user.save()
+
+        # Generate tokens
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+        
+        # Check if profile is complete
+        is_profile_complete = True
+        if user.user_type == 'business':
+            from business.models import Business
+            has_business = Business.objects.filter(user=user, is_active=True).exists()
+            is_profile_complete = has_business
+        else:
+            is_profile_complete = bool(user.first_name and user.last_name)
+        
+        # Determine if profile completion is required (inverse of is_profile_complete)
+        requires_profile_completion = not is_profile_complete
+        
+        logger.info(f"[PHONE OTP SUCCESS] - User {user.id}, Phone: {normalized_phone}, Profile Complete: {is_profile_complete}, New User: {is_new_user}")
+        
+        return Response({
+            'success': True,
+            'message': 'Phone verified successfully! Please complete your profile.' if requires_profile_completion else 'OTP verified successfully!',
+            'data': {
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'user': {
+                    'id': user.id,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'partnership_number': user.partnership_number,
+                    'email': user.email,
+                    'phone': user.phone,
+                    'phone_verified': user.phone_verified,
+                    'user_type': user.user_type,
+                    'is_active': user.is_active,
+                    'is_verified': user.is_verified,
+                    'requires_profile_completion': requires_profile_completion
+                },
+                'requires_profile_completion': requires_profile_completion,
+                'first_time': is_new_user
+            }
+        }, status=status.HTTP_200_OK)
+
+
 class VerifyRegistrationOTPView(APIView):
     """
     Verify OTP and activate user account

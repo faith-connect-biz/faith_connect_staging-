@@ -72,10 +72,10 @@ const UserTypeSelectionPage: React.FC = () => {
         <Card className="shadow-2xl border-0 bg-white/15 backdrop-blur-xl border border-white/20">
           <CardHeader className="text-center pb-8 pt-8 px-6 sm:px-8">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fem-navy mb-2">
-              Select Account Type
+              Select Your Account Type
             </h1>
             <p className="text-fem-darkgray text-sm sm:text-base max-w-md mx-auto">
-              Choose how you'd like to use Faith Connect. You can always change this later in your profile settings.
+              Please choose how you'd like to use Faith Connect. This helps us personalize your experience. You can change this later in your profile settings.
             </p>
           </CardHeader>
 
@@ -164,11 +164,13 @@ const UserTypeSelectionPage: React.FC = () => {
               </Button>
             </div>
 
-            <div className="mt-6 text-center">
-              <p className="text-xs text-gray-500">
-                Don't worry, you can always change your account type later in your profile settings.
-              </p>
-            </div>
+            {!selectedType && (
+              <div className="mt-6 text-center">
+                <p className="text-sm text-fem-terracotta font-medium">
+                  Please select an account type to continue
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
