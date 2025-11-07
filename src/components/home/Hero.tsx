@@ -188,15 +188,28 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const data = await response.json();
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Response is not JSON');
+        }
+        
+        const text = await response.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (parseError) {
+          console.error('Failed to parse JSON response:', text);
+          throw new Error('Invalid JSON response');
+        }
+        
         console.log('Stats API response:', data);
         
-        if (data.success) {
+        if (data.success && data.data) {
           setStats(data.data);
           setBusinessLogos(data.data.business_logos || []);
         } else {
-          console.warn('Stats API returned success: false');
-          throw new Error('API returned success: false');
+          console.warn('Stats API returned success: false or no data');
+          throw new Error('API returned success: false or no data');
         }
       } catch (error) {
         console.error('Error fetching stats:', error);

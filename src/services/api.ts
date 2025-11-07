@@ -1472,12 +1472,22 @@ class ApiService {
   }> {
     try {
       const response = await this.api.get('/stats/');
+      // Backend returns { success: true, data: {...} }
+      const responseData = response.data;
+      const data = responseData.success && responseData.data ? responseData.data : responseData;
+      
       // Clean up the response data to ensure valid rating
-      const data = response.data;
       if (data.average_rating && (isNaN(data.average_rating) || data.average_rating < 0 || data.average_rating > 5)) {
         data.average_rating = 0;
       }
-      return data;
+      
+      // Ensure all required fields exist
+      return {
+        total_businesses: data.total_businesses || 0,
+        total_users: data.total_users || 0,
+        verified_businesses: data.verified_businesses || 0,
+        average_rating: data.average_rating || 0
+      };
     } catch (error) {
       console.error('Error fetching platform statistics:', error);
       // Return fallback data if stats endpoint is not available

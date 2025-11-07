@@ -73,25 +73,29 @@ export const CommunityStats = () => {
     });
 
     // Use platform stats if available, otherwise fall back to business data calculations
-    if (platformStats && !isLoadingStats) {
-      const verifiedPercentage = platformStats.total_businesses > 0 
-        ? Math.round((platformStats.verified_businesses / platformStats.total_businesses) * 100)
+    if (platformStats && !isLoadingStats && platformStats.total_businesses !== undefined) {
+      const totalBusinesses = platformStats.total_businesses || 0;
+      const verifiedBusinesses = platformStats.verified_businesses || 0;
+      const totalUsers = platformStats.total_users || 0;
+      
+      const verifiedPercentage = totalBusinesses > 0 
+        ? Math.round((verifiedBusinesses / totalBusinesses) * 100)
         : 0;
 
       // Safety check for average rating - handle scientific notation and invalid values
       let safeAverageRating = "0.0";
       if (platformStats.average_rating !== null && platformStats.average_rating !== undefined) {
         const rating = Number(platformStats.average_rating);
-        if (!isNaN(rating) && rating >= 0 && rating <= 5 && !isFinite(rating) === false) {
+        if (!isNaN(rating) && rating >= 0 && rating <= 5 && isFinite(rating)) {
           safeAverageRating = rating.toFixed(1);
         }
       }
 
       const stats = {
-        totalBusinesses: platformStats.total_businesses.toString(),
+        totalBusinesses: totalBusinesses.toString(),
         verifiedBusinesses: verifiedPercentage.toString(),
         averageRating: safeAverageRating,
-        totalUsers: platformStats.total_users.toString()
+        totalUsers: totalUsers.toString()
       };
 
       console.log('✅ CommunityStats - Using platform stats:', stats);
