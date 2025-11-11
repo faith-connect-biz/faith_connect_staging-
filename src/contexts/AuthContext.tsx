@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { apiService } from '@/services/api';
 
 export interface User {
   id: string;
@@ -26,12 +27,20 @@ export interface AuthState {
   timeUntilLogout: number | null;
 }
 
+export interface OTPData {
+  contact: string;
+  method: 'email' | 'phone';
+  userId?: number;
+  requiresProfileCompletion?: boolean;
+  otp?: string;
+}
+
 export interface AuthContextType extends AuthState {
   login: (userData: User, tokens: AuthTokens) => void;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
-  setOTPData: (data: { contact: string; method: 'email' | 'phone' }) => void;
-  getOTPData: () => { contact: string; method: 'email' | 'phone' } | null;
+  setOTPData: (data: OTPData) => void;
+  getOTPData: () => OTPData | null;
   clearOTPData: () => void;
 }
 
@@ -73,6 +82,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (Date.now() < expiryTime) {
             setUser(userData);
             setTokens(tokenData);
+            apiService.setAuthTokens(tokenData);
             setSessionExpiryTime(expiryTime);
           } else {
             // Session expired, clear storage
@@ -124,6 +134,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Store in localStorage
     localStorage.setItem('user', JSON.stringify(userData));
     localStorage.setItem('tokens', JSON.stringify(tokens));
+    apiService.setAuthTokens(tokens);
     localStorage.setItem('sessionExpiry', expiryTime.toString());
   };
 
@@ -138,6 +149,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('tokens');
     localStorage.removeItem('sessionExpiry');
     localStorage.removeItem('otpData');
+    apiService.clearAuthState();
   };
 
   const updateUser = (userData: Partial<User>) => {
@@ -148,11 +160,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const setOTPData = (data: { contact: string; method: 'email' | 'phone' }) => {
+  const setOTPData = (data: OTPData) => {
     localStorage.setItem('otpData', JSON.stringify(data));
   };
 
-  const getOTPData = (): { contact: string; method: 'email' | 'phone' } | null => {
+  const getOTPData = (): OTPData | null => {
     try {
       const stored = localStorage.getItem('otpData');
       return stored ? JSON.parse(stored) : null;

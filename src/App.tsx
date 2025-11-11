@@ -32,6 +32,7 @@ import OTPVerificationPage from "./pages/OTPVerificationPage";
 import UserTypeSelectionPage from "./pages/UserTypeSelectionPage";
 import ProfileUpdatePage from "./pages/ProfileUpdatePage";
 import AuthDemoPage from "./pages/AuthDemoPage";
+import NewAccountPromptPage from "./pages/NewAccountPromptPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -75,6 +76,7 @@ const App = () => (
                 {/* Authentication routes */}
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/verify-otp" element={<OTPVerificationPage />} />
+                <Route path="/new-account" element={<NewAccountPromptPage />} />
                 <Route path="/user-type-selection" element={<UserTypeSelectionPage />} />
                 <Route path="/profile-update" element={<ProfileUpdatePage />} />
                 <Route path="/auth-demo" element={<AuthDemoPage />} />

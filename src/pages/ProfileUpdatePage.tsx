@@ -107,59 +107,49 @@ const ProfileUpdatePage: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
+    if (!userType) {
+      toast.error('Please select your account type to continue.');
+      navigate('/user-type-selection');
+      return;
+    }
 
     setIsLoading(true);
 
     try {
-      // Create FormData for file upload
-      const submitData = new FormData();
-      submitData.append('firstName', formData.firstName);
-      submitData.append('lastName', formData.lastName);
-      submitData.append('email', formData.email);
-      submitData.append('phone', formData.phone);
-      submitData.append('partnershipNumber', formData.partnershipNumber);
-      submitData.append('bio', formData.bio);
-      submitData.append('userType', userType);
-      
-      if (formData.profilePicture) {
-        submitData.append('profilePicture', formData.profilePicture);
+      const identifier =
+        otpData?.contact ||
+        (formData.email.trim() ? formData.email.trim() : formData.phone.trim());
+      const authMethod =
+        otpData?.method ||
+        (formData.email.trim() ? 'email' : formData.phone.trim() ? 'phone' : undefined);
+
+      if (!identifier || !authMethod) {
+        toast.error('Missing contact information. Please restart the sign up process.');
+        navigate('/login');
+        return;
       }
 
-      // Register user with OTP
-      const response = await apiService.registerWithOTP(
-        otpData?.contact || '',
-        localStorage.getItem('demo_otp') || '123456', // Use demo OTP
-        otpData?.method || 'email',
-        userType
-      );
+      const profileImageUrl =
+        formData.profilePictureUrl && !formData.profilePictureUrl.startsWith('blob:')
+          ? formData.profilePictureUrl
+          : undefined;
+
+      const response = await apiService.registerWithOTP({
+        identifier,
+        authMethod,
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        partnershipNumber: formData.partnershipNumber.trim(),
+        userType,
+        bio: formData.bio.trim() || undefined,
+        profileImageUrl,
+      });
 
       if (response.success) {
         // Login the user first
         login(response.user, response.tokens);
         clearOTPData();
-        
-        // Try to update profile, but don't fail if backend is not available
-        try {
-          const updateResponse = await apiService.updateProfile({
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            phone: formData.phone,
-            partnershipNumber: formData.partnershipNumber,
-            bio: formData.bio,
-            userType: userType
-          });
-
-          if (updateResponse.success) {
-            toast.success('Profile created successfully!');
-          } else {
-            toast.success('Profile created successfully! (Demo mode)');
-          }
-        } catch (error) {
-          // If profile update fails (backend not running), still proceed
-          console.warn('Profile update failed, but continuing in demo mode:', error);
-          toast.success('Profile created successfully! (Demo mode)');
-        }
+        toast.success(response.message || 'Profile created successfully!');
         
         // Redirect based on user type
         if (userType === 'business') {

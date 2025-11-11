@@ -95,8 +95,7 @@ interface LocalProduct {
 
 
 export const BusinessManagementPage: React.FC = () => {
-  const { user, isAuthenticated } = useAuth();
-  const { forceReAuth } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { fetchBusinesses } = useBusiness();
   const navigate = useNavigate();
   const location = useLocation();
@@ -141,20 +140,20 @@ export const BusinessManagementPage: React.FC = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
-    // Check if user is authenticated and is a business user
-    if (!user) {
+    if (authLoading) return;
+
+    if (!isAuthenticated || !user) {
       toast({
         title: "Authentication required",
         description: "Please log in to manage your business",
         variant: "destructive"
       });
-      navigate('/');
+      navigate('/login');
       return;
     }
 
-    // Load business data
     loadBusinessData();
-  }, [user, navigate]);
+  }, [authLoading, isAuthenticated, user, navigate]);
 
   const loadBusinessData = async () => {
     try {

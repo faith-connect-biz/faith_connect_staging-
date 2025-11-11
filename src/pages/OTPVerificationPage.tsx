@@ -59,11 +59,15 @@ const OTPVerificationPage: React.FC = () => {
         setIsVerified(true);
         
         if (response.is_new_user) {
-          // New user - redirect to user type selection
-          toast.success('OTP verified! Please complete your profile.');
+          toast.success('OTP verified! Let’s create your account.');
           setTimeout(() => {
-            navigate('/user-type-selection');
-          }, 1500);
+            navigate('/new-account', {
+              state: {
+                contact: otpData.contact,
+                method: otpData.method,
+              },
+            });
+          }, 1200);
         } else if (response.user && response.tokens) {
           // Existing user - log them in
           login(response.user, response.tokens);

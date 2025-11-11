@@ -796,11 +796,11 @@ const BusinessRegistrationPage: React.FC = () => {
 
                           <div className="space-y-2">
                             <Label htmlFor="country" className="text-fem-navy font-semibold">Country *</Label>
-                <Input
+                            <Input
                               id="country"
-                              value={businessData.physicalAddress.country}
+                              value={businessData.physicalAddress.country || 'Kenya'}
                               onChange={(e) => updatePhysicalAddress('country', e.target.value)}
-                              placeholder="United States"
+                              placeholder="Kenya"
                               className={`h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300 ${
                                 errors.country ? 'border-red-500' : ''
                               }`}

@@ -28,6 +28,21 @@ export interface User {
   updated_at: string;
 }
 
+export interface CompleteProfilePayload {
+  identifier: string;
+  authMethod: 'email' | 'phone';
+  firstName: string;
+  lastName: string;
+  partnershipNumber: string;
+  userType: 'community' | 'business';
+  bio?: string;
+  profileImageUrl?: string;
+  address?: string;
+  county?: string;
+  city?: string;
+  website?: string;
+}
+
 export interface FEMChurch {
   id: number;
   name: string;
@@ -260,19 +275,6 @@ export interface BusinessCreateRequest {
   photo_request_notes?: string | null;
 }
 
-export interface OTPRequest {
-  email?: string;
-  phone?: string;
-  purpose?: 'registration' | 'password_reset' | 'email_verification' | 'phone_verification';
-}
-
-export interface OTPVerificationRequest {
-  email?: string;
-  phone?: string;
-  otp: string;
-  purpose?: 'registration' | 'password_reset' | 'email_verification' | 'phone_verification';
-}
-
 export interface PhotoRequest {
   id: string;
   business: string;
@@ -365,7 +367,8 @@ export interface UserActivity {
 }
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'https://femdjango-production.up.railway.app/api';
 
 // Debug: Log the API base URL
 console.log('🔧 API Configuration:', {
@@ -639,16 +642,6 @@ class ApiService {
     const response = await this.api.post('/refresh-token', {
       refresh: refreshToken,
     });
-    return response.data;
-  }
-
-  async sendOTP(data: OTPRequest): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.post('/verify-phone', data);
-    return response.data;
-  }
-
-  async verifyOTP(data: OTPVerificationRequest): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.post('/verify-registration-otp', data);
     return response.data;
   }
 
@@ -2044,25 +2037,71 @@ class ApiService {
   /**
    * Send OTP for authentication
    */
-    async sendOTP(contact: string, method: 'email' | 'phone'): Promise<{
+  async sendOTP(contact: string, method: 'email' | 'phone'): Promise<{
       success: boolean;
       message: string;
+      userId?: number;
+      requiresProfileCompletion?: boolean;
+      otp?: string;
     }> {
       try {
-        const endpoint = method === 'email' ? '/verify-email' : '/verify-phone';
-        const requestData = method === 'email' 
-          ? { email: contact }
-          : { phone: contact };
-        
-        const response = await this.api.post(endpoint, requestData);
-        return response.data;
+        const response = await this.api.post('/initiate-auth', {
+          identifier: contact,
+          auth_method: method
+        });
+        const data = response.data || {};
+
+        return {
+          success: data.success ?? true,
+          message: data.message || `OTP sent to your ${method}`,
+          userId: data.user_id,
+          requiresProfileCompletion: data.requires_profile_completion,
+          otp: data.otp
+        };
       } catch (error: any) {
         console.error('Send OTP failed:', error);
+
+        let currentError: any = error;
+        let statusCode = currentError.response?.status;
+        let errorMessage =
+          currentError.response?.data?.message ||
+          currentError.response?.data?.detail ||
+          '';
+
+        // Fallback to legacy endpoints if new auth endpoints aren't available
+        if (statusCode === 404) {
+          try {
+            const legacyEndpoint = method === 'email' ? '/verify-email' : '/verify-phone';
+            const legacyRequestData =
+              method === 'email' ? { email: contact } : { phone: contact };
+
+            const legacyResponse = await this.api.post(legacyEndpoint, legacyRequestData);
+            const legacyData = legacyResponse.data || {};
+
+            return {
+              success: legacyData.success ?? true,
+              message: legacyData.message || `OTP sent to your ${method}`,
+              userId: legacyData.user_id,
+              requiresProfileCompletion: legacyData.requires_profile_completion ?? false,
+              otp: legacyData.otp,
+            };
+          } catch (legacyError: any) {
+            console.error('Legacy OTP endpoint failed:', legacyError);
+            // Continue to existing fallback logic using the legacy error
+            currentError = legacyError;
+            statusCode = currentError.response?.status;
+            errorMessage =
+              currentError.response?.data?.message ||
+              currentError.response?.data?.detail ||
+              currentError.message ||
+              '';
+          }
+        }
         
         // If backend is not available, fall back to demo mode
-        if (error.message.includes('Backend server is not running') || 
-            error.message.includes('ERR_CONNECTION_REFUSED') ||
-            error.message.includes('Network Error')) {
+        if (currentError.message?.includes('Backend server is not running') || 
+            currentError.message?.includes('ERR_CONNECTION_REFUSED') ||
+            currentError.message?.includes('Network Error')) {
           
           console.log(`Demo mode: Sending OTP to ${contact} via ${method}`);
           
@@ -2074,19 +2113,20 @@ class ApiService {
           localStorage.setItem('demo_otp', demoOTP);
           localStorage.setItem('demo_contact', contact);
           localStorage.setItem('demo_method', method);
+          localStorage.setItem('demo_user_id', Date.now().toString());
           
           return {
             success: true,
-            message: `OTP sent to your ${method} (Demo mode)`
+            message: `OTP sent to your ${method} (Demo mode)`,
+            requiresProfileCompletion: true,
+            otp: demoOTP
           };
         }
         
-        // Check if user doesn't exist yet - this is OK for sign-up flow
-        const errorMessage = error.response?.data?.message || '';
+        // If backend reports a user lookup issue, fall back to demo mode
         if (errorMessage.includes('does not exist') || 
             errorMessage.includes('User not found') ||
             errorMessage.includes('not registered')) {
-          // This is a new user trying to sign up - store demo OTP
           console.log(`[API] New user detected: ${contact}. Using demo OTP for sign-up flow.`);
           
           // Store demo OTP for verification
@@ -2094,14 +2134,19 @@ class ApiService {
           localStorage.setItem('demo_otp', demoOTP);
           localStorage.setItem('demo_contact', contact);
           localStorage.setItem('demo_method', method);
+          localStorage.setItem('demo_user_id', Date.now().toString());
           
           return {
             success: true,
-            message: `OTP sent to your ${method} (Demo mode - use: ${demoOTP})`
+            message: `OTP sent to your ${method} (Demo mode - use: ${demoOTP})`,
+            requiresProfileCompletion: true,
+            otp: demoOTP
           };
         }
         
-        throw new Error(errorMessage || 'Failed to send verification code');
+        throw new Error(
+          errorMessage || currentError.message || 'Failed to send verification code'
+        );
       }
     }
 
@@ -2117,28 +2162,86 @@ class ApiService {
     };
     is_new_user: boolean;
     message: string;
+    user_id?: number;
   }> {
     try {
-      const endpoint = method === 'email' ? '/verify-email-confirm' : '/verify-phone-confirm';
-      const requestData = method === 'email' 
-        ? { email: contact, otp: otp }
-        : { phone: contact, otp: otp };
-      
-      const response = await this.api.post(endpoint, requestData);
-      return response.data;
+      const response = await this.api.post('/verify-auth-otp', {
+        identifier: contact,
+        auth_method: method,
+        otp
+      });
+
+      const data = response.data || {};
+      const requiresProfileCompletion = data.requires_profile_completion ?? false;
+
+      let mappedUser: User | undefined;
+      if (data.user) {
+        mappedUser = {
+          ...data.user,
+        };
+      }
+
+      return {
+        success: data.success ?? true,
+        user: mappedUser,
+        tokens: data.tokens,
+        is_new_user: requiresProfileCompletion,
+        message: data.message || 'OTP verified successfully',
+        user_id: data.user_id,
+      };
     } catch (error: any) {
       console.error('Verify OTP failed:', error);
       
-      // If backend is not available or user doesn't exist, fall back to demo mode
-      const errorMessage = error.response?.data?.message || error.message;
-      const isNetworkError = error.message.includes('Backend server is not running') || 
-                             error.message.includes('ERR_CONNECTION_REFUSED') ||
-                             error.message.includes('Network Error');
+      let currentError: any = error;
+      let statusCode = currentError.response?.status;
+      let errorMessage =
+        currentError.response?.data?.message ||
+        currentError.response?.data?.detail ||
+        currentError.message;
+
+      if (statusCode === 404) {
+        try {
+          const legacyEndpoint =
+            method === 'email' ? '/verify-email-confirm' : '/verify-phone-confirm';
+          const legacyRequestData =
+            method === 'email' ? { email: contact, otp } : { phone: contact, otp };
+
+          const legacyResponse = await this.api.post(legacyEndpoint, legacyRequestData);
+          const legacyData = legacyResponse.data || {};
+
+          let legacyUser: User | undefined;
+          if (legacyData.user) {
+            legacyUser = legacyData.user;
+          }
+
+          return {
+            success: legacyData.success ?? true,
+            user: legacyUser,
+            tokens: legacyData.tokens,
+            is_new_user: legacyData.requires_profile_completion ?? !legacyUser,
+            message: legacyData.message || 'OTP verified successfully',
+            user_id: legacyData.user_id,
+          };
+        } catch (legacyError: any) {
+          console.error('Legacy OTP verification failed:', legacyError);
+          // Continue to existing fallback logic using the legacy error details
+          currentError = legacyError;
+          statusCode = currentError.response?.status;
+          errorMessage =
+            currentError.response?.data?.message ||
+            currentError.response?.data?.detail ||
+            currentError.message;
+        }
+      }
+
+      const isNetworkError = currentError.message?.includes('Backend server is not running') || 
+                             currentError.message?.includes('ERR_CONNECTION_REFUSED') ||
+                             currentError.message?.includes('Network Error');
       const isUserNotFound = errorMessage.includes('does not exist') || 
                              errorMessage.includes('User not found') ||
                              errorMessage.includes('not registered');
       
-      if (isNetworkError || isUserNotFound || error.response?.status === 400) {
+      if (isNetworkError || isUserNotFound || currentError.response?.status === 400) {
         console.log(`[API] Falling back to demo mode for OTP verification`);
         
         // Simulate API delay
@@ -2159,11 +2262,13 @@ class ApiService {
         });
         
         if (otp === demoOTP && contact === demoContact && method === demoMethod) {
+          const simulatedUserId = Number(localStorage.getItem('demo_user_id') || Date.now());
           // Simulate new user for demo
           return {
             success: true,
             is_new_user: true,
-            message: 'OTP verified successfully (Demo mode)'
+            message: 'OTP verified successfully (Demo mode)',
+            user_id: simulatedUserId
           };
         } else {
           return {
@@ -2174,14 +2279,14 @@ class ApiService {
         }
       }
       
-      throw new Error(errorMessage || 'Invalid verification code');
+      throw new Error(errorMessage || currentError.message || 'Invalid verification code');
     }
   }
 
   /**
-   * Register new user with OTP
+   * Complete profile after OTP verification
    */
-  async registerWithOTP(contact: string, otp: string, method: 'email' | 'phone', userType: 'community' | 'business'): Promise<{
+  async registerWithOTP(payload: CompleteProfilePayload): Promise<{
     success: boolean;
     user: User;
     tokens: {
@@ -2191,57 +2296,93 @@ class ApiService {
     message: string;
   }> {
     try {
-      const endpoint = method === 'email' ? '/auth/register-email-otp/' : '/auth/register-phone-otp/';
-      const requestData = method === 'email' 
-        ? { email: contact, otp: otp, user_type: userType }
-        : { phone: contact, otp: otp, user_type: userType };
-      
-      const response = await this.api.post(endpoint, requestData);
-      return response.data;
+      const requestData: Record<string, unknown> = {
+        identifier: payload.identifier,
+        auth_method: payload.authMethod,
+        first_name: payload.firstName,
+        last_name: payload.lastName,
+        partnership_number: payload.partnershipNumber,
+        user_type: payload.userType,
+      };
+
+      if (payload.bio) requestData.bio = payload.bio;
+      if (payload.profileImageUrl) requestData.profile_image_url = payload.profileImageUrl;
+      if (payload.address) requestData.address = payload.address;
+      if (payload.county) requestData.county = payload.county;
+      if (payload.city) requestData.city = payload.city;
+      if (payload.website) requestData.website = payload.website;
+
+      const response = await this.api.post('/complete-profile', requestData);
+      const data = response.data || {};
+
+      if (!data.user || !data.tokens) {
+        throw new Error(data.message || 'Failed to complete profile');
+      }
+
+      return {
+        success: data.success ?? true,
+        user: data.user,
+        tokens: data.tokens,
+        message: data.message || 'Profile completed successfully',
+      };
     } catch (error: any) {
-      console.error('Register with OTP failed:', error);
-      
+      console.error('Complete profile failed:', error);
+
       // If backend is not available, fall back to demo mode
-      if (error.message.includes('Backend server is not running') || 
+      const statusCode = error.response?.status;
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.detail ||
+        error.message;
+
+      if (statusCode === 404 ||
+          error.message.includes('Backend server is not running') ||
           error.message.includes('ERR_CONNECTION_REFUSED') ||
           error.message.includes('Network Error')) {
-        
-        console.log(`Demo mode: Registering user ${contact} as ${userType} via ${method}`);
-        
+
+        console.log(`Demo mode: Completing profile for ${payload.identifier} as ${payload.userType}`);
+
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Create demo user data
+
+        const now = new Date().toISOString();
+
         const demoUser: User = {
           id: 'demo-user-123',
-          first_name: 'Demo',
-          last_name: 'User',
-          partnership_number: 'DEMO123',
-          email: method === 'email' ? contact : undefined,
-          phone: method === 'phone' ? contact : undefined,
-          user_type: userType,
+          first_name: payload.firstName,
+          last_name: payload.lastName,
+          partnership_number: payload.partnershipNumber,
+          email: payload.authMethod === 'email' ? payload.identifier : undefined,
+          phone: payload.authMethod === 'phone' ? payload.identifier : undefined,
+          user_type: payload.userType,
+          profile_image_url: payload.profileImageUrl,
+          bio: payload.bio,
+          address: payload.address,
+          county: payload.county,
+          city: payload.city,
+          website: payload.website,
           is_verified: true,
-          email_verified: method === 'email',
-          phone_verified: method === 'phone',
+          email_verified: payload.authMethod === 'email',
+          phone_verified: payload.authMethod === 'phone',
           is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          created_at: now,
+          updated_at: now,
         };
-        
+
         const demoTokens = {
           access: 'demo-access-token-123',
-          refresh: 'demo-refresh-token-123'
+          refresh: 'demo-refresh-token-123',
         };
-        
+
         return {
           success: true,
           user: demoUser,
           tokens: demoTokens,
-          message: 'Account created successfully (Demo mode)'
+          message: 'Profile completed successfully (Demo mode)',
         };
       }
-      
-      throw new Error(error.response?.data?.message || 'Failed to create account');
+
+      throw new Error(errorMessage || 'Failed to complete profile');
     }
   }
 
@@ -2290,11 +2431,24 @@ class ApiService {
     message: string;
   }> {
     try {
-      // Find category ID from the category name
+      // Find category ID from the category input (supporting multiple formats)
       let category;
       try {
         const categories = await this.getCategories();
-        category = categories.results.find(cat => cat.name === data.category);
+        const normalizedInput = (data.category || '').trim().toLowerCase();
+
+        category = categories.results.find((cat) => {
+          const nameMatch = cat.name?.trim().toLowerCase() === normalizedInput;
+          const slugMatch = (cat.slug || '').trim().toLowerCase() === normalizedInput;
+          return nameMatch || slugMatch;
+        });
+
+        if (!category && categories.results.length > 0) {
+          console.warn(
+            `[API] Category "${data.category}" not found. Using default category "${categories.results[0].name}".`
+          );
+          category = categories.results[0];
+        }
       } catch (error) {
         console.warn('Could not fetch categories, using demo category:', error);
         // Use a demo category for fallback
@@ -2361,9 +2515,11 @@ class ApiService {
           
           const demoBusiness: Business = {
             id: 'demo-business-123',
+            user: null,
             business_name: data.name,
             description: data.description,
             address: data.address,
+            country: data.country || '',
             city: data.city,
             phone: data.phone,
             email: data.email,
@@ -2372,8 +2528,14 @@ class ApiService {
             is_verified: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            category: { id: category.id, name: category.name },
-            owner: { id: 'demo-user-123', first_name: 'Demo', last_name: 'User' }
+            category: {
+              id: category.id,
+              name: category.name,
+              slug: category.slug || String(category.id || 'demo-category'),
+            },
+            review_count: 0,
+            rating: 0,
+            is_featured: false
           };
           
           return {
