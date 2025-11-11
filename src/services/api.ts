@@ -405,6 +405,9 @@ class ApiService {
           'verify-phone',
           'forgot-password',
           'reset-password',
+          'initiate-auth',
+          'verify-auth-otp',
+          'complete-profile',
           'categories',
           'stats'
         ];
@@ -1421,13 +1424,12 @@ class ApiService {
       // Fallback to direct response.data if no nesting
       return response.data;
     } catch (error) {
-      // If user doesn't have a business or endpoint doesn't exist, return null
       if (error instanceof AxiosError && (error.response?.status === 404 || error.response?.status === 401)) {
         console.log('[API] No business found for user (404/401), returning null');
         return null;
       }
       console.error('[API] Error checking user business:', error);
-      return null; // Return null for any error to prevent crashes
+      return null;
     }
   }
 
@@ -1447,13 +1449,48 @@ class ApiService {
 
   // User Methods
   async getCurrentUser(): Promise<User> {
+    try {
     const response = await this.api.get('/profile');
-    // Handle nested response structure: { success: true, message: "...", data: { user_data } }
     if (response.data && response.data.success && response.data.data) {
       return response.data.data;
     }
-    // Fallback to direct response.data if no nesting
     return response.data;
+    } catch (error: any) {
+      console.warn('[API] Falling back to stored user profile:', error);
+
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          const fallbackUser: User = {
+            id: parsed.id || 'demo-user',
+            first_name: parsed.firstName || parsed.first_name || 'Faith Connect',
+            last_name: parsed.lastName || parsed.last_name || 'User',
+            partnership_number: parsed.partnershipNumber || parsed.partnership_number || 'FC-0000',
+            email: parsed.email,
+            phone: parsed.phone,
+            user_type: parsed.userType || parsed.user_type || 'business',
+            profile_image_url: parsed.profilePicture || '',
+            bio: parsed.bio || '',
+            address: parsed.address || '',
+            county: parsed.county || '',
+            city: parsed.city || '',
+            website: parsed.website || '',
+            is_verified: parsed.is_verified ?? true,
+            email_verified: parsed.email_verified ?? !!parsed.email,
+            phone_verified: parsed.phone_verified ?? !!parsed.phone,
+            is_active: parsed.is_active ?? true,
+            created_at: parsed.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          return fallbackUser;
+        } catch (parseError) {
+          console.error('Failed to parse stored user profile:', parseError);
+        }
+      }
+
+      throw error;
+    }
   }
 
   // Get platform statistics
@@ -2037,7 +2074,7 @@ class ApiService {
   /**
    * Send OTP for authentication
    */
-  async sendOTP(contact: string, method: 'email' | 'phone'): Promise<{
+    async sendOTP(contact: string, method: 'email' | 'phone'): Promise<{
       success: boolean;
       message: string;
       userId?: number;
@@ -2045,7 +2082,7 @@ class ApiService {
       otp?: string;
     }> {
       try {
-        const response = await this.api.post('/initiate-auth', {
+        const response = await this.api.post('/initiate-auth/', {
           identifier: contact,
           auth_method: method
         });
@@ -2060,7 +2097,7 @@ class ApiService {
         };
       } catch (error: any) {
         console.error('Send OTP failed:', error);
-
+        
         let currentError: any = error;
         let statusCode = currentError.response?.status;
         let errorMessage =
@@ -2071,14 +2108,14 @@ class ApiService {
         // Fallback to legacy endpoints if new auth endpoints aren't available
         if (statusCode === 404) {
           try {
-            const legacyEndpoint = method === 'email' ? '/verify-email' : '/verify-phone';
+            const legacyEndpoint = method === 'email' ? '/verify-email/' : '/verify-phone/';
             const legacyRequestData =
               method === 'email' ? { email: contact } : { phone: contact };
 
             const legacyResponse = await this.api.post(legacyEndpoint, legacyRequestData);
             const legacyData = legacyResponse.data || {};
-
-            return {
+          
+          return {
               success: legacyData.success ?? true,
               message: legacyData.message || `OTP sent to your ${method}`,
               userId: legacyData.user_id,
@@ -2098,49 +2135,13 @@ class ApiService {
           }
         }
         
-        // If backend is not available, fall back to demo mode
-        if (currentError.message?.includes('Backend server is not running') || 
-            currentError.message?.includes('ERR_CONNECTION_REFUSED') ||
-            currentError.message?.includes('Network Error')) {
-          
-          console.log(`Demo mode: Sending OTP to ${contact} via ${method}`);
-          
-          // Simulate API delay
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Store OTP in localStorage for demo purposes
-          const demoOTP = '123456';
-          localStorage.setItem('demo_otp', demoOTP);
-          localStorage.setItem('demo_contact', contact);
-          localStorage.setItem('demo_method', method);
-          localStorage.setItem('demo_user_id', Date.now().toString());
-          
+        // Treat 400 "user not found" as a hint that user should register
+        if (statusCode === 400 && errorMessage.toLowerCase().includes('does not exist')) {
           return {
             success: true,
-            message: `OTP sent to your ${method} (Demo mode)`,
+            message: errorMessage,
             requiresProfileCompletion: true,
-            otp: demoOTP
-          };
-        }
-        
-        // If backend reports a user lookup issue, fall back to demo mode
-        if (errorMessage.includes('does not exist') || 
-            errorMessage.includes('User not found') ||
-            errorMessage.includes('not registered')) {
-          console.log(`[API] New user detected: ${contact}. Using demo OTP for sign-up flow.`);
-          
-          // Store demo OTP for verification
-          const demoOTP = '123456';
-          localStorage.setItem('demo_otp', demoOTP);
-          localStorage.setItem('demo_contact', contact);
-          localStorage.setItem('demo_method', method);
-          localStorage.setItem('demo_user_id', Date.now().toString());
-          
-          return {
-            success: true,
-            message: `OTP sent to your ${method} (Demo mode - use: ${demoOTP})`,
-            requiresProfileCompletion: true,
-            otp: demoOTP
+            userId: undefined,
           };
         }
         
@@ -2165,7 +2166,7 @@ class ApiService {
     user_id?: number;
   }> {
     try {
-      const response = await this.api.post('/verify-auth-otp', {
+      const response = await this.api.post('/verify-auth-otp/', {
         identifier: contact,
         auth_method: method,
         otp
@@ -2202,7 +2203,7 @@ class ApiService {
       if (statusCode === 404) {
         try {
           const legacyEndpoint =
-            method === 'email' ? '/verify-email-confirm' : '/verify-phone-confirm';
+            method === 'email' ? '/verify-email-confirm/' : '/verify-phone-confirm/';
           const legacyRequestData =
             method === 'email' ? { email: contact, otp } : { phone: contact, otp };
 
@@ -2234,51 +2235,6 @@ class ApiService {
         }
       }
 
-      const isNetworkError = currentError.message?.includes('Backend server is not running') || 
-                             currentError.message?.includes('ERR_CONNECTION_REFUSED') ||
-                             currentError.message?.includes('Network Error');
-      const isUserNotFound = errorMessage.includes('does not exist') || 
-                             errorMessage.includes('User not found') ||
-                             errorMessage.includes('not registered');
-      
-      if (isNetworkError || isUserNotFound || currentError.response?.status === 400) {
-        console.log(`[API] Falling back to demo mode for OTP verification`);
-        
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Check if OTP matches demo OTP
-        const demoOTP = localStorage.getItem('demo_otp');
-        const demoContact = localStorage.getItem('demo_contact');
-        const demoMethod = localStorage.getItem('demo_method');
-        
-        console.log('[API] Demo verification check:', {
-          enteredOTP: otp,
-          demoOTP: demoOTP,
-          enteredContact: contact,
-          demoContact: demoContact,
-          enteredMethod: method,
-          demoMethod: demoMethod
-        });
-        
-        if (otp === demoOTP && contact === demoContact && method === demoMethod) {
-          const simulatedUserId = Number(localStorage.getItem('demo_user_id') || Date.now());
-          // Simulate new user for demo
-          return {
-            success: true,
-            is_new_user: true,
-            message: 'OTP verified successfully (Demo mode)',
-            user_id: simulatedUserId
-          };
-        } else {
-          return {
-            success: false,
-            is_new_user: false,
-            message: 'Invalid OTP. Please try again.'
-          };
-        }
-      }
-      
       throw new Error(errorMessage || currentError.message || 'Invalid verification code');
     }
   }
@@ -2312,7 +2268,7 @@ class ApiService {
       if (payload.city) requestData.city = payload.city;
       if (payload.website) requestData.website = payload.website;
 
-      const response = await this.api.post('/complete-profile', requestData);
+      const response = await this.api.post('/complete-profile/', requestData);
       const data = response.data || {};
 
       if (!data.user || !data.tokens) {
@@ -2328,59 +2284,10 @@ class ApiService {
     } catch (error: any) {
       console.error('Complete profile failed:', error);
 
-      // If backend is not available, fall back to demo mode
-      const statusCode = error.response?.status;
       const errorMessage =
         error.response?.data?.message ||
         error.response?.data?.detail ||
         error.message;
-
-      if (statusCode === 404 ||
-          error.message.includes('Backend server is not running') ||
-          error.message.includes('ERR_CONNECTION_REFUSED') ||
-          error.message.includes('Network Error')) {
-
-        console.log(`Demo mode: Completing profile for ${payload.identifier} as ${payload.userType}`);
-
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        const now = new Date().toISOString();
-
-        const demoUser: User = {
-          id: 'demo-user-123',
-          first_name: payload.firstName,
-          last_name: payload.lastName,
-          partnership_number: payload.partnershipNumber,
-          email: payload.authMethod === 'email' ? payload.identifier : undefined,
-          phone: payload.authMethod === 'phone' ? payload.identifier : undefined,
-          user_type: payload.userType,
-          profile_image_url: payload.profileImageUrl,
-          bio: payload.bio,
-          address: payload.address,
-          county: payload.county,
-          city: payload.city,
-          website: payload.website,
-          is_verified: true,
-          email_verified: payload.authMethod === 'email',
-          phone_verified: payload.authMethod === 'phone',
-          is_active: true,
-          created_at: now,
-          updated_at: now,
-        };
-
-        const demoTokens = {
-          access: 'demo-access-token-123',
-          refresh: 'demo-refresh-token-123',
-        };
-
-        return {
-          success: true,
-          user: demoUser,
-          tokens: demoTokens,
-          message: 'Profile completed successfully (Demo mode)',
-        };
-      }
 
       throw new Error(errorMessage || 'Failed to complete profile');
     }
@@ -2498,55 +2405,12 @@ class ApiService {
             : []
       };
 
-      try {
         const business = await this.createBusiness(businessData);
         return {
           success: true,
           business: business,
           message: 'Business created successfully'
         };
-      } catch (createError: any) {
-        console.warn('Business creation failed, using demo mode:', createError);
-        
-        // If backend is not available, return success for demo purposes
-        if (createError.message.includes('Backend server is not running') || 
-            createError.message.includes('ERR_CONNECTION_REFUSED') ||
-            createError.message.includes('Network Error')) {
-          
-          const demoBusiness: Business = {
-            id: 'demo-business-123',
-            user: null,
-            business_name: data.name,
-            description: data.description,
-            address: data.address,
-            country: data.country || '',
-            city: data.city,
-            phone: data.phone,
-            email: data.email,
-            website: data.website,
-            is_active: true,
-            is_verified: false,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            category: {
-              id: category.id,
-              name: category.name,
-              slug: category.slug || String(category.id || 'demo-category'),
-            },
-            review_count: 0,
-            rating: 0,
-            is_featured: false
-          };
-          
-          return {
-            success: true,
-            business: demoBusiness,
-            message: 'Business created successfully (Demo mode)'
-          };
-        }
-        
-        throw createError;
-      }
     } catch (error: any) {
       console.error('Create business failed:', error);
       return {

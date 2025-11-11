@@ -53,17 +53,27 @@ const LoginPage: React.FC = () => {
       const response = await apiService.sendOTP(contact, activeTab);
 
       if (response.success) {
-        const otpContext = {
-          contact,
-          method: activeTab,
-          userId: response.userId,
-          requiresProfileCompletion: response.requiresProfileCompletion,
-          otp: response.otp,
-        };
-
-        setOTPData(otpContext);
-
         if (response.requiresProfileCompletion) {
+          let verifiedUserId = response.userId;
+
+          if (response.otp) {
+            try {
+              const verifyResult = await apiService.verifyOTP(contact, response.otp, activeTab);
+              if (verifyResult.success) {
+                verifiedUserId = verifyResult.user_id ?? verifiedUserId;
+              }
+            } catch (verifyError) {
+              console.warn('Auto OTP verification failed:', verifyError);
+            }
+          }
+
+          setOTPData({
+            contact,
+            method: activeTab,
+            userId: verifiedUserId,
+            requiresProfileCompletion: true,
+          });
+
           toast.success('Let’s create your Faith Connect account.');
           navigate('/new-account', {
             state: {
@@ -73,6 +83,14 @@ const LoginPage: React.FC = () => {
           });
           return;
         }
+
+        setOTPData({
+          contact,
+          method: activeTab,
+          userId: response.userId,
+          requiresProfileCompletion: false,
+          otp: response.otp,
+        });
 
         toast.success(`OTP sent to your ${activeTab}`);
         if (response.otp) {

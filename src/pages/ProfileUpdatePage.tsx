@@ -155,8 +155,8 @@ const ProfileUpdatePage: React.FC = () => {
         if (userType === 'business') {
           // Check if user already has businesses
           try {
-            const existingBusinesses = await apiService.getUserBusinesses();
-            if (existingBusinesses && existingBusinesses.length > 0) {
+            const existingBusiness = await apiService.getUserBusiness();
+            if (existingBusiness) {
               // User has existing businesses, go to business management
               navigate('/manage-business');
             } else {
