@@ -85,7 +85,7 @@ const NewAccountPromptPage: React.FC = () => {
             <Button
               size="lg"
               className="w-full h-12 text-base font-semibold rounded-full bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white shadow-lg hover:shadow-xl transition-all duration-300"
-              onClick={() => navigate('/user-type-selection')}
+              onClick={() => navigate('/verify-otp')}
             >
               Proceed to create an account
             </Button>

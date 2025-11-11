@@ -2168,11 +2168,12 @@ class ApiService {
       const response = await this.api.post('/verify-auth-otp', {
         identifier: contact,
         auth_method: method,
-        otp
+        otp,
       });
 
       const data = response.data || {};
-      const requiresProfileCompletion = data.requires_profile_completion ?? false;
+      const requiresProfileCompletion =
+        data.requires_profile_completion ?? data.is_new_user ?? false;
 
       let mappedUser: User | undefined;
       if (data.user) {
@@ -2191,76 +2192,44 @@ class ApiService {
       };
     } catch (error: any) {
       console.error('Verify OTP failed:', error);
-      
-      let currentError: any = error;
-      let statusCode = currentError.response?.status;
-      let errorMessage =
+
+      const currentError: any = error;
+      const statusCode = currentError.response?.status;
+      const errorMessage =
         currentError.response?.data?.message ||
         currentError.response?.data?.detail ||
-        currentError.message;
+        currentError.message ||
+        '';
 
-      if (statusCode === 404) {
-        try {
-          const legacyEndpoint =
-            method === 'email' ? '/verify-email-confirm' : '/verify-phone-confirm';
-          const legacyRequestData =
-            method === 'email' ? { email: contact, otp } : { phone: contact, otp };
+      const isNetworkError =
+        currentError.message?.includes('Backend server is not running') ||
+        currentError.message?.includes('ERR_CONNECTION_REFUSED') ||
+        currentError.message?.includes('Network Error');
+      const isUserNotFound =
+        errorMessage.includes('does not exist') ||
+        errorMessage.includes('User not found') ||
+        errorMessage.includes('not registered');
 
-          const legacyResponse = await this.api.post(legacyEndpoint, legacyRequestData);
-          const legacyData = legacyResponse.data || {};
-
-          let legacyUser: User | undefined;
-          if (legacyData.user) {
-            legacyUser = legacyData.user;
-          }
-
-          return {
-            success: legacyData.success ?? true,
-            user: legacyUser,
-            tokens: legacyData.tokens,
-            is_new_user: legacyData.requires_profile_completion ?? !legacyUser,
-            message: legacyData.message || 'OTP verified successfully',
-            user_id: legacyData.user_id,
-          };
-        } catch (legacyError: any) {
-          console.error('Legacy OTP verification failed:', legacyError);
-          // Continue to existing fallback logic using the legacy error details
-          currentError = legacyError;
-          statusCode = currentError.response?.status;
-          errorMessage =
-            currentError.response?.data?.message ||
-            currentError.response?.data?.detail ||
-            currentError.message;
-        }
-      }
-
-      const isNetworkError = currentError.message?.includes('Backend server is not running') || 
-                             currentError.message?.includes('ERR_CONNECTION_REFUSED') ||
-                             currentError.message?.includes('Network Error');
-      const isUserNotFound = errorMessage.includes('does not exist') || 
-                             errorMessage.includes('User not found') ||
-                             errorMessage.includes('not registered');
-      
-      if (isNetworkError || isUserNotFound || currentError.response?.status === 400) {
+      if (isNetworkError || isUserNotFound || statusCode === 400) {
         console.log(`[API] Falling back to demo mode for OTP verification`);
-        
+
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         // Check if OTP matches demo OTP
         const demoOTP = localStorage.getItem('demo_otp');
         const demoContact = localStorage.getItem('demo_contact');
         const demoMethod = localStorage.getItem('demo_method');
-        
+
         console.log('[API] Demo verification check:', {
           enteredOTP: otp,
           demoOTP: demoOTP,
           enteredContact: contact,
           demoContact: demoContact,
           enteredMethod: method,
-          demoMethod: demoMethod
+          demoMethod: demoMethod,
         });
-        
+
         if (otp === demoOTP && contact === demoContact && method === demoMethod) {
           const simulatedUserId = Number(localStorage.getItem('demo_user_id') || Date.now());
           // Simulate new user for demo
@@ -2268,18 +2237,20 @@ class ApiService {
             success: true,
             is_new_user: true,
             message: 'OTP verified successfully (Demo mode)',
-            user_id: simulatedUserId
-          };
-        } else {
-          return {
-            success: false,
-            is_new_user: false,
-            message: 'Invalid OTP. Please try again.'
+            user_id: simulatedUserId,
           };
         }
+
+        return {
+          success: false,
+          is_new_user: false,
+          message: 'Invalid OTP. Please try again.',
+        };
       }
-      
-      throw new Error(errorMessage || currentError.message || 'Invalid verification code');
+
+      throw new Error(
+        errorMessage || currentError.message || 'Failed to verify OTP. Please try again.',
+      );
     }
   }
 
