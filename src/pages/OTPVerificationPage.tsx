@@ -60,8 +60,9 @@ const OTPVerificationPage: React.FC = () => {
         
         if (response.is_new_user) {
           toast.success('OTP verified! Let’s create your account.');
+          clearOTPData();
           setTimeout(() => {
-            navigate('/new-account', {
+            navigate('/user-type-selection', {
               state: {
                 contact: otpData.contact,
                 method: otpData.method,
