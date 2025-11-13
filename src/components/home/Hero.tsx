@@ -170,50 +170,50 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
     checkExistingBusiness();
   }, [isAuthenticated, isBusiness]);
 
-  // Fetch platform stats and business logos
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/business/stats/`;
-        console.log('Fetching stats from:', apiUrl);
-        
-        const response = await fetch(apiUrl, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          signal: AbortSignal.timeout(10000)
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('Stats API response:', data);
-        
-        if (data.success) {
-          setStats(data.data);
-          setBusinessLogos(data.data.business_logos || []);
-        } else {
-          console.warn('Stats API returned success: false');
-          throw new Error('API returned success: false');
-        }
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-        const fallbackStats = {
-          total_businesses: 1000,
-          total_users: 500,
-          average_rating: 4.8,
-          counties_covered: 15,
-          business_logos: []
-        };
-        setStats(fallbackStats);
-        setBusinessLogos([]);
-      }
-    };
-
-    fetchStats();
-  }, []);
+  // Fetch platform stats and business logos (temporarily disabled)
+  // useEffect(() => {
+  //   const fetchStats = async () => {
+  //     try {
+  //       const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/business/stats/`;
+  //       console.log('Fetching stats from:', apiUrl);
+  //       
+  //       const response = await fetch(apiUrl, {
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //         },
+  //         signal: AbortSignal.timeout(10000)
+  //       });
+  //       
+  //       if (!response.ok) {
+  //         throw new Error(`HTTP error! status: ${response.status}`);
+  //       }
+  //       
+  //       const data = await response.json();
+  //       console.log('Stats API response:', data);
+  //       
+  //       if (data.success) {
+  //         setStats(data.data);
+  //         setBusinessLogos(data.data.business_logos || []);
+  //       } else {
+  //         console.warn('Stats API returned success: false');
+  //         throw new Error('API returned success: false');
+  //       }
+  //     } catch (error) {
+  //       console.error('Error fetching stats:', error);
+  //       const fallbackStats = {
+  //         total_businesses: 1000,
+  //         total_users: 500,
+  //         average_rating: 4.8,
+  //         counties_covered: 15,
+  //         business_logos: []
+  //       };
+  //       setStats(fallbackStats);
+  //       setBusinessLogos([]);
+  //     }
+  //   };
+  //
+  //   fetchStats();
+  // }, []);
 
 
 

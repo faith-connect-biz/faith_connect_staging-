@@ -7,7 +7,7 @@ import { Hero } from '@/components/home/Hero';
 import { BusinessCategories } from '@/components/home/BusinessCategories';
 import { ProductServiceCarousel } from '@/components/home/ProductServiceCarousel';
 import { HowItWorks } from '@/components/home/HowItWorks';
-import { CommunityStats } from '@/components/home/CommunityStats';
+// import { CommunityStats } from '@/components/home/CommunityStats';
 import { Testimonials } from '@/components/home/Testimonials';
 import { CallToAction } from '@/components/home/CallToAction';
 import { Footer } from '@/components/layout/Footer';
@@ -196,7 +196,7 @@ const HomePage: React.FC = () => {
       <BusinessCategories />
       <ProductServiceCarousel />
       <HowItWorks />
-      <CommunityStats />
+      {/* <CommunityStats /> */}
       <Testimonials />
     </div>
   );

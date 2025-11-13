@@ -96,22 +96,22 @@ const AboutPage = () => {
     return () => clearInterval(timer);
   }, [carouselImages.length]);
 
-  // Fetch platform stats
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/business/stats/`);
-        const data = await response.json();
-        if (data.success) {
-          setStats(data.data);
-        }
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-      }
-    };
-
-    fetchStats();
-  }, []);
+  // Fetch platform stats (temporarily disabled)
+  // useEffect(() => {
+  //   const fetchStats = async () => {
+  //     try {
+  //       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/business/stats/`);
+  //       const data = await response.json();
+  //       if (data.success) {
+  //         setStats(data.data);
+  //       }
+  //     } catch (error) {
+  //       console.error('Error fetching stats:', error);
+  //     }
+  //   };
+  //
+  //   fetchStats();
+  // }, []);
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % carouselImages.length);

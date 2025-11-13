@@ -84,6 +84,11 @@ self.addEventListener('fetch', (event) => {
 
   // Handle API requests
   if (url.pathname.startsWith('/api/')) {
+    // Bypass service worker for production backend to avoid CORS issues
+    if (url.hostname === 'femdjango-production.up.railway.app') {
+      event.respondWith(fetch(request));
+      return;
+    }
     event.respondWith(handleApiRequest(request));
     return;
   }

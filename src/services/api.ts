@@ -763,6 +763,11 @@ class ApiService {
     console.log('API getBusinesses - Raw response:', response);
     console.log('API getBusinesses - response.data:', response.data);
     
+    // Some endpoints wrap the actual payload in a `data` property (e.g. { success, data: {...} })
+    const payload = response?.data && typeof response.data === 'object' && 'data' in response.data
+      ? (response.data as { data: any }).data
+      : response?.data;
+    
     // Handle both response formats:
     // 1. Direct array response: [business1, business2, ...]
     // 2. Paginated response: { count, next, previous, results }
@@ -771,16 +776,17 @@ class ApiService {
     let next = undefined;
     let previous = undefined;
     
-    if (Array.isArray(response.data)) {
+    if (Array.isArray(payload)) {
       // Direct array response
-      businesses = response.data;
+      businesses = payload;
       count = businesses.length;
-    } else if (response.data && typeof response.data === 'object' && 'results' in response.data) {
+    } else if (payload && typeof payload === 'object' && 'results' in payload) {
       // Paginated response
-      businesses = response.data.results || [];
-      count = response.data.count || 0;
-      next = response.data.next || undefined;
-      previous = response.data.previous || undefined;
+      const paginated = payload as { results?: Business[]; count?: number; next?: string | null; previous?: string | null };
+      businesses = paginated.results || [];
+      count = paginated.count || 0;
+      next = paginated.next || undefined;
+      previous = paginated.previous || undefined;
     } else {
       // Fallback
       businesses = [];

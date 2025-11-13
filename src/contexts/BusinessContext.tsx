@@ -13,13 +13,21 @@ interface Business {
   id: string;
   business_name: string;
   description?: string;
+  long_description?: string;
   address?: string;
   city?: string;
   county?: string;
   phone?: string;
   email?: string;
   website?: string;
+  business_logo_url?: string;
+  logo_url?: string;
   category?: number;
+  category_details?: {
+    id: number;
+    name: string;
+    slug: string;
+  };
   rating?: number;
   is_featured?: boolean;
   hasServices?: boolean;
@@ -32,22 +40,34 @@ interface Business {
 interface Service {
   id: string;
   name: string;
+  service_name?: string;
   description?: string;
+  service_description?: string;
   price_range?: string;
+  price?: string | number;
   duration?: string;
   business?: string | Business;
   category?: string;
+  service_image_url?: string;
+  image_url?: string;
+  images?: string[];
   allKeys?: string[];
 }
 
 interface Product {
   id: string;
   name: string;
+  product_name?: string;
   description?: string;
+  product_description?: string;
   price?: number;
+  price_range?: string;
   in_stock?: boolean;
   business?: string | Business;
   category?: string;
+  product_image_url?: string;
+  image_url?: string;
+  images?: string[];
   allKeys?: string[];
 }
 

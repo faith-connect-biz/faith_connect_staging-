@@ -8,7 +8,7 @@ import { Hero } from '@/components/home/Hero';
 import { BusinessCategories } from '@/components/home/BusinessCategories';
 import { ProductServiceCarousel } from '@/components/home/ProductServiceCarousel';
 import { BusinessLogosCarousel } from '@/components/home/BusinessLogosCarousel';
-import { CommunityStats } from '@/components/home/CommunityStats';
+// import { CommunityStats } from '@/components/home/CommunityStats';
 import { CallToAction } from '@/components/home/CallToAction';
 import { SearchDemo } from '@/components/search/SearchDemo';
 import { OnboardingCheck } from '@/components/OnboardingCheck';
@@ -139,9 +139,9 @@ const Index = () => {
          <FadeIn delay={600}>
            <BusinessLogosCarousel />
          </FadeIn>
-         <ScaleIn delay={800}>
+         {/* <ScaleIn delay={800}>
            <CommunityStats />
-         </ScaleIn>
+         </ScaleIn> */}
          <SlideUp delay={1000}>
            <CallToAction />
          </SlideUp>
