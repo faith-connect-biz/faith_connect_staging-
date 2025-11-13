@@ -1,17 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { Business } from '@/services/api';
 import { Pagination } from '@/components/Pagination';
-import { Star, MapPin, Building2, Phone, Globe, Eye, Share2, Clock } from 'lucide-react';
+import { Star, MapPin, Building2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { useAuth } from "@/contexts/AuthContext";
-import LikeButton from "@/components/LikeButton";
-import ShareModal from "@/components/ui/ShareModal";
-import { type ShareData } from "@/utils/sharing";
 import { getBusinessImageUrl } from '@/utils/imageUtils';
 import { usePrefetchBusiness } from '@/hooks/useBusinessQuery';
 
@@ -41,75 +36,142 @@ export const BusinessList: React.FC<BusinessListProps> = ({
     renderId: Math.random().toString(36).substring(7)
   });
   
-  const { businesses, isLoading, fetchBusinesses, totalCount, currentPage: contextCurrentPage, totalPages: contextTotalPages } = useBusiness();
+  const { businesses, isLoading, fetchBusinesses, totalCount, currentPage: contextCurrentPage, totalPages: contextTotalPages, categories } = useBusiness();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const { isAuthenticated } = useAuth();
-  const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [currentShareData, setCurrentShareData] = useState<ShareData | null>(null);
   const prefetchBusiness = usePrefetchBusiness();
 
-  // Shuffle function to randomize order and prevent bias
-  const shuffleArray = (array: any[]) => {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  };
-
-  // Use businesses directly from server (server-side filtering)
+  // Use businesses directly from server (server-side filtering) - NO SHUFFLING to prevent UI dancing
   const filteredBusinesses = useMemo(() => {
     if (!Array.isArray(businesses)) return [];
-    
-    // Randomize the order to prevent bias
-    return shuffleArray(businesses);
+    // Return businesses in their original order from API
+    return businesses;
   }, [businesses]);
 
   // Update pagination from context (server-side pagination)
+  // Only update if values actually changed and we're not currently fetching
   useEffect(() => {
-    setTotalItems(totalCount || 0);
-    setTotalPages(contextTotalPages || 1);
-    setCurrentPage(contextCurrentPage || 1);
-  }, [totalCount, contextTotalPages, contextCurrentPage]);
+    // Skip updates if we're currently fetching to prevent circular updates
+    if (isFetchingRef.current) {
+      return;
+    }
+    
+    if (totalCount !== totalItems) {
+      setTotalItems(totalCount || 0);
+    }
+    if (contextTotalPages !== totalPages) {
+      setTotalPages(contextTotalPages || 1);
+    }
+    // Only update currentPage if it's significantly different (more than 1 page difference)
+    // This prevents minor updates from triggering re-fetches
+    if (contextCurrentPage !== currentPage && Math.abs((contextCurrentPage || 1) - currentPage) > 0) {
+      setCurrentPage(contextCurrentPage || 1);
+    }
+  }, [totalCount, contextTotalPages, contextCurrentPage, totalItems, totalPages, currentPage]);
 
+  // Extract stable filter values to prevent unnecessary re-renders
+  const searchTerm = useMemo(() => filters.searchTerm?.trim() || '', [filters.searchTerm]);
+  const category = useMemo(() => filters.category?.trim() || '', [filters.category]);
+  
+  // Track previous params to prevent infinite loops
+  const prevParamsRef = useRef<string>('');
+  const isFetchingRef = useRef<boolean>(false);
+  const fetchFnRef = useRef(fetchBusinesses);
+  const categoriesRef = useRef(categories);
+  
+  // Update refs when they change (without triggering fetch)
+  useEffect(() => {
+    fetchFnRef.current = fetchBusinesses;
+  }, [fetchBusinesses]);
+  
+  useEffect(() => {
+    categoriesRef.current = categories;
+  }, [categories]);
+  
   // Fetch businesses from API with server-side pagination and search
   useEffect(() => {
+    // Prevent concurrent fetches
+    if (isFetchingRef.current) {
+      console.log('🔍 BusinessList - Skipping fetch: already fetching');
+      return;
+    }
+    
     const searchParams: any = { page: currentPage, limit: itemsPerPage };
     
     // Add search term if provided
-    if (filters.searchTerm && filters.searchTerm.trim()) {
-      searchParams.search = filters.searchTerm.trim();
+    if (searchTerm) {
+      searchParams.search = searchTerm;
     }
     
-    // Add category filter if provided
-    if (filters.category && filters.category.trim()) {
-      searchParams.category = filters.category;
+    // Convert category slug to category ID if provided (for consistency with services/products)
+    if (category) {
+      // Check if it's already a number (ID)
+      const categoryId = parseInt(category, 10);
+      if (!isNaN(categoryId)) {
+        searchParams.category = categoryId;
+      } else if (categoriesRef.current && categoriesRef.current.length > 0) {
+        // It's a slug, find the matching category ID
+        const matchedCategory = categoriesRef.current.find(
+          (cat): cat is { id: number; slug: string; name: string } => {
+            if (!cat || typeof cat !== 'object') return false;
+            const categoryObj = cat as any;
+            return (categoryObj.slug === category) || 
+                   (categoryObj.name?.toLowerCase() === category.toLowerCase());
+          }
+        );
+        if (matchedCategory) {
+          searchParams.category = matchedCategory.id;
+        }
+      }
     }
     
-    console.log('🔍 BusinessList - useEffect triggered:', {
-      currentPage,
-      itemsPerPage,
-      searchTerm: filters.searchTerm,
-      category: filters.category,
-      searchParams,
-      timestamp: new Date().toISOString()
+    // Create a stable, normalized key to compare params (sort keys for consistency)
+    const normalizedParams = Object.keys(searchParams)
+      .sort()
+      .reduce((acc: any, key) => {
+        acc[key] = searchParams[key];
+        return acc;
+      }, {});
+    const paramsKey = JSON.stringify(normalizedParams);
+    
+    // Only fetch if params actually changed
+    if (prevParamsRef.current === paramsKey) {
+      console.log('🔍 BusinessList - Skipping fetch: params unchanged', { paramsKey });
+      return;
+    }
+    
+    console.log('🔍 BusinessList - Fetching with new params:', { 
+      oldParams: prevParamsRef.current, 
+      newParams: paramsKey,
+      searchParams 
     });
     
+    prevParamsRef.current = paramsKey;
+    isFetchingRef.current = true;
+    
     // Debounce search to prevent excessive API calls
-    const timeoutId = setTimeout(() => {
-      console.log('🔍 BusinessList - Executing fetchBusinesses:', searchParams);
-      fetchBusinesses(searchParams);
-    }, filters.searchTerm ? 300 : 0); // 300ms delay for search, immediate for page changes
+    const timeoutId = setTimeout(async () => {
+      try {
+        console.log('🔍 BusinessList - Executing fetch:', searchParams);
+        await fetchFnRef.current(searchParams);
+      } catch (error) {
+        console.error('🔍 BusinessList - Fetch error:', error);
+      } finally {
+        // Reset fetching flag after state updates complete
+        setTimeout(() => {
+          isFetchingRef.current = false;
+          console.log('🔍 BusinessList - Fetch complete, flag reset');
+        }, 200);
+      }
+    }, searchTerm ? 300 : 0); // 300ms delay for search, immediate for page changes
 
     return () => {
-      console.log('🔍 BusinessList - Cleaning up timeout');
       clearTimeout(timeoutId);
+      // Don't reset flag in cleanup - let the finally block handle it
     };
-  }, [currentPage, itemsPerPage, filters.searchTerm, filters.category, fetchBusinesses]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentPage, itemsPerPage, searchTerm, category]); // Use stable memoized values
 
   // Use filtered businesses directly (no client-side pagination)
   const paginatedBusinesses = filteredBusinesses;
@@ -123,8 +185,24 @@ export const BusinessList: React.FC<BusinessListProps> = ({
       searchParams.search = filters.searchTerm.trim();
     }
     
+    // Convert category slug to category ID if provided
     if (filters.category && filters.category.trim()) {
-      searchParams.category = filters.category;
+      const categoryId = parseInt(filters.category, 10);
+      if (!isNaN(categoryId)) {
+        searchParams.category = categoryId;
+      } else {
+        const matchedCategory = categories.find(
+          (cat): cat is { id: number; slug: string; name: string } => {
+            if (!cat || typeof cat !== 'object') return false;
+            const category = cat as any;
+            return (category.slug === filters.category) || 
+                   (category.name?.toLowerCase() === filters.category.toLowerCase());
+          }
+        );
+        if (matchedCategory) {
+          searchParams.category = matchedCategory.id;
+        }
+      }
     }
     
     fetchBusinesses(searchParams);
@@ -135,24 +213,20 @@ export const BusinessList: React.FC<BusinessListProps> = ({
     navigate(`/business/${business.id}`);
   };
 
-  const handleShare = (e: React.MouseEvent, business: Business) => {
-    e.stopPropagation();
-    
-    const shareData: ShareData = {
-      title: business.business_name,
-      text: business.description || `Check out ${business.business_name}`,
-      url: window.location.href,
-      image: business.business_image_url,
-    };
-    
-    setCurrentShareData(shareData);
-    setShareModalOpen(true);
-  };
-
   const BusinessCard = ({ business }: { business: Business }) => {
     const handleMouseEnter = () => {
       prefetchBusiness(business.id);
     };
+
+    // Get location string
+    const location = business.city && (business as any).county 
+      ? `${business.city}, ${(business as any).county}` 
+      : business.address || 'Location not specified';
+
+    // Get category name
+    const categoryName = business.category_details?.name || 
+                        (business.category as any)?.name || 
+                        'Uncategorized';
 
     return (
       <Card 
@@ -162,143 +236,58 @@ export const BusinessList: React.FC<BusinessListProps> = ({
         onMouseEnter={handleMouseEnter}
       >
         {/* Business Image */}
-        <div className="relative h-48 overflow-hidden">
+        <div className="relative h-56 overflow-hidden">
           <img
             src={getBusinessImageUrl(business)}
-              alt={business.business_name}
+            alt={business.business_name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.src = "/placeholder.svg";
             }}
           />
-          
-          {/* Hover Overlay with Action Buttons */}
-          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-end p-3">
-            <div className="flex gap-2">
-              {isAuthenticated && (
-                <LikeButton
-                  itemId={String(business.id)}
-                  itemType="business"
-                  itemName={business.business_name}
-                  businessName={business.business_name}
-                  businessId={business.id}
-                  description={business.description}
-                  price=""
-                  priceCurrency=""
-                  rating={Number(business.rating)}
-                  reviewCount={Number(business.review_count)}
-                  inStock={true}
-                  isActive={true}
-                  size="sm"
-                  className="bg-white/90 hover:bg-white shadow-lg"
-                />
-              )}
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={(e) => handleShare(e, business)}
-                className="bg-white/90 hover:bg-white text-fem-navy hover:text-fem-terracotta shadow-lg h-8 w-8 p-0 rounded-full"
-              >
-                <Share2 className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Business Status Badges */}
-          <div className="absolute top-3 left-3 flex flex-col gap-2">
-            <Badge variant={business.is_active ? "default" : "secondary"} className="bg-fem-navy/90 text-white">
-              {business.is_active ? "Active" : "Inactive"}
-                </Badge>
-              {business.is_featured && (
-              <Badge variant="default" className="bg-fem-gold text-white">
-                <Star className="w-3 h-3 mr-1" />
-                  Featured
-                </Badge>
-              )}
-            </div>
-
-          {/* Business Verification Badge */}
-          {business.is_verified && (
-            <div className="absolute top-3 right-3">
-              <Badge variant="default" className="bg-green-600 text-white">
-                <Star className="w-3 h-3 mr-1" />
-                Verified
-              </Badge>
-              </div>
-          )}
-          </div>
+        </div>
           
         <CardContent className="p-5">
           {/* Business Name */}
-          <h3 className="font-bold text-lg text-fem-navy mb-3 group-hover:text-fem-terracotta transition-colors duration-300 cursor-pointer line-clamp-2">
+          <h3 className="font-bold text-lg text-fem-navy mb-2 group-hover:text-fem-terracotta transition-colors duration-300 cursor-pointer line-clamp-2">
             {business.business_name}
           </h3>
 
           {/* Business Category */}
-          {business.category && (
-            <div className="mb-3">
-              <Badge variant="outline" className="text-xs bg-gradient-to-r from-fem-terracotta/10 to-fem-gold/10 text-fem-terracotta border-fem-terracotta/30 hover:from-fem-terracotta/20 hover:to-fem-gold/20 transition-all duration-200">
-                {business.category.name}
-              </Badge>
-                  </div>
-          )}
+          <div className="mb-3">
+            <Badge variant="outline" className="text-xs bg-gradient-to-r from-fem-terracotta/10 to-fem-gold/10 text-fem-terracotta border-fem-terracotta/30">
+              {categoryName}
+            </Badge>
+          </div>
 
           {/* Business Description */}
           {business.description && (
-            <p className="text-gray-700 text-sm mb-3 line-clamp-2">
+            <p className="text-gray-700 text-sm mb-3 line-clamp-3">
               {business.description}
             </p>
           )}
 
-          {/* Business Location */}
-          <div className="flex items-center text-sm text-gray-600 mb-3">
-            <MapPin className="w-4 h-4 mr-1" />
-            {business.city && (business as any).county ? `${business.city}, ${(business as any).county}` : business.address}
-                </div>
+          {/* Business Location/Address */}
+          <div className="flex items-start text-sm text-gray-600 mb-4">
+            <MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+            <span className="line-clamp-2">{location}</span>
+          </div>
 
-          {/* Business Contact Info */}
-          <div className="mb-3">
-            {business.phone && (
-              <div className="flex items-center text-sm text-gray-600 mb-1">
-                <Phone className="w-4 h-4 mr-1" />
-                {business.phone}
-              </div>
-            )}
-            {business.website && (
-              <div className="flex items-center text-sm text-gray-600">
-                <Globe className="w-4 h-4 mr-1" />
-                <span className="truncate">{business.website}</span>
-              </div>
-                  )}
-                </div>
-
-          {/* Business Rating */}
-          <div className="flex items-center justify-between">
+          {/* Business Reviews */}
+          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
             <div className="flex items-center">
-              <Star className="w-4 h-4 text-yellow-500 mr-1" />
+              <Star className="w-4 h-4 text-yellow-500 mr-1 fill-yellow-500" />
               <span className="text-sm font-medium text-gray-700">
                 {business.rating && !isNaN(Number(business.rating)) ? Number(business.rating).toFixed(1) : '0.0'}
               </span>
               <span className="text-sm text-gray-500 ml-1">
-                ({business.review_count || 0} reviews)
+                ({business.review_count || 0} {business.review_count === 1 ? 'review' : 'reviews'})
               </span>
             </div>
-            
-              <Button 
-                variant="outline" 
-                size="sm" 
-              className="text-fem-navy border-fem-navy hover:bg-fem-navy hover:text-white"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleBusinessClick(business);
-              }}
-            >
-              View Details
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
     );
   };
 
@@ -349,15 +338,6 @@ export const BusinessList: React.FC<BusinessListProps> = ({
             itemsPerPage={itemsPerPage}
           />
         </div>
-      )}
-
-      {/* Share Modal */}
-      {currentShareData && (
-        <ShareModal
-          isOpen={shareModalOpen}
-          onClose={() => setShareModalOpen(false)}
-          shareData={currentShareData}
-        />
       )}
     </div>
   );

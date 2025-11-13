@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { Product, Business } from '@/services/api';
@@ -34,7 +34,7 @@ export const ProductList: React.FC<ProductListProps> = ({
   filters, 
   itemsPerPage = 15
 }) => {
-  const { products, businesses, isLoadingProducts, fetchProductsWithPagination, totalProductsCount, currentPage: contextCurrentPage, totalPages: contextTotalPages } = useBusiness();
+  const { products, businesses, isLoadingProducts, fetchProductsWithPagination, totalProductsCount, currentPage: contextCurrentPage, totalPages: contextTotalPages, categories } = useBusiness();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -43,59 +43,135 @@ export const ProductList: React.FC<ProductListProps> = ({
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [currentShareData, setCurrentShareData] = useState<ShareData | null>(null);
 
-  // Shuffle function to randomize order and prevent bias
-  const shuffleArray = (array: any[]) => {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  };
-
-  // Use products directly from server (server-side filtering)
+  // Use products directly from server (server-side filtering) - NO SHUFFLING to prevent UI dancing
   const filteredProducts = useMemo(() => {
-    console.log('🔍 ProductList - Current products state:', {
-      products,
-      productsType: typeof products,
-      isArray: Array.isArray(products),
-      length: products?.length || 0
-    });
-    
     if (!Array.isArray(products)) return [];
-    
-    // Randomize the order to prevent bias
-    return shuffleArray(products);
+    // Return products in their original order from API
+    return products;
   }, [products]);
 
   // Update pagination from context (server-side pagination)
+  // Only update if values actually changed and we're not currently fetching
   useEffect(() => {
-    setTotalItems(totalProductsCount || 0);
-    setTotalPages(contextTotalPages || 1);
-    setCurrentPage(contextCurrentPage || 1);
-  }, [totalProductsCount, contextTotalPages, contextCurrentPage]);
+    // Skip updates if we're currently fetching to prevent circular updates
+    if (isFetchingRef.current) {
+      return;
+    }
+    
+    if (totalProductsCount !== totalItems) {
+      setTotalItems(totalProductsCount || 0);
+    }
+    if (contextTotalPages !== totalPages) {
+      setTotalPages(contextTotalPages || 1);
+    }
+    // Only update currentPage if it's significantly different (more than 1 page difference)
+    // This prevents minor updates from triggering re-fetches
+    if (contextCurrentPage !== currentPage && Math.abs((contextCurrentPage || 1) - currentPage) > 0) {
+      setCurrentPage(contextCurrentPage || 1);
+    }
+  }, [totalProductsCount, contextTotalPages, contextCurrentPage, totalItems, totalPages, currentPage]);
 
+  // Extract stable filter values to prevent unnecessary re-renders
+  const searchTerm = useMemo(() => filters.searchTerm?.trim() || '', [filters.searchTerm]);
+  const category = useMemo(() => filters.category?.trim() || '', [filters.category]);
+  
+  // Track previous params to prevent infinite loops
+  const prevParamsRef = useRef<string>('');
+  const isFetchingRef = useRef<boolean>(false);
+  const fetchFnRef = useRef(fetchProductsWithPagination);
+  const categoriesRef = useRef(categories);
+  
+  // Update refs when they change (without triggering fetch)
+  useEffect(() => {
+    fetchFnRef.current = fetchProductsWithPagination;
+  }, [fetchProductsWithPagination]);
+  
+  useEffect(() => {
+    categoriesRef.current = categories;
+  }, [categories]);
+  
   // Fetch products from API with server-side pagination and search
   useEffect(() => {
+    // Prevent concurrent fetches
+    if (isFetchingRef.current) {
+      console.log('🔍 ProductList - Skipping fetch: already fetching');
+      return;
+    }
+    
     const searchParams: any = { page: currentPage, limit: itemsPerPage };
     
     // Add search term if provided
-    if (filters.searchTerm && filters.searchTerm.trim()) {
-      searchParams.search = filters.searchTerm.trim();
+    if (searchTerm) {
+      searchParams.search = searchTerm;
     }
     
-    // Add category filter if provided
-    if (filters.category && filters.category.trim()) {
-      searchParams.category = filters.category.trim();
+    // Convert category slug to category ID if provided (backend expects ID for business__category)
+    if (category) {
+      // Check if it's already a number (ID)
+      const categoryId = parseInt(category, 10);
+      if (!isNaN(categoryId)) {
+        searchParams.category = categoryId;
+      } else if (categoriesRef.current && categoriesRef.current.length > 0) {
+        // It's a slug, find the matching category ID
+        const matchedCategory = categoriesRef.current.find(
+          (cat): cat is { id: number; slug: string; name: string } => {
+            if (!cat || typeof cat !== 'object') return false;
+            const categoryObj = cat as any;
+            return (categoryObj.slug === category) || 
+                   (categoryObj.name?.toLowerCase() === category.toLowerCase());
+          }
+        );
+        if (matchedCategory) {
+          searchParams.category = matchedCategory.id;
+        }
+      }
     }
+    
+    // Create a stable, normalized key to compare params (sort keys for consistency)
+    const normalizedParams = Object.keys(searchParams)
+      .sort()
+      .reduce((acc: any, key) => {
+        acc[key] = searchParams[key];
+        return acc;
+      }, {});
+    const paramsKey = JSON.stringify(normalizedParams);
+    
+    // Only fetch if params actually changed
+    if (prevParamsRef.current === paramsKey) {
+      console.log('🔍 ProductList - Skipping fetch: params unchanged', { paramsKey });
+      return;
+    }
+    
+    console.log('🔍 ProductList - Fetching with new params:', { 
+      oldParams: prevParamsRef.current, 
+      newParams: paramsKey,
+      searchParams 
+    });
+    
+    prevParamsRef.current = paramsKey;
+    isFetchingRef.current = true;
     
     // Debounce search to prevent excessive API calls
-    const timeoutId = setTimeout(() => {
-      fetchProductsWithPagination(searchParams);
-    }, filters.searchTerm ? 300 : 0); // 300ms delay for search, immediate for page changes
+    const timeoutId = setTimeout(async () => {
+      try {
+        console.log('🔍 ProductList - Executing fetch:', searchParams);
+        await fetchFnRef.current(searchParams);
+      } catch (error) {
+        console.error('🔍 ProductList - Fetch error:', error);
+      } finally {
+        // Reset fetching flag after state updates complete
+        setTimeout(() => {
+          isFetchingRef.current = false;
+          console.log('🔍 ProductList - Fetch complete, flag reset');
+        }, 200);
+      }
+    }, searchTerm ? 300 : 0); // 300ms delay for search, immediate for page changes
     
-    return () => clearTimeout(timeoutId);
-  }, [currentPage, itemsPerPage, filters.searchTerm, filters.category, fetchProductsWithPagination]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      clearTimeout(timeoutId);
+      // Don't reset flag in cleanup - let the finally block handle it
+    };
+  }, [currentPage, itemsPerPage, searchTerm, category]); // Use stable memoized values
 
   // Use filtered products directly (no client-side pagination)
   const paginatedProducts = filteredProducts;
@@ -109,6 +185,26 @@ export const ProductList: React.FC<ProductListProps> = ({
       searchParams.search = filters.searchTerm.trim();
     }
     
+    // Convert category slug to category ID if provided
+    if (filters.category && filters.category.trim()) {
+      const categoryId = parseInt(filters.category, 10);
+      if (!isNaN(categoryId)) {
+        searchParams.category = categoryId;
+      } else {
+        const matchedCategory = categories.find(
+          (cat): cat is { id: number; slug: string; name: string } => {
+            if (!cat || typeof cat !== 'object') return false;
+            const category = cat as any;
+            return (category.slug === filters.category) || 
+                   (category.name?.toLowerCase() === filters.category.toLowerCase());
+          }
+        );
+        if (matchedCategory) {
+          searchParams.category = matchedCategory.id;
+        }
+      }
+    }
+    
     fetchProductsWithPagination(searchParams);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -119,8 +215,13 @@ export const ProductList: React.FC<ProductListProps> = ({
       ? businesses.find(b => b.id === product.business)
       : product.business;
     
-    if (business?.category?.slug && (product as any).slug) {
-      navigate(`/category/${business.category.slug}/product/${(product as any).slug}`);
+    const categorySlug = business?.category_details?.slug || 
+                         (typeof business?.category === 'object' && business.category?.slug) ||
+                         ((business as any)?.category?.slug);
+    const productSlug = (product as any).slug;
+    
+    if (categorySlug && productSlug) {
+      navigate(`/category/${categorySlug}/product/${productSlug}`);
     } else {
       navigate(`/product/${product.id}`);
     }

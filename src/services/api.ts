@@ -748,7 +748,7 @@ class ApiService {
   // Business Methods
   async getBusinesses(params?: {
     search?: string;
-    category?: number;
+    category?: number | string; // Accept both ID (number) and slug (string)
     city?: string;
     county?: string;
     rating?: number;

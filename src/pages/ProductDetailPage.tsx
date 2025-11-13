@@ -29,6 +29,7 @@ import { toast } from '@/hooks/use-toast';
 import { BookingModal } from '@/components/modals/BookingModal';
 import { ContactModal } from '@/components/modals/ContactModal';
 import { analytics } from '@/services/analytics';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const ProductDetailPage: React.FC = () => {
   const { id, categorySlug, productSlug } = useParams<{ 
@@ -37,6 +38,7 @@ export const ProductDetailPage: React.FC = () => {
     productSlug?: string; 
   }>();
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [business, setBusiness] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,6 +46,9 @@ export const ProductDetailPage: React.FC = () => {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [contactDetails, setContactDetails] = useState<any>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewText, setReviewText] = useState('');
 
   useEffect(() => {
     if (id || (categorySlug && productSlug)) {

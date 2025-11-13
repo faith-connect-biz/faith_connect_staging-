@@ -209,14 +209,11 @@ export const DirectoryPage: React.FC = () => {
 
   // Note: Data loading is handled by BusinessContext, no need to duplicate here
 
-  // Shuffle data based on session key for consistent randomization per session
+  // Use businesses in original order - NO SHUFFLING to prevent UI dancing
   const shuffledBusinesses = useMemo(() => {
     if (!Array.isArray(businesses)) return [];
-    return [...businesses].sort(() => {
-      // Use session key to create consistent but random ordering
-      return 0.5 - (parseInt(sessionKey, 36) % 100) / 100;
-    });
-  }, [businesses, sessionKey]);
+    return businesses; // Return in original order from API
+  }, [businesses]);
 
   // Calculate statistics
   const verifiedBusinesses = shuffledBusinesses.filter(b => (b as any).is_verified).length;

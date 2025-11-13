@@ -28,6 +28,7 @@ import { toast } from '@/hooks/use-toast';
 import { BookingModal } from '@/components/modals/BookingModal';
 import { ContactModal } from '@/components/modals/ContactModal';
 import { analytics } from '@/services/analytics';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const ServiceDetailPage: React.FC = () => {
   const { id, categorySlug, serviceSlug } = useParams<{ 
@@ -36,6 +37,7 @@ export const ServiceDetailPage: React.FC = () => {
     serviceSlug?: string; 
   }>();
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
   const [service, setService] = useState<Service | null>(null);
   const [business, setBusiness] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,6 +45,9 @@ export const ServiceDetailPage: React.FC = () => {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [contactDetails, setContactDetails] = useState<any>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewText, setReviewText] = useState('');
 
   useEffect(() => {
     if (id || (categorySlug && serviceSlug)) {
@@ -141,6 +146,120 @@ export const ServiceDetailPage: React.FC = () => {
       title: "Email Client Opened",
       description: "Your default email client has been opened with a pre-filled booking request.",
     });
+  };
+
+  const handleWriteReview = () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to write a review.",
+        variant: "destructive",
+      });
+      localStorage.setItem("open_login_modal", "true");
+      return;
+    }
+    
+    setIsReviewModalOpen(true);
+  };
+
+  const handleSaveForLater = () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to save items for later.",
+        variant: "destructive",
+      });
+      localStorage.setItem("open_login_modal", "true");
+      return;
+    }
+
+    if (!service || !user) return;
+
+    try {
+      const storedFavorites = localStorage.getItem(`favorites_${user.id}`) || '{"products": [], "services": [], "businesses": []}';
+      const favorites = JSON.parse(storedFavorites);
+      
+      // Check if already saved
+      const existingIndex = favorites.services.findIndex((item: any) => item.id === String(service.id));
+      
+      if (existingIndex >= 0) {
+        toast({
+          title: "Already saved",
+          description: "This service is already in your favorites.",
+        });
+        return;
+      }
+
+      // Add to favorites
+      const serviceData = {
+        id: String(service.id),
+        type: 'service' as const,
+        name: service.name,
+        description: service.description,
+        price: service.price_range,
+        business_name: business?.business_name || '',
+        business_id: String(business?.id || ''),
+        rating: business?.rating,
+        review_count: business?.review_count,
+      };
+
+      favorites.services.push(serviceData);
+      localStorage.setItem(`favorites_${user.id}`, JSON.stringify(favorites));
+
+      toast({
+        title: "Saved for later",
+        description: "Service has been added to your favorites.",
+      });
+    } catch (error) {
+      console.error("Error saving service:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save service. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    if (!service || !reviewRating || !reviewText.trim()) {
+      toast({
+        title: "Incomplete review",
+        description: "Please provide both a rating and review text.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const serviceId = id || (service as any).id;
+      if (!serviceId) {
+        throw new Error("Service ID not found");
+      }
+
+      await apiService.createReview(serviceId, {
+        rating: reviewRating,
+        review_text: reviewText,
+      });
+
+      toast({
+        title: "Review submitted",
+        description: "Thank you for your review!",
+      });
+
+      setIsReviewModalOpen(false);
+      setReviewRating(0);
+      setReviewText('');
+      
+      // Reload service details to show the new review
+      loadServiceDetails();
+    } catch (error: any) {
+      console.error("Error submitting review:", error);
+      toast({
+        title: "Error",
+        description: error?.response?.data?.detail || "Failed to submit review. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleShowContact = async () => {
@@ -591,11 +710,18 @@ export const ServiceDetailPage: React.FC = () => {
                 </p>
                 
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white">
+                  <Button 
+                    onClick={handleWriteReview}
+                    className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                  >
                     <Star className="h-4 w-4 mr-2" />
                     Write First Review
                   </Button>
-                  <Button variant="outline" className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white">
+                  <Button 
+                    onClick={handleSaveForLater}
+                    variant="outline" 
+                    className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white"
+                  >
                     <Heart className="h-4 w-4 mr-2" />
                     Save for Later
                   </Button>
@@ -622,6 +748,83 @@ export const ServiceDetailPage: React.FC = () => {
       </main>
       <Footer />
       
+      {/* Review Modal */}
+      {isReviewModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setIsReviewModalOpen(false)}>
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-fem-navy">Write a Review</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIsReviewModalOpen(false);
+                  setReviewRating(0);
+                  setReviewText('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ×
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      className="focus:outline-none"
+                    >
+                      <Star
+                        className={`h-8 w-8 ${
+                          star <= reviewRating
+                            ? 'text-yellow-400 fill-yellow-400'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Your Review</label>
+                <textarea
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  placeholder="Share your experience with this service..."
+                  className="w-full min-h-[120px] p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fem-terracotta focus:border-transparent"
+                  rows={5}
+                />
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={handleSubmitReview}
+                  className="flex-1 bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white"
+                >
+                  Submit Review
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsReviewModalOpen(false);
+                    setReviewRating(0);
+                    setReviewText('');
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modals */}
       <BookingModal
         isOpen={isBookingModalOpen}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+  import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -359,11 +359,30 @@ export const ProductServiceCarousel = () => {
                     (businessRef.id as string) ||
                     (typeof candidate.business === "string" ? candidate.business : null);
                   
+                  // Get the business object (might be string ID or object)
+                  const businessObj = typeof candidate.business === "string"
+                    ? businesses?.find(b => b.id === candidate.business)
+                    : candidate.business;
+                  
+                  // Extract service/product ID and slug
+                  const itemId = (candidate.id as string) || (candidate.service_id as string) || (candidate.product_id as string);
+                  const itemSlug = (candidate.slug as string) || (candidate.service_slug as string) || (candidate.product_slug as string);
+                  
+                  // Extract category slug from business
+                  const businessDetails = businessObj ? asRecord(businessObj) : asRecord(candidate.business);
+                  const categorySlug = 
+                    (businessDetails.category_details as any)?.slug ||
+                    (typeof businessDetails.category === "object" && (businessDetails.category as any)?.slug) ||
+                    ((businessDetails.category as any)?.slug);
+                  
                   // Debug logging to help troubleshoot linking issues
                   if (process.env.NODE_ENV === 'development') {
                     console.log('Carousel Item Debug:', {
                       name,
+                      itemId,
+                      itemSlug,
                       businessId,
+                      categorySlug,
                       business: (item as any).business,
                       itemKeys: Object.keys(item as any)
                     });
@@ -376,16 +395,31 @@ export const ProductServiceCarousel = () => {
                   const isService = "duration" in candidate || "service_image_url" in candidate;
                   const isProduct = !isService;
                   
-
+                  // Build destination URL - navigate to service/product detail page, not business profile
+                  let destination = "/directory"; // fallback
+                  if (isService && itemId) {
+                    if (categorySlug && itemSlug) {
+                      destination = `/category/${categorySlug}/service/${itemSlug}`;
+                    } else {
+                      destination = `/service/${itemId}`;
+                    }
+                  } else if (isProduct && itemId) {
+                    if (categorySlug && itemSlug) {
+                      destination = `/category/${categorySlug}/product/${itemSlug}`;
+                    } else {
+                      destination = `/product/${itemId}`;
+                    }
+                  } else if (businessId) {
+                    // Fallback to business profile if we can't determine service/product
+                    destination = `/business/${businessId}`;
+                  }
                   
                   const businessData = candidate;
-                  const businessDetails = asRecord(businessData.business);
                   const businessLogoValue = businessDetails.business_logo_url;
                   const logoUrl =
                     (typeof businessLogoValue === "string" && businessLogoValue) ||
                     (typeof businessDetails.logo_url === "string" && businessDetails.logo_url) ||
                     extractImageUrl(businessData);
-                  const destination = businessId ? `/business/${businessId}` : "/directory";
                   const isServiceCard =
                     Boolean((businessData.duration as unknown) || businessData.service_image_url);
                   const tagLabel = businessData.is_featured

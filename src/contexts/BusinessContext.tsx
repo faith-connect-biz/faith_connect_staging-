@@ -350,17 +350,18 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const response = await fetchFunction(apiParams);
       
       if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
-        const shuffledData = shuffleArray(response.results);
+        // Use data in original order from API - NO SHUFFLING to prevent UI dancing
+        const data = response.results;
         const limit = apiParams.limit || DEFAULT_LIMITS.STANDARD;
         const totalPages = Math.ceil((response.count || 0) / limit);
         
         console.log(`🔍 BusinessContext - Setting ${type} data:`, {
           type,
-          dataLength: shuffledData.length,
-          sampleData: shuffledData.slice(0, 2),
+          dataLength: data.length,
+          sampleData: data.slice(0, 2),
           totalPages
         });
-        setData(shuffledData);
+        setData(data);
         setTotal(response.count || 0);
         setPage(apiParams.page || 1);
         setNext(!!response.next);
@@ -371,7 +372,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         // Cache the result
         const cacheData = {
-          data: shuffledData,
+          data: data,
           total: response.count || 0,
           page: apiParams.page || 1,
           totalPages,
@@ -380,7 +381,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         };
         console.log(`🔍 BusinessContext - Caching ${type} data:`, {
           cacheKey,
-          cacheDataLength: shuffledData.length,
+          cacheDataLength: data.length,
           cacheData
         });
         cacheRef.current.set(cacheKey, cacheData);
@@ -391,8 +392,8 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           page: apiParams.page || 1
         });
       } else if (Array.isArray(response)) {
-        const shuffledData = shuffleArray(response);
-        setData(shuffledData);
+        // Use data in original order from API - NO SHUFFLING
+        setData(response);
         setTotal(response.length);
         setPage(1);
         setNext(false);
