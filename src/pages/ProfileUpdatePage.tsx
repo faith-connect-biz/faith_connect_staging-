@@ -5,18 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Upload, User, Mail, Phone, FileText, ArrowRight, Loader2, X } from 'lucide-react';
+import { User, Mail, Phone, FileText, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/services/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Navbar } from '@/components/layout/Navbar';
+import { ImageUploader } from '@/components/ui/ImageUploader';
 
 const ProfileUpdatePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { getOTPData, clearOTPData, login } = useAuth();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const userType = location.state?.userType as 'community' | 'business';
   const otpData = getOTPData();
@@ -28,61 +28,26 @@ const ProfileUpdatePage: React.FC = () => {
     phone: otpData?.method === 'phone' ? otpData.contact : '',
     partnershipNumber: '',
     bio: '',
-    profilePicture: null as File | null,
-    profilePictureUrl: ''
+    profileImageUrl: ''
   });
   
   const [isLoading, setIsLoading] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size should be less than 5MB');
-      return;
-    }
-
-    setIsUploading(true);
-    setFormData(prev => ({ ...prev, profilePicture: file }));
-
-    try {
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(file);
-      setFormData(prev => ({ ...prev, profilePictureUrl: previewUrl }));
-      toast.success('Image uploaded successfully');
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error('Failed to upload image');
-    } finally {
-      setIsUploading(false);
-    }
+  const handleImageUploaded = (imageUrl: string) => {
+    setFormData(prev => ({ ...prev, profileImageUrl: imageUrl }));
   };
 
-  const removeProfilePicture = () => {
-    if (formData.profilePictureUrl) {
-      URL.revokeObjectURL(formData.profilePictureUrl);
-    }
-    setFormData(prev => ({ 
-      ...prev, 
-      profilePicture: null, 
-      profilePictureUrl: '' 
-    }));
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+  // Get identifier and authMethod for image upload
+  const getIdentifier = () => {
+    return otpData?.contact || (formData.email.trim() ? formData.email.trim() : formData.phone.trim());
+  };
+
+  const getAuthMethod = (): 'email' | 'phone' | undefined => {
+    return otpData?.method || (formData.email.trim() ? 'email' : formData.phone.trim() ? 'phone' : undefined);
   };
 
   const validateForm = () => {
@@ -129,11 +94,6 @@ const ProfileUpdatePage: React.FC = () => {
         return;
       }
 
-      const profileImageUrl =
-        formData.profilePictureUrl && !formData.profilePictureUrl.startsWith('blob:')
-          ? formData.profilePictureUrl
-          : undefined;
-
       const response = await apiService.registerWithOTP({
         identifier,
         authMethod,
@@ -142,7 +102,7 @@ const ProfileUpdatePage: React.FC = () => {
         partnershipNumber: formData.partnershipNumber.trim(),
         userType,
         bio: formData.bio.trim() || undefined,
-        profileImageUrl,
+        profileImageUrl: formData.profileImageUrl || undefined,
       });
 
       if (response.success) {
@@ -221,61 +181,15 @@ const ProfileUpdatePage: React.FC = () => {
             {/* Profile Picture Upload */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-fem-navy">Profile Picture</Label>
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  {formData.profilePictureUrl ? (
-                    <div className="relative">
-                      <img
-                        src={formData.profilePictureUrl}
-                        alt="Profile preview"
-                        className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
-                      />
-                      <button
-                        onClick={removeProfilePicture}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="w-20 h-20 rounded-full bg-gray-100 border-4 border-white shadow-lg flex items-center justify-center">
-                      <User className="w-8 h-8 text-gray-400" />
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex-1">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="h-10 border-white/20 hover:border-white/30 hover:bg-white/10 rounded-xl transition-all duration-500 backdrop-blur-sm"
-                  >
-                    {isUploading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-4 h-4 mr-2" />
-                        Upload Photo
-                      </>
-                    )}
-                  </Button>
-                  <p className="text-xs text-fem-darkgray mt-1">
-                    JPG, PNG up to 5MB
-                  </p>
-                </div>
-              </div>
+              <ImageUploader
+                onImageUploaded={handleImageUploaded}
+                currentImageUrl={formData.profileImageUrl}
+                identifier={getIdentifier() || undefined}
+                authMethod={getAuthMethod() || undefined}
+                variant="profile"
+                maxSizeMB={5}
+                className="w-full"
+              />
             </div>
 
             {/* Name Fields */}

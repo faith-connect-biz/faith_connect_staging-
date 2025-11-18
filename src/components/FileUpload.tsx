@@ -10,8 +10,11 @@ import {
   Plus, 
   Image as ImageIcon,
   Link as LinkIcon,
-  FileImage
+  FileImage,
+  Loader2
 } from 'lucide-react';
+import { apiService } from '@/services/api';
+import { toast } from 'sonner';
 
 interface PhotoItem {
   id: string;
@@ -20,6 +23,8 @@ interface PhotoItem {
   url?: string;
   preview: string;
   name: string;
+  uploading?: boolean;
+  uploadedUrl?: string;
 }
 
 interface FileUploadProps {
@@ -38,7 +43,14 @@ export function FileUpload({
   const [isDragOver, setIsDragOver] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photosRef = useRef<PhotoItem[]>(photos);
+  
+  // Keep ref in sync with photos prop
+  React.useEffect(() => {
+    photosRef.current = photos;
+  }, [photos]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -63,25 +75,120 @@ export function FileUpload({
     handleFiles(files);
   }, [photos]);
 
-  const handleFiles = (files: File[]) => {
+  const uploadPhoto = async (photo: PhotoItem): Promise<string> => {
+    if (!photo.file) {
+      throw new Error('No file to upload');
+    }
+
+    // Step 1: Get presigned URL from backend
+    const presignedUrlData = await apiService.getProfilePhotoUploadUrl(
+      photo.file.name,
+      photo.file.type
+    );
+
+    const { presigned_url, file_key, s3_url } = presignedUrlData;
+
+    // Step 2: Upload file to S3 using presigned URL
+    const uploadSuccess = await apiService.uploadFileToS3(presigned_url, photo.file);
+
+    if (!uploadSuccess) {
+      throw new Error('Failed to upload file to S3');
+    }
+
+    // Step 3: Return the S3 URL
+    // Construct S3 URL if not provided
+    if (s3_url) {
+      return s3_url;
+    } else {
+      // Fallback: construct S3 URL from file_key
+      const bucketName = import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp';
+      const region = import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1';
+      return `https://${bucketName}.s3.${region}.amazonaws.com/${file_key}`;
+    }
+  };
+
+  const handleFiles = async (files: File[]) => {
     const validFiles = files.filter(file => 
       acceptedTypes.includes(file.type) && file.size <= 5 * 1024 * 1024 // 5MB limit
     );
 
     if (photos.length + validFiles.length > maxFiles) {
-      alert(`You can only upload up to ${maxFiles} photos.`);
+      toast.error(`You can only upload up to ${maxFiles} photos.`);
       return;
     }
 
-    const newPhotos = validFiles.map(file => ({
-      id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    // Create photo items with uploading state
+    const newPhotos: PhotoItem[] = validFiles.map((file, index) => ({
+      id: `file-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
       type: 'file' as const,
       file,
       preview: URL.createObjectURL(file),
-      name: file.name
+      name: file.name,
+      uploading: true,
+      uploadedUrl: undefined
     }));
 
-    onPhotosChange([...photos, ...newPhotos]);
+    // Add photos immediately with uploading state
+    const initialPhotos = [...photos, ...newPhotos];
+    photosRef.current = initialPhotos;
+    onPhotosChange(initialPhotos);
+
+    // Upload each photo
+    const uploadPromises = newPhotos.map(async (photo) => {
+      try {
+        setUploadingPhotos(prev => new Set(prev).add(photo.id));
+        
+        const uploadedUrl = await uploadPhoto(photo);
+        
+        // Update the photo with uploaded URL
+        const currentPhotos = photosRef.current;
+        const photoIndex = currentPhotos.findIndex(p => p.id === photo.id);
+        if (photoIndex !== -1) {
+          const updatedPhotos = [...currentPhotos];
+          updatedPhotos[photoIndex] = {
+            ...updatedPhotos[photoIndex],
+            uploading: false,
+            uploadedUrl: uploadedUrl,
+            url: uploadedUrl,
+            preview: uploadedUrl, // Update preview to show uploaded image
+            type: 'url' // Change type to url since it's now uploaded
+          };
+          
+          // Clean up blob URL
+          if (photo.preview.startsWith('blob:')) {
+            URL.revokeObjectURL(photo.preview);
+          }
+          
+          photosRef.current = updatedPhotos;
+          onPhotosChange(updatedPhotos);
+        }
+        
+        toast.success(`Photo "${photo.name}" uploaded successfully`);
+      } catch (error: any) {
+        console.error('Error uploading photo:', error);
+        toast.error(`Failed to upload "${photo.name}": ${error.message || 'Unknown error'}`);
+        
+        // Remove failed photo from list
+        const currentPhotos = photosRef.current;
+        // Clean up blob URL
+        if (photo.preview.startsWith('blob:')) {
+          URL.revokeObjectURL(photo.preview);
+        }
+        
+        const filteredPhotos = currentPhotos.filter(p => p.id !== photo.id);
+        photosRef.current = filteredPhotos;
+        onPhotosChange(filteredPhotos);
+      } finally {
+        setUploadingPhotos(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(photo.id);
+          return newSet;
+        });
+      }
+    });
+
+    // Wait for all uploads to complete
+    await Promise.all(uploadPromises);
   };
 
   const handleUrlAdd = () => {
@@ -238,17 +345,34 @@ export function FileUpload({
                       <X className="h-3 w-3" />
                     </button>
 
+                    {/* Uploading Overlay */}
+                    {photo.uploading && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-md">
+                        <Loader2 className="h-6 w-6 text-white animate-spin" />
+                      </div>
+                    )}
+
                     {/* Type Badge */}
                     <Badge 
                       variant="secondary" 
                       className="absolute bottom-1 left-1 text-xs py-0 px-1"
                     >
-                      {photo.type === 'file' ? (
-                        <FileImage className="h-3 w-3 mr-1" />
+                      {photo.uploading ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          uploading
+                        </>
+                      ) : photo.type === 'file' ? (
+                        <>
+                          <FileImage className="h-3 w-3 mr-1" />
+                          file
+                        </>
                       ) : (
-                        <LinkIcon className="h-3 w-3 mr-1" />
+                        <>
+                          <LinkIcon className="h-3 w-3 mr-1" />
+                          url
+                        </>
                       )}
-                      {photo.type}
                     </Badge>
                   </div>
                   

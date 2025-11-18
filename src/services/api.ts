@@ -366,9 +366,122 @@ export interface UserActivity {
   review_text?: string;
 }
 
+// New request/response interfaces for OTP Flow
+export interface InitiateAuthRequest {
+  identifier: string; // email or phone
+  auth_method: 'email' | 'phone';
+}
+
+export interface InitiateAuthResponse {
+  success: boolean;
+  message: string;
+  user_id?: string;
+  requires_profile_completion?: boolean;
+}
+
+export interface VerifyOTPRequest {
+  identifier?: string; // email or phone (for identifier-based verification)
+  user_id?: string; // alternative to identifier
+  auth_method?: 'email' | 'phone';
+  otp: string;
+}
+
+export interface VerifyOTPResponse {
+  success: boolean;
+  message: string;
+  user?: User;
+  tokens?: AuthTokens;
+  requires_profile_completion?: boolean;
+}
+
+export interface ResendOTPRequest {
+  identifier: string;
+  auth_method: 'email' | 'phone';
+}
+
+export interface CompleteProfileRequest {
+  identifier: string;
+  auth_method: 'email' | 'phone';
+  first_name: string;
+  last_name: string;
+  partnership_number: string;
+  user_type: 'community' | 'business';
+  bio?: string;
+  address?: string;
+  county?: string;
+  city?: string;
+  website?: string;
+  profile_image_url?: string;
+}
+
+export interface PresignedUrlRequest {
+  file_name: string;
+  content_type: string;
+}
+
+export interface PresignedUrlResponse {
+  presigned_url: string;
+  file_url: string;
+  expires_in: number;
+}
+
+export interface ProfilePhotoUploadRequest extends PresignedUrlRequest {
+  identifier?: string; // for unauthenticated uploads
+  auth_method?: 'email' | 'phone';
+}
+
+export interface BusinessImageUploadRequest {
+  image_type: 'image' | 'logo';
+  content_type: string;
+}
+
+export interface ServiceProductImageUploadRequest {
+  content_type: string;
+  image_role: 'main' | 'additional';
+}
+
+export interface BusinessHoursRequest {
+  hours: Array<{
+    day_of_week: number;
+    open_time?: string;
+    close_time?: string;
+    is_closed: boolean;
+  }>;
+}
+
+export interface CheckWhatsAppRequest {
+  phone: string;
+}
+
+export interface CheckWhatsAppResponse {
+  success: boolean;
+  is_whatsapp: boolean;
+  phone: string;
+  message?: string;
+}
+
+export interface PublicStats {
+  total_businesses: number;
+  total_users: number;
+  verified_businesses: number;
+  total_services: number;
+  total_products: number;
+}
+
+export interface BusinessAnalyticsResponse {
+  business_id: string;
+  business_name: string;
+  total_views: number;
+  total_favorites: number;
+  total_likes: number;
+  total_reviews: number;
+  average_rating: number;
+  rating_distribution: Record<string, number>;
+}
+
 // API Configuration
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'https://femdjango-production.up.railway.app/api';
+  import.meta.env.VITE_API_BASE_URL || 'https://faithconnectbackend-staging.up.railway.app';
 
 // Debug: Log the API base URL
 console.log('🔧 API Configuration:', {
@@ -394,6 +507,13 @@ class ApiService {
       (config) => {
         // List of public endpoints that don't require authentication
         const publicEndpoints = [
+          '/health/',
+          '/api/stats/',
+          '/api/auth/initiate-auth',
+          '/api/auth/verify-otp',
+          '/api/auth/resend-otp',
+          '/api/auth/complete-profile',
+          '/api/profile-photo-upload-url-unauthenticated',
           'register',
           'verify-registration-otp',
           'resend-otp',
@@ -408,29 +528,45 @@ class ApiService {
           'categories',
           'stats'
         ];
-        
+
         // Check if the current endpoint is public
-        const isPublicEndpoint = publicEndpoints.some(endpoint => 
+        const isPublicEndpoint = publicEndpoints.some(endpoint =>
           config.url?.includes(endpoint)
         );
-        
+
         // Public business GET endpoints (read-only). All write actions require auth.
         const method = (config.method || 'get').toLowerCase();
-        const isBusinessPath = !!config.url?.includes('/business/');
+        const isBusinessPath = !!config.url?.includes('/business/vset/') || !!config.url?.includes('/business/');
         const isWriteMethod = method !== 'get';
         const isRestrictedSegment = config.url?.includes('/user-activity/') ||
           config.url?.includes('/favorites/') ||
           config.url?.includes('/like/') ||
-          config.url?.includes('/my-business/') ||  // my-business endpoint requires auth
+          config.url?.includes('/my-business/') ||
+          config.url?.includes('/businesses/me/') ||  // ViewSet me endpoint requires auth
           config.url?.includes('/photo-request/') ||
-          config.url?.includes('/hours/') ||
-          config.url?.includes('/analytics/');
-        // Allow unauthenticated only for GETs to business resources and reviews listing
-        // IMPORTANT: POST/PUT/DELETE requests to business endpoints require authentication
-        const isPublicBusinessEndpoint = isBusinessPath && !isWriteMethod && !isRestrictedSegment;
-        
+          config.url?.includes('/check-whatsapp/') ||
+          config.url?.includes('/user-reviews/') ||
+          config.url?.includes('/user-liked-reviews/') ||
+          config.url?.match(/\/businesses\/[^/]+\/$/) && method === 'get'; // Business detail requires auth
 
-        
+        // Special handling for business hours and analytics - POST to hours requires auth, GET is public
+        const isBusinessHoursPost = config.url?.includes('/hours/') && isWriteMethod;
+        const isAnalyticsEndpoint = config.url?.includes('/analytics/'); // Analytics is public (GET)
+
+        // Allow unauthenticated only for:
+        // 1. GETs to business/services/products LIST endpoints (not detail)
+        // 2. GET to analytics endpoint
+        // 3. GET to hours endpoint
+        // IMPORTANT: POST/PUT/PATCH/DELETE requests to business endpoints require authentication
+        // IMPORTANT: Business detail endpoint requires auth according to Postman collection
+        const isPublicBusinessList = (config.url?.includes('/business/vset/businesses/') || 
+                                      config.url?.includes('/business/vset/services/') ||
+                                      config.url?.includes('/business/vset/products/')) && 
+                                     method === 'get' && 
+                                     !config.url?.match(/\/[^/]+\/[^/]+\/$/); // Not a detail endpoint
+        const isPublicBusinessEndpoint = (isPublicBusinessList || isAnalyticsEndpoint) && !isRestrictedSegment;
+
+
         // Add auth token for all protected endpoints
         // This includes: all write operations, restricted segments, and non-public endpoints
         if (!isPublicEndpoint && !isPublicBusinessEndpoint) {
@@ -444,7 +580,7 @@ class ApiService {
         } else {
           console.log(`[API] Public endpoint, no auth required: ${config.method?.toUpperCase()} ${config.url}`);
         }
-        
+
         return config;
       },
       (error) => Promise.reject(error)
@@ -528,9 +664,77 @@ class ApiService {
     );
   }
 
-  // Authentication Methods
+  // ==================== Health & Public Endpoints ====================
+
+  /**
+   * Health check endpoint
+   */
+  async healthCheck(): Promise<{ status: string; timestamp: string }> {
+    const response = await this.api.get('/health/'); // Health endpoint is at root, not under /api
+    return response.data;
+  }
+
+  /**
+   * Get public platform statistics
+   */
+  async getPublicStats(): Promise<PublicStats> {
+    const response = await this.api.get('/api/stats/');
+    return response.data;
+  }
+
+  // ==================== Authentication Methods (OTP Flow) ====================
+
+  /**
+   * Initiate authentication - sends OTP to email or phone
+   */
+  async initiateAuth(data: InitiateAuthRequest): Promise<InitiateAuthResponse> {
+    const response = await this.api.post('/api/auth/initiate-auth', data);
+    return response.data;
+  }
+
+  /**
+   * Verify OTP (using identifier)
+   */
+  async verifyOTPWithIdentifier(data: VerifyOTPRequest): Promise<VerifyOTPResponse> {
+    const response = await this.api.post('/api/auth/verify-otp', data);
+    return response.data;
+  }
+
+  /**
+   * Verify OTP (using user_id)
+   */
+  async verifyOTPWithUserId(userId: string, otp: string): Promise<VerifyOTPResponse> {
+    const response = await this.api.post('/api/auth/verify-otp', {
+      user_id: userId,
+      otp: otp
+    });
+    return response.data;
+  }
+
+  /**
+   * Resend OTP
+   */
+  async resendOTP(data: ResendOTPRequest): Promise<{ success: boolean; message: string }> {
+    const response = await this.api.post('/api/auth/resend-otp', data);
+    return response.data;
+  }
+
+  /**
+   * Complete profile after OTP verification (includes profile_image_url if uploaded)
+   */
+  async completeProfile(data: CompleteProfileRequest): Promise<{
+    success: boolean;
+    message: string;
+    user: User;
+    tokens: AuthTokens;
+  }> {
+    const response = await this.api.post('/api/auth/complete-profile', data);
+    return response.data;
+  }
+
+  // Legacy authentication methods (kept for backward compatibility)
   async login(data: LoginRequest): Promise<{ user: User; tokens: AuthTokens }> {
-    const response = await this.api.post('/login', data);
+    const response = await this.api.post('/api/login', data);
     // The backend wraps the response in a data field via success_response
     return response.data.data || response.data;
   }
@@ -545,7 +749,7 @@ class ApiService {
     user?: User; 
     tokens?: AuthTokens; 
   }> {
-    const response = await this.api.post('/register', data);
+    const response = await this.api.post('/api/register', data);
     // The backend now creates user in DB and sends OTP - user must verify OTP to activate
     return response.data;
   }
@@ -557,7 +761,7 @@ class ApiService {
     user?: User; 
     tokens?: AuthTokens; 
   }> {
-    const response = await this.api.post('/verify-registration-otp', {
+      const response = await this.api.post('/api/verify-registration-otp', {
       user_id: userId,
       otp: otp
     });
@@ -571,7 +775,7 @@ class ApiService {
     user?: User; 
     tokens?: AuthTokens; 
   }> {
-    const response = await this.api.post('/verify-registration-otp', {
+      const response = await this.api.post('/api/verify-registration-otp', {
       registration_token: registrationToken,
       otp: otp
     });
@@ -584,7 +788,7 @@ class ApiService {
     message: string; 
     otp_sent_to?: string; 
   }> {
-    const response = await this.api.post('/resend-otp', {
+      const response = await this.api.post('/api/resend-otp', {
       user_id: userId
     });
     return response.data;
@@ -596,7 +800,7 @@ class ApiService {
     message: string; 
     otp_sent_to?: string; 
   }> {
-    const response = await this.api.post('/resend-otp', {
+      const response = await this.api.post('/api/resend-otp', {
       registration_token: registrationToken
     });
     return response.data;
@@ -610,7 +814,7 @@ class ApiService {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
         
-        await this.api.post('/logout', {
+        await this.api.post('/api/logout', {
           refresh: refreshToken
         }, {
           signal: controller.signal
@@ -639,7 +843,7 @@ class ApiService {
   }
 
   async refreshToken(refreshToken: string): Promise<any> {
-    const response = await this.api.post('/refresh-token', {
+      const response = await this.api.post('/api/refresh-token', {
       refresh: refreshToken,
     });
     return response.data;
@@ -648,7 +852,7 @@ class ApiService {
   // Verify email OTP for signup
   async verifyEmailOTP(userId: string, otp: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await this.api.post('/verify-email-confirm', {
+      const response = await this.api.post('/api/verify-email-confirm', {
         user_id: userId,
         otp: otp
       });
@@ -662,7 +866,7 @@ class ApiService {
   // Resend email OTP for signup
   async resendEmailOTP(userId: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await this.api.post('/verify-email', {
+      const response = await this.api.post('/api/verify-email', {
         user_id: userId
       });
       return response.data;
@@ -675,7 +879,7 @@ class ApiService {
   // Verify password reset OTP
   async verifyPasswordResetOTP(token: string, otp: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await this.api.post('/forgot-password', {
+      const response = await this.api.post('/api/forgot-password', {
         token: token,
         otp: otp
       });
@@ -689,7 +893,7 @@ class ApiService {
   // Resend password reset OTP
   async resendPasswordResetOTP(email: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await this.api.post('/forgot-password', {
+      const response = await this.api.post('/api/forgot-password', {
         email: email
       });
       return response.data;
@@ -702,7 +906,7 @@ class ApiService {
   // Request password reset
   async requestPasswordReset(identifier: string, method: 'email' | 'phone'): Promise<{ success: boolean; message: string; token?: string }> {
     try {
-      const response = await this.api.post('/forgot-password', {
+      const response = await this.api.post('/api/forgot-password', {
         identifier: identifier,
         method: method
       });
@@ -716,7 +920,7 @@ class ApiService {
   // Reset password after OTP verification
   async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await this.api.post('/reset-password', {
+      const response = await this.api.post('/api/reset-password', {
         token: token,
         new_password: newPassword
       });
@@ -730,7 +934,7 @@ class ApiService {
   // Reset password with identifier + OTP (server supports this contract)
   async resetPasswordWithOTP(identifier: string, otp: string, newPassword: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await this.api.post('/reset-password', {
+      const response = await this.api.post('/api/reset-password', {
         identifier,
         otp,
         new_password: newPassword,
@@ -742,7 +946,11 @@ class ApiService {
     }
   }
 
-  // Business Methods
+  // ==================== Business Endpoints (ViewSet) ====================
+
+  /**
+   * List businesses (minimal, public)
+   */
   async getBusinesses(params?: {
     search?: string;
     category?: number;
@@ -756,10 +964,10 @@ class ApiService {
     offset?: number;
   }): Promise<{ results: Business[]; count: number; next?: string; previous?: string }> {
     console.log('API getBusinesses - params received:', params);
-    const response = await this.api.get('/business/', { params }); // Business list is at /api/business/ endpoint
+    const response = await this.api.get('/api/business/vset/businesses/', { params });
     console.log('API getBusinesses - Raw response:', response);
     console.log('API getBusinesses - response.data:', response.data);
-    
+
     // Handle both response formats:
     // 1. Direct array response: [business1, business2, ...]
     // 2. Paginated response: { count, next, previous, results }
@@ -767,7 +975,7 @@ class ApiService {
     let count = 0;
     let next = undefined;
     let previous = undefined;
-    
+
     if (Array.isArray(response.data)) {
       // Direct array response
       businesses = response.data;
@@ -783,7 +991,7 @@ class ApiService {
       businesses = [];
       count = 0;
     }
-    
+
     // Check if businesses have services and products
     if (Array.isArray(businesses)) {
       businesses.forEach((business, index) => {
@@ -798,7 +1006,7 @@ class ApiService {
         });
       });
     }
-    
+
     // Return the properly parsed response
     return {
       results: businesses,
@@ -808,12 +1016,25 @@ class ApiService {
     };
   }
 
+  /**
+   * Get business detail (requires auth)
+   */
   async getBusiness(id: string): Promise<Business> {
-    const response = await this.api.get(`/business/${id}/`); // Business detail is at /api/business/{id}
+    const response = await this.api.get(`/api/business/vset/businesses/${id}/`);
     return response.data;
   }
 
-  // Create a new business
+  /**
+   * Get my business (owner)
+   */
+  async getMyBusiness(): Promise<Business> {
+    const response = await this.api.get('/api/business/vset/businesses/me/');
+    return response.data;
+  }
+
+  /**
+   * Create business (include image/logo URLs if already uploaded)
+   */
   async createBusiness(data: BusinessCreateRequest): Promise<Business> {
     try {
       // Prepare the business data for the API
@@ -850,8 +1071,8 @@ class ApiService {
         photo_request_notes: data.photo_request_notes || null
       };
 
-      const response = await this.api.post('/business/', businessData); // Business creation is at /api/business/ endpoint
-      
+      const response = await this.api.post('/api/business/vset/businesses/', businessData);
+
       // Handle the response format from the backend
       if (response.data && response.data.data) {
         return response.data.data;
@@ -863,7 +1084,134 @@ class ApiService {
     }
   }
 
-  // Update existing business
+  /**
+   * Get business hours (public)
+   */
+  async getBusinessHoursPublic(businessId: string): Promise<BusinessHour[]> {
+    const response = await this.api.get(`/api/business/vset/businesses/${businessId}/hours/`);
+    return response.data;
+  }
+
+  /**
+   * Replace business hours (owner, POST)
+   */
+  async replaceBusinessHours(businessId: string, data: BusinessHoursRequest): Promise<BusinessHour[]> {
+    const response = await this.api.post(`/api/business/vset/businesses/${businessId}/hours/`, data);
+    return response.data;
+  }
+
+  /**
+   * Toggle favorite (auth)
+   */
+  async toggleBusinessFavorite(businessId: string): Promise<{ favorited: boolean; message: string }> {
+    const response = await this.api.post(`/api/business/vset/businesses/${businessId}/favorite/`);
+    return response.data;
+  }
+
+  /**
+   * Toggle like (auth)
+   */
+  async toggleBusinessLikeVSet(businessId: string): Promise<{ liked: boolean; message: string }> {
+    const response = await this.api.post(`/api/business/vset/businesses/${businessId}/like/`);
+    return response.data;
+  }
+
+  /**
+   * Get business reviews (auth required)
+   */
+  async getBusinessReviews(businessId: string): Promise<{ results: Review[]; count: number }> {
+    const response = await this.api.get(`/api/business/vset/businesses/${businessId}/reviews/`);
+    return response.data;
+  }
+
+  /**
+   * Create business review (auth)
+   */
+  async createBusinessReview(businessId: string, data: { rating: number; review_text?: string }): Promise<Review> {
+    const response = await this.api.post(`/api/business/vset/businesses/${businessId}/reviews/`, data);
+    return response.data;
+  }
+
+  /**
+   * Create business review (alias for createBusinessReview)
+   */
+  async createReview(businessId: string, data: { rating: number; review_text?: string }): Promise<Review> {
+    return this.createBusinessReview(businessId, data);
+  }
+
+  /**
+   * Get business analytics (public)
+   */
+  async getBusinessAnalyticsVSet(businessId: string): Promise<BusinessAnalyticsResponse> {
+    const response = await this.api.get(`/api/business/vset/businesses/${businessId}/analytics/`);
+    return response.data;
+  }
+
+  /**
+   * Get presigned URL for business image upload (client uploads; include URL in normal update)
+   */
+  async getBusinessImageUploadUrlVSet(businessId: string, data: BusinessImageUploadRequest): Promise<PresignedUrlResponse> {
+    const response = await this.api.post(`/api/business/vset/businesses/${businessId}/upload-image/`, data);
+    return response.data;
+  }
+
+  /**
+   * Check WhatsApp number (auth)
+   */
+  async checkWhatsAppNumberVSet(phone: string): Promise<CheckWhatsAppResponse> {
+    const response = await this.api.post('/api/business/vset/businesses/check-whatsapp/', { phone });
+    return response.data;
+  }
+
+  /**
+   * Get user favorites (auth)
+   */
+  async getUserFavoritesVSet(): Promise<{ results: Favorite[]; count: number }> {
+    const response = await this.api.get('/api/business/vset/businesses/favorites/');
+    return response.data;
+  }
+
+  /**
+   * Get user reviews (auth)
+   */
+  async getUserReviewsVSet(): Promise<{ results: Review[]; count: number }> {
+    const response = await this.api.get('/api/business/vset/businesses/user-reviews/');
+    return response.data;
+  }
+
+  /**
+   * Get user liked review IDs (auth)
+   */
+  async getUserLikedReviewIdsVSet(): Promise<string[]> {
+    const response = await this.api.get('/api/business/vset/businesses/user-liked-reviews/');
+    return response.data.liked_review_ids || [];
+  }
+
+  /**
+   * Get user activity (auth)
+   */
+  async getUserActivityVSet(): Promise<{ activities: UserActivity[]; total_count: number }> {
+    const response = await this.api.get('/api/business/vset/businesses/user-activity/');
+    return response.data;
+  }
+
+  /**
+   * Update business (ViewSet - PUT/PATCH)
+   */
+  async updateBusinessVSet(id: string, data: Partial<BusinessCreateRequest>): Promise<Business> {
+    const response = await this.api.patch(`/api/business/vset/businesses/${id}/`, data);
+    return response.data;
+  }
+
+  /**
+   * Delete business (ViewSet)
+   */
+  async deleteBusinessVSet(id: string): Promise<{ message: string }> {
+    const response = await this.api.delete(`/api/business/vset/businesses/${id}/`);
+    return response.data;
+  }
+
+  // Legacy: Update existing business
   async updateBusiness(id: string, data: BusinessCreateRequest): Promise<Business> {
     try {
       // Prepare the business data for the API
@@ -901,7 +1249,7 @@ class ApiService {
       };
 
       // Use the correct backend endpoint for updates
-      const response = await this.api.put(`/business/${id}/update/`, businessData);
+      const response = await this.api.patch(`/api/business/vset/businesses/${id}/`, businessData);
       
       // Handle the response format from the backend
       if (response.data && response.data.data) {
@@ -915,7 +1263,7 @@ class ApiService {
   }
 
   async deleteBusiness(id: string): Promise<void> {
-    await this.api.delete(`/business/${id}`);
+    await this.api.delete(`/api/business/vset/businesses/${id}/`);
   }
 
   // DEPRECATED: This method is dangerous and can cause security issues
@@ -935,7 +1283,7 @@ class ApiService {
   // Get business services
   async getBusinessServices(businessId: string): Promise<Service[]> {
     try {
-      const response = await this.api.get(`/business/${businessId}/services/`);
+      const response = await this.api.get(`/api/business/vset/services/?business=${businessId}`);
       return response.data.results || response.data || [];
     } catch (error) {
       console.error('Error fetching business services:', error);
@@ -946,7 +1294,7 @@ class ApiService {
   // Get business products
   async getBusinessProducts(businessId: string): Promise<Product[]> {
     try {
-      const response = await this.api.get(`/business/${businessId}/products/`);
+      const response = await this.api.get(`/api/business/vset/products/?business=${businessId}`);
       return response.data.results || response.data || [];
     } catch (error) {
       console.error('Error fetching business products:', error);
@@ -954,11 +1302,18 @@ class ApiService {
     }
   }
 
-  // Get all services across all businesses
+  // ==================== Services Endpoints (ViewSet) ====================
+
+  /**
+   * List all services (public)
+   */
   async getAllServices(params?: {
     search?: string;
     category?: string;
+    business__category?: string;
     price_range?: string;
+    business__city?: string;
+    business__county?: string;
     duration?: string;
     ordering?: string;
     page?: number;
@@ -966,22 +1321,9 @@ class ApiService {
     offset?: number;
   }): Promise<{ results: Service[]; count: number; next?: string; previous?: string }> {
     try {
-      const queryParams = new URLSearchParams();
-      if (params?.search) queryParams.append('search', params.search);
-      if (params?.category) queryParams.append('business__category', params.category);
-      if (params?.price_range) queryParams.append('price_range', params.price_range);
-      if (params?.duration) queryParams.append('duration', params.duration);
-      if (params?.ordering) queryParams.append('ordering', params.ordering);
-      if (params?.page) queryParams.append('page', params.page.toString());
-      if (params?.limit) queryParams.append('limit', params.limit.toString());
-      if (params?.offset) queryParams.append('offset', params.offset.toString());
-
-      const url = `/business/services/${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-      const response = await this.api.get(url);
+      const response = await this.api.get('/api/business/vset/services/', { params });
       console.log('API getAllServices - Raw response:', response);
       console.log('API getAllServices - Response data:', response.data);
-      console.log('API getAllServices - Response data type:', typeof response.data);
-      console.log('API getAllServices - Response data keys:', Object.keys(response.data || {}));
       return response.data;
     } catch (error) {
       console.error('Error fetching all services:', error);
@@ -989,10 +1331,87 @@ class ApiService {
     }
   }
 
-  // Get all products across all businesses
+  /**
+   * Create service (owner; include URLs if already uploaded)
+   */
+  async createServiceVSet(businessId: string, data: {
+    name: string;
+    description?: string;
+    price_range?: string;
+    duration?: string;
+    service_image_url?: string;
+    images?: string[];
+    is_active?: boolean;
+  }): Promise<Service> {
+    const response = await this.api.post(`/api/business/vset/services/?business_id=${businessId}`, data);
+    return response.data;
+  }
+
+  /**
+   * Get service detail (requires auth)
+   */
+  async getServiceVSet(serviceId: string): Promise<Service> {
+    const response = await this.api.get(`/api/business/vset/services/${serviceId}/`);
+    return response.data;
+  }
+
+  /**
+   * Get presigned URL for service image upload
+   */
+  async getServiceImageUploadUrlVSet(serviceId: string, data: ServiceProductImageUploadRequest): Promise<PresignedUrlResponse> {
+    const response = await this.api.post(`/api/business/vset/services/${serviceId}/upload-image/`, data);
+    return response.data;
+  }
+
+  /**
+   * Get service reviews (public)
+   */
+  async getServiceReviewsVSet(serviceId: string): Promise<{ results: Review[]; count: number }> {
+    const response = await this.api.get(`/api/business/vset/services/${serviceId}/reviews/`);
+    return response.data;
+  }
+
+  /**
+   * Create service review (auth)
+   */
+  async createServiceReviewVSet(serviceId: string, data: { rating: number; review_text?: string }): Promise<Review> {
+    const response = await this.api.post(`/api/business/vset/services/${serviceId}/reviews/`, data);
+    return response.data;
+  }
+
+  /**
+   * Update service (ViewSet - PUT/PATCH)
+   */
+  async updateServiceVSet(serviceId: string, data: Partial<{
+    name: string;
+    description?: string;
+    price_range?: string;
+    duration?: string;
+    service_image_url?: string;
+    images?: string[];
+    is_active?: boolean;
+  }>): Promise<Service> {
+    const response = await this.api.patch(`/api/business/vset/services/${serviceId}/`, data);
+    return response.data;
+  }
+
+  /**
+   * Delete service (ViewSet)
+   */
+  async deleteServiceVSet(serviceId: string): Promise<{ message: string }> {
+    const response = await this.api.delete(`/api/business/vset/services/${serviceId}/`);
+    return response.data;
+  }
+
+  // ==================== Products Endpoints (ViewSet) ====================
+
+  /**
+   * List all products (public)
+   */
   async getAllProducts(params?: {
     search?: string;
     category?: string;
+    business__category?: string;
     in_stock?: boolean;
     price_currency?: string;
     ordering?: string;
@@ -1001,27 +1420,93 @@ class ApiService {
     offset?: number;
   }): Promise<{ results: Product[]; count: number; next?: string; previous?: string }> {
     try {
-      const queryParams = new URLSearchParams();
-      if (params?.search) queryParams.append('search', params.search);
-      if (params?.category) queryParams.append('business__category', params.category);
-      if (params?.in_stock !== undefined) queryParams.append('in_stock', params.in_stock.toString());
-      if (params?.price_currency) queryParams.append('price_currency', params.price_currency);
-      if (params?.ordering) queryParams.append('ordering', params.ordering);
-      if (params?.page) queryParams.append('page', params.page.toString());
-      if (params?.limit) queryParams.append('limit', params.limit.toString());
-      if (params?.offset) queryParams.append('offset', params.offset.toString());
-
-      const response = await this.api.get(`/business/products/${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
+      const response = await this.api.get('/api/business/vset/products/', { params });
       console.log('API getAllProducts - Raw response:', response);
       console.log('API getAllProducts - Response data:', response.data);
-      console.log('API getAllProducts - Response data type:', typeof response.data);
-      console.log('API getAllProducts - Response data keys:', Object.keys(response.data || {}));
       return response.data;
     } catch (error) {
       console.error('Error fetching all products:', error);
       return { results: [], count: 0 };
     }
   }
+
+  /**
+   * Create product (owner; include URLs if already uploaded)
+   */
+  async createProductVSet(businessId: string, data: {
+    name: string;
+    description?: string;
+    price: number;
+    price_currency: string;
+    product_image_url?: string;
+    images?: string[];
+    in_stock?: boolean;
+    is_active?: boolean;
+  }): Promise<Product> {
+    const response = await this.api.post(`/api/business/vset/products/?business_id=${businessId}`, data);
+    return response.data;
+  }
+
+  /**
+   * Get product detail (requires auth)
+   */
+  async getProductVSet(productId: string): Promise<Product> {
+    const response = await this.api.get(`/api/business/vset/products/${productId}/`);
+    return response.data;
+  }
+
+  /**
+   * Get presigned URL for product image upload
+   */
+  async getProductImageUploadUrlVSet(productId: string, data: ServiceProductImageUploadRequest): Promise<PresignedUrlResponse> {
+    const response = await this.api.post(`/api/business/vset/products/${productId}/upload-image/`, data);
+    return response.data;
+  }
+
+  /**
+   * Get product reviews (public)
+   */
+  async getProductReviewsVSet(productId: string): Promise<{ results: Review[]; count: number }> {
+    const response = await this.api.get(`/api/business/vset/products/${productId}/reviews/`);
+    return response.data;
+  }
+
+  /**
+   * Create product review (auth)
+   */
+  async createProductReviewVSet(productId: string, data: { rating: number; review_text?: string }): Promise<Review> {
+    const response = await this.api.post(`/api/business/vset/products/${productId}/reviews/`, data);
+    return response.data;
+  }
+
+  /**
+   * Update product (ViewSet - PUT/PATCH)
+   */
+  async updateProductVSet(productId: string, data: Partial<{
+    name: string;
+    description?: string;
+    price: number;
+    price_currency: string;
+    product_image_url?: string;
+    images?: string[];
+    in_stock?: boolean;
+    is_active?: boolean;
+  }>): Promise<Product> {
+    const response = await this.api.patch(`/api/business/vset/products/${productId}/`, data);
+    return response.data;
+  }
+
+  /**
+   * Delete product (ViewSet)
+   */
+  async deleteProductVSet(productId: string): Promise<{ message: string }> {
+    const response = await this.api.delete(`/api/business/vset/products/${productId}/`);
+    return response.data;
+  }
+
+  // ==================== Legacy Business Endpoints ====================
+  // These methods are kept for backward compatibility
+  // New code should use the ViewSet methods above
 
   // Get business hours
   async getBusinessHours(businessId: string): Promise<Array<{
@@ -1103,12 +1588,11 @@ class ApiService {
     image_type: string;
   }> {
     try {
-      const response = await this.api.post(`/business/${businessId}/upload-image/`, {
+      const response = await this.api.post(`/api/business/vset/businesses/${businessId}/upload-image/`, {
         image_type: imageType,
-        file_name: fileName,
         content_type: contentType
       });
-      return response.data.data;
+      return response.data;
     } catch (error) {
       console.error('Error getting upload URL:', error);
       throw error;
@@ -1116,17 +1600,29 @@ class ApiService {
   }
 
   // Update business image using S3 pre-signed URLs
+  // Note: After uploading to S3, update the business with the image URL directly via PATCH
   async updateBusinessImage(businessId: string, imageType: 'image' | 'logo', fileKey: string): Promise<{
     business_image_url: string | null;
     business_logo_url: string | null;
     s3_url: string;
   }> {
     try {
-      const response = await this.api.put(`/business/${businessId}/upload-image/`, {
-        image_type: imageType,
-        file_key: fileKey
-      });
-      return response.data.data;
+      // Construct S3 URL from file_key
+      const bucketName = import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp';
+      const region = import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1';
+      const s3Url = `https://${bucketName}.s3.${region}.amazonaws.com/${fileKey}`;
+      
+      // Update business with the image URL
+      const updateData = imageType === 'image' 
+        ? { business_image_url: s3Url }
+        : { business_logo_url: s3Url };
+      
+      const response = await this.api.patch(`/api/business/vset/businesses/${businessId}/`, updateData);
+      return {
+        business_image_url: response.data.business_image_url || null,
+        business_logo_url: response.data.business_logo_url || null,
+        s3_url: s3Url
+      };
     } catch (error) {
       console.error('Error updating business image:', error);
       throw error;
@@ -1205,7 +1701,7 @@ class ApiService {
   async getCategories(): Promise<{ results: Category[]; count: number }> {
     try {
       // Attempt to fetch all pages if the endpoint is paginated
-      const first = await this.api.get('/business/categories/');
+      const first = await this.api.get('/api/business/categories/');
       const data = first.data;
 
       let categories: Category[] = [];
@@ -1248,7 +1744,7 @@ class ApiService {
   // Get FEM Churches from backend API
   async getFEMChurches(): Promise<{ results: FEMChurch[]; count: number }> {
     try {
-      const response = await this.api.get('/business/fem-churches/');
+      const response = await this.api.get('/api/business/fem-churches/');
       const data = response.data;
 
       let churches: FEMChurch[] = [];
@@ -1349,7 +1845,7 @@ class ApiService {
   }
 
   async toggleFavorite(businessId: string): Promise<{ message: string }> {
-    const response = await this.api.post(`/business/${businessId}/favorite`);
+    const response = await this.api.post(`/api/business/vset/businesses/${businessId}/favorite/`);
     return response.data;
   }
 
@@ -1364,17 +1860,16 @@ class ApiService {
     is_active?: boolean;
   }): Promise<Product> {
     const productData = {
-      ...data,
-      business: businessId
+      ...data
     };
-    const response = await this.api.post(`/business/${businessId}/products/`, productData);
+    const response = await this.api.post(`/api/business/vset/products/?business_id=${businessId}`, productData);
     return response.data;
   }
 
   // Get product by ID (legacy method)
   async getProduct(productId: string): Promise<Product> {
     try {
-      const response = await this.api.get(`/business/products/${productId}/`);
+      const response = await this.api.get(`/api/business/vset/products/${productId}/`);
       return response.data;
     } catch (error) {
       console.error('Error fetching product:', error);
@@ -1396,7 +1891,7 @@ class ApiService {
   // Update product
   async updateProduct(productId: string, data: Partial<Product>): Promise<Product> {
     try {
-      const response = await this.api.put(`/business/products/${productId}/`, data);
+      const response = await this.api.patch(`/api/business/vset/products/${productId}/`, data);
       return response.data;
     } catch (error) {
       console.error('Error updating product:', error);
@@ -1406,14 +1901,14 @@ class ApiService {
 
   // Delete product
   async deleteProduct(productId: string): Promise<void> {
-    await this.api.delete(`/business/products/${productId}/`);
+    await this.api.delete(`/api/business/vset/products/${productId}/`);
   }
 
 
   // Check if current user owns a business
   async getUserBusiness(): Promise<Business | null> {
     try {
-      const response = await this.api.get('/business/my-business/');
+      const response = await this.api.get('/api/business/vset/businesses/me/');
       // Handle structured response: { success: true, data: {...} }
       if (response.data && response.data.success && response.data.data) {
         return response.data.data;
@@ -1445,9 +1940,13 @@ class ApiService {
 
 
 
-  // User Methods
+  // ==================== Profile Endpoints ====================
+
+  /**
+   * Get current user profile (authenticated)
+   */
   async getCurrentUser(): Promise<User> {
-    const response = await this.api.get('/profile');
+    const response = await this.api.get('/api/profile');
     // Handle nested response structure: { success: true, message: "...", data: { user_data } }
     if (response.data && response.data.success && response.data.data) {
       return response.data.data;
@@ -1456,7 +1955,36 @@ class ApiService {
     return response.data;
   }
 
-  // Get platform statistics
+  /**
+   * Update user profile (PATCH with profile_image_url)
+   */
+  async updateProfile(data: Partial<User>): Promise<{ success: boolean; message: string; user?: User }> {
+    try {
+      const response = await this.api.patch('/api/profile-update', data);
+      return response.data;  // Return the response data directly
+    } catch (error) {
+      console.error('Profile update failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get presigned URL for profile photo upload (authenticated)
+   */
+  async getProfilePhotoUploadUrlAuth(data: PresignedUrlRequest): Promise<PresignedUrlResponse> {
+    const response = await this.api.post('/api/profile-photo-upload-url', data);
+    return response.data;
+  }
+
+  /**
+   * Get presigned URL for profile photo upload (unauthenticated onboarding)
+   */
+  async getProfilePhotoUploadUrlUnauth(data: ProfilePhotoUploadRequest): Promise<PresignedUrlResponse> {
+    const response = await this.api.post('/api/profile-photo-upload-url-unauthenticated', data);
+    return response.data;
+  }
+
+  // Get platform statistics (kept for backward compatibility)
   async getStats(): Promise<{
     total_businesses: number;
     total_users: number;
@@ -1464,7 +1992,7 @@ class ApiService {
     average_rating: number;
   }> {
     try {
-      const response = await this.api.get('/stats/');
+      const response = await this.api.get('/api/stats/');
       // Clean up the response data to ensure valid rating
       const data = response.data;
       if (data.average_rating && (isNaN(data.average_rating) || data.average_rating < 0 || data.average_rating > 5)) {
@@ -1480,16 +2008,6 @@ class ApiService {
         verified_businesses: 0,
         average_rating: 0
       };
-    }
-  }
-
-  async updateProfile(data: Partial<User>): Promise<{ success: boolean; message: string; user?: User }> {
-    try {
-      const response = await this.api.patch('/profile-update', data);
-      return response.data;  // Return the response data directly
-    } catch (error) {
-      console.error('Profile update failed:', error);
-      throw error;
     }
   }
 
@@ -1519,7 +2037,7 @@ class ApiService {
       if (!token) return false;
       
       // Make a simple API call to validate the token
-      await this.api.get('/profile');
+      await this.api.get('/api/profile');
       return true;
     } catch (error) {
       console.log('Token validation failed:', error);
@@ -1572,16 +2090,15 @@ class ApiService {
     is_active?: boolean;
   }): Promise<Service> {
     const serviceData = {
-      ...data,
-      business: businessId
+      ...data
     };
-    const response = await this.api.post(`/business/${businessId}/services/`, serviceData);
+    const response = await this.api.post(`/api/business/vset/services/?business_id=${businessId}`, serviceData);
     return response.data;
   }
 
   // Get service by ID (legacy method)
   async getService(serviceId: string): Promise<Service> {
-    const response = await this.api.get(`/business/services/${serviceId}/`);
+    const response = await this.api.get(`/api/business/vset/services/${serviceId}/`);
     return response.data;
   }
 
@@ -1597,12 +2114,12 @@ class ApiService {
   }
 
   async updateService(serviceId: string, data: Partial<Service>): Promise<Service> {
-    const response = await this.api.put(`/business/services/${serviceId}/`, data);
+    const response = await this.api.patch(`/api/business/vset/services/${serviceId}/`, data);
     return response.data;
   }
 
   async deleteService(serviceId: string): Promise<void> {
-    await this.api.delete(`/business/services/${serviceId}/`);
+    await this.api.delete(`/api/business/vset/services/${serviceId}/`);
   }
 
   // Service Image Upload using S3 pre-signed URLs
@@ -1613,9 +2130,8 @@ class ApiService {
     image_type: string;
   }> {
     try {
-      const response = await this.api.post(`/business/services/${serviceId}/upload-image/`, {
-        image_type: imageType,
-        file_name: fileName,
+      const response = await this.api.post(`/api/business/vset/services/${serviceId}/upload-image/`, {
+        image_role: imageType === 'main' ? 'main' : 'additional',
         content_type: contentType
       });
       return response.data;
@@ -1626,17 +2142,29 @@ class ApiService {
   }
 
   // Update service with uploaded image
+  // Note: After uploading to S3, update the service with the image URL directly via PATCH
   async updateServiceImage(serviceId: string, imageType: 'main' | 'additional', fileKey: string): Promise<{
     service_image_url: string | null;
     images: string[];
     s3_url: string;
   }> {
     try {
-      const response = await this.api.put(`/business/services/${serviceId}/update-image/`, {
-        image_type: imageType,
-        file_key: fileKey
-      });
-      return response.data;
+      // Construct S3 URL from file_key
+      const bucketName = import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp';
+      const region = import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1';
+      const s3Url = `https://${bucketName}.s3.${region}.amazonaws.com/${fileKey}`;
+      
+      // Update service with the image URL
+      const updateData = imageType === 'main'
+        ? { service_image_url: s3Url }
+        : { images: [s3Url] };
+      
+      const response = await this.api.patch(`/api/business/vset/services/${serviceId}/`, updateData);
+      return {
+        service_image_url: response.data.service_image_url || null,
+        images: response.data.images || [],
+        s3_url: s3Url
+      };
     } catch (error) {
       console.error('Error updating service image:', error);
       throw error;
@@ -1647,9 +2175,9 @@ class ApiService {
   async uploadProductImage(productId: string, imageFile: File): Promise<{ success: boolean; image_url?: string; message: string }> {
     try {
       // Get pre-signed URL for upload
-      const uploadUrlResponse = await this.api.post(`/business/products/${productId}/upload-image/`, {
-        file_name: imageFile.name,
-        content_type: imageFile.type
+      const uploadUrlResponse = await this.api.post(`/api/business/vset/products/${productId}/upload-image/`, {
+        content_type: imageFile.type,
+        image_role: 'main'
       });
 
       if (!uploadUrlResponse.data.success) {
@@ -1676,19 +2204,16 @@ class ApiService {
       }
 
       // Update product with new image URL
-      const updateResponse = await this.api.put(`/business/products/${productId}/update-image/`, {
-        image_url: `https://${process.env.REACT_APP_S3_BUCKET}.s3.amazonaws.com/${file_key}`
+      const s3Url = `https://${import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp'}.s3.${import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1'}.amazonaws.com/${file_key}`;
+      const updateResponse = await this.api.patch(`/api/business/vset/products/${productId}/`, {
+        product_image_url: s3Url
       });
 
-      if (updateResponse.data.success) {
-        return {
-          success: true,
-          image_url: updateResponse.data.image_url,
-          message: 'Image uploaded successfully'
-        };
-      } else {
-        throw new Error(updateResponse.data.message || 'Failed to update product image');
-      }
+      return {
+        success: true,
+        image_url: updateResponse.data.product_image_url || s3Url,
+        message: 'Image uploaded successfully'
+      };
     } catch (error) {
       console.error('Error uploading product image:', error);
       return {
@@ -1699,17 +2224,29 @@ class ApiService {
   }
 
   // Update product with uploaded image
+  // Note: After uploading to S3, update the product with the image URL directly via PATCH
   async updateProductImage(productId: string, imageType: 'main' | 'additional', fileKey: string): Promise<{
     product_image_url: string | null;
     images: string[];
     s3_url: string;
   }> {
     try {
-      const response = await this.api.put(`/business/products/${productId}/update-image/`, {
-        image_type: imageType,
-        file_key: fileKey
-      });
-      return response.data;
+      // Construct S3 URL from file_key
+      const bucketName = import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp';
+      const region = import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1';
+      const s3Url = `https://${bucketName}.s3.${region}.amazonaws.com/${fileKey}`;
+      
+      // Update product with the image URL
+      const updateData = imageType === 'main'
+        ? { product_image_url: s3Url }
+        : { images: [s3Url] };
+      
+      const response = await this.api.patch(`/api/business/vset/products/${productId}/`, updateData);
+      return {
+        product_image_url: response.data.product_image_url || null,
+        images: response.data.images || [],
+        s3_url: s3Url
+      };
     } catch (error) {
       console.error('Error updating product image:', error);
       throw error;
@@ -1721,9 +2258,10 @@ class ApiService {
     presigned_url: string;
     file_key: string;
     expires_in_minutes: number;
+    s3_url?: string;
   }> {
     try {
-      const response = await this.api.post('/profile-photo-upload-url', {
+      const response = await this.api.post('/api/profile-photo-upload-url', {
         file_name: fileName,
         content_type: contentType
       });
@@ -1734,15 +2272,42 @@ class ApiService {
     }
   }
 
+  // Unauthenticated Profile Photo Upload for profile completion
+  async getProfilePhotoUploadUrlUnauthenticated(
+    identifier: string,
+    authMethod: 'email' | 'phone',
+    fileName: string,
+    contentType: string
+  ): Promise<{
+    presigned_url: string;
+    file_key: string;
+    expires_in_minutes: number;
+    s3_url: string;
+  }> {
+    try {
+      const response = await this.api.post('/api/profile-photo-upload-url-unauthenticated', {
+        identifier,
+        auth_method: authMethod,
+        file_name: fileName,
+        content_type: contentType
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error getting unauthenticated profile photo upload URL:', error);
+      throw error;
+    }
+  }
+
   // Business Profile Image Upload using S3 pre-signed URLs
+  // Uses the unified upload-image endpoint
   async getBusinessProfileImageUploadUrl(businessId: string, fileName: string, contentType: string): Promise<{
     presigned_url: string;
     file_key: string;
     expires_in_minutes: number;
   }> {
     try {
-      const response = await this.api.post(`business/${businessId}/upload-profile-image/`, {
-        file_name: fileName,
+      const response = await this.api.post(`/api/business/vset/businesses/${businessId}/upload-image/`, {
+        image_type: 'image',
         content_type: contentType
       });
       return response.data;
@@ -1757,26 +2322,22 @@ class ApiService {
     business_image_url: string;
     s3_url: string;
   }> {
-    try {
-      const response = await this.api.put(`business/${businessId}/update-profile-image/`, {
-        file_key: fileKey
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error updating business profile image:', error);
-      throw error;
-    }
+    return this.updateBusinessImage(businessId, 'image', fileKey).then(result => ({
+      business_image_url: result.business_image_url || '',
+      s3_url: result.s3_url
+    }));
   }
 
   // Business Logo Upload using S3 pre-signed URLs
+  // Uses the unified upload-image endpoint
   async getBusinessLogoUploadUrl(businessId: string, fileName: string, contentType: string): Promise<{
     presigned_url: string;
     file_key: string;
     expires_in_minutes: number;
   }> {
     try {
-      const response = await this.api.post(`business/${businessId}/upload-logo/`, {
-        file_name: fileName,
+      const response = await this.api.post(`/api/business/vset/businesses/${businessId}/upload-image/`, {
+        image_type: 'logo',
         content_type: contentType
       });
       return response.data;
@@ -1791,27 +2352,32 @@ class ApiService {
     business_logo_url: string;
     s3_url: string;
   }> {
-    try {
-      const response = await this.api.put(`business/${businessId}/update-logo/`, {
-        file_key: fileKey
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error updating business logo:', error);
-      throw error;
-    }
+    return this.updateBusinessImage(businessId, 'logo', fileKey).then(result => ({
+      business_logo_url: result.business_logo_url || '',
+      s3_url: result.s3_url
+    }));
   }
 
   // Update profile with uploaded photo
+  // Note: After uploading to S3, update the profile with the image URL directly via PATCH
   async updateProfilePhoto(fileKey: string): Promise<{
     profile_image_url: string | null;
     s3_url: string;
   }> {
     try {
-      const response = await this.api.put('/profile-photo-update', {
-        file_key: fileKey
+      // Construct S3 URL from file_key
+      const bucketName = import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp';
+      const region = import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1';
+      const s3Url = `https://${bucketName}.s3.${region}.amazonaws.com/${fileKey}`;
+      
+      // Update profile with the image URL
+      const response = await this.api.patch('/api/profile-update', {
+        profile_image_url: s3Url
       });
-      return response.data;
+      return {
+        profile_image_url: response.data.user?.profile_image_url || s3Url,
+        s3_url: s3Url
+      };
     } catch (error) {
       console.error('Error updating profile photo:', error);
       throw error;
@@ -1831,7 +2397,7 @@ class ApiService {
 
   async getPhotoRequests(): Promise<PhotoRequest[]> {
     try {
-      const response = await this.api.get('/business/photo-requests/');
+      const response = await this.api.get('/api/business/photo-requests/');
       return response.data;
     } catch (error) {
       console.error('Error fetching photo requests:', error);
@@ -1852,7 +2418,7 @@ class ApiService {
   // Professional Service Request Methods
   async createProfessionalServiceRequest(data: CreateProfessionalServiceRequestData): Promise<ProfessionalServiceRequest> {
     try {
-      const response = await this.api.post('/business/professional-service-requests/', data);
+      const response = await this.api.post('/api/business/professional-service-requests/', data);
       return response.data;
     } catch (error) {
       console.error('Error creating professional service request:', error);
@@ -1862,7 +2428,7 @@ class ApiService {
 
   async getProfessionalServiceRequests(): Promise<ProfessionalServiceRequest[]> {
     try {
-      const response = await this.api.get('/business/my-professional-service-requests/');
+      const response = await this.api.get('/api/business/my-professional-service-requests/');
       return response.data.results || response.data;
     } catch (error) {
       console.error('Error fetching professional service requests:', error);
@@ -1883,7 +2449,7 @@ class ApiService {
   // Like Methods
   async toggleBusinessLike(businessId: string): Promise<{ liked: boolean; message: string }> {
     try {
-      const response = await this.api.post(`/business/${businessId}/like/`);
+      const response = await this.api.post(`/api/business/vset/businesses/${businessId}/like/`);
       return response.data;
     } catch (error) {
       console.error('Error toggling business like:', error);
@@ -1893,7 +2459,9 @@ class ApiService {
 
   async toggleReviewLike(reviewId: string): Promise<{ liked: boolean; message: string }> {
     try {
-      const response = await this.api.post(`/business/reviews/${reviewId}/like/`);
+      // Note: Review like endpoint path may need to be confirmed with backend
+      // This is a placeholder - the actual endpoint may be different
+      const response = await this.api.post(`/api/business/vset/businesses/reviews/${reviewId}/like/`);
       return response.data;
     } catch (error) {
       console.error('Error toggling review like:', error);
@@ -1904,7 +2472,7 @@ class ApiService {
   // User Activity Methods
   async getUserActivity(): Promise<{ activities: UserActivity[]; total_count: number }> {
     try {
-      const response = await this.api.get('/business/user-activity/');
+      const response = await this.api.get('/api/business/vset/businesses/user-activity/');
       return response.data;
     } catch (error) {
       console.error('Error fetching user activity:', error);
@@ -1915,8 +2483,8 @@ class ApiService {
   // User Favorites Methods
   async getUserFavorites(): Promise<Favorite[]> {
     try {
-      const response = await this.api.get('/business/favorites/');
-      return response.data;
+      const response = await this.api.get('/api/business/vset/businesses/favorites/');
+      return response.data.results || response.data || [];
     } catch (error) {
       console.error('Error fetching user favorites:', error);
       throw error;
@@ -1926,8 +2494,8 @@ class ApiService {
   // User Reviews Methods
   async getUserReviews(): Promise<Review[]> {
     try {
-      const response = await this.api.get('/business/user-reviews/');
-      return response.data;
+      const response = await this.api.get('/api/business/vset/businesses/user-reviews/');
+      return response.data.results || response.data || [];
     } catch (error) {
       console.error('Error fetching user reviews:', error);
       throw error;
@@ -1937,7 +2505,7 @@ class ApiService {
   // Get user's liked reviews
   async getUserLikedReviews(): Promise<string[]> {
     try {
-      const response = await this.api.get('/business/user-liked-reviews/');
+      const response = await this.api.get('/api/business/vset/businesses/user-liked-reviews/');
       return response.data.liked_review_ids || [];
     } catch (error) {
       console.error('Error fetching user liked reviews:', error);
@@ -1972,8 +2540,8 @@ class ApiService {
   // Service Review Methods
   async getServiceReviews(serviceId: string): Promise<Review[]> {
     try {
-      const response = await this.api.get(`/business/services/${serviceId}/reviews/`);
-      return response.data.results || response.data;
+      const response = await this.api.get(`/api/business/vset/services/${serviceId}/reviews/`);
+      return response.data.results || response.data || [];
     } catch (error) {
       console.error('Error fetching service reviews:', error);
       return [];
@@ -1985,7 +2553,7 @@ class ApiService {
     review_text?: string;
   }): Promise<Review> {
     try {
-      const response = await this.api.post(`/business/services/${serviceId}/reviews/`, data);
+      const response = await this.api.post(`/api/business/vset/services/${serviceId}/reviews/`, data);
       return response.data;
     } catch (error) {
       console.error('Error creating service review:', error);
@@ -1998,7 +2566,7 @@ class ApiService {
     try {
       console.log('🔧 Testing API connectivity...');
       const startTime = Date.now();
-      const response = await this.api.get('/business/', { 
+      const response = await this.api.get('/api/business/vset/businesses/', { 
         params: { limit: 1 },
         timeout: 5000 // 5 second timeout for connectivity test
       });
@@ -2024,7 +2592,7 @@ class ApiService {
     whatsapp_info?: any;
   }> {
     try {
-      const response = await this.api.post('/business/check-whatsapp/', {
+      const response = await this.api.post('/api/business/vset/businesses/check-whatsapp/', {
         phone: phone
       });
       return response.data;
@@ -2045,7 +2613,7 @@ class ApiService {
       otp?: string;
     }> {
       try {
-        const response = await this.api.post('/initiate-auth', {
+        const response = await this.api.post('/api/auth/initiate-auth', {
           identifier: contact,
           auth_method: method
         });
@@ -2071,7 +2639,7 @@ class ApiService {
         // Fallback to legacy endpoints if new auth endpoints aren't available
         if (statusCode === 404) {
           try {
-            const legacyEndpoint = method === 'email' ? '/verify-email' : '/verify-phone';
+            const legacyEndpoint = method === 'email' ? '/api/verify-email' : '/api/verify-phone';
             const legacyRequestData =
               method === 'email' ? { email: contact } : { phone: contact };
 
@@ -2165,7 +2733,7 @@ class ApiService {
     user_id?: number;
   }> {
     try {
-      const response = await this.api.post('/verify-auth-otp', {
+      const response = await this.api.post('/api/auth/verify-otp', {
         identifier: contact,
         auth_method: method,
         otp,
@@ -2283,7 +2851,7 @@ class ApiService {
       if (payload.city) requestData.city = payload.city;
       if (payload.website) requestData.website = payload.website;
 
-      const response = await this.api.post('/complete-profile', requestData);
+      const response = await this.api.post('/api/auth/complete-profile', requestData);
       const data = response.data || {};
 
       if (!data.user || !data.tokens) {

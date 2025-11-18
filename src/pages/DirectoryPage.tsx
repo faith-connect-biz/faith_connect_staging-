@@ -247,28 +247,28 @@ export const DirectoryPage: React.FC = () => {
         <div className="container mx-auto px-4 py-8">
           {/* Breadcrumb */}
           <FadeIn delay={100}>
-            <div className="mb-8">
-              <DirectoryBreadcrumb activeTab={activeTab as 'services' | 'businesses' | 'products'} className="shadow-xl" />
-            </div>
+          <div className="mb-8">
+            <DirectoryBreadcrumb activeTab={activeTab as 'services' | 'businesses' | 'products'} className="shadow-xl" />
+          </div>
           </FadeIn>
           
           {/* Enhanced Header */}
           <SlideUp delay={200}>
-            <div className="mb-8 text-center">
-              <div className="inline-flex items-center gap-3 bg-gradient-to-r from-fem-navy to-fem-terracotta text-white px-4 sm:px-6 py-3 rounded-full shadow-lg mb-4">
-                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
-                <h1 className="text-xl sm:text-2xl font-bold">Services & Products Directory</h1>
-                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
-              </div>
-              <p className="text-gray-800 max-w-2xl mx-auto px-6 py-4 text-sm sm:text-base bg-white/90 backdrop-blur-sm rounded-lg shadow-lg border border-white/20">
-                Discover trusted businesses, services, and quality products from our faith community. Connect with local entrepreneurs through their offerings.
-              </p>
+          <div className="mb-8 text-center">
+            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-fem-navy to-fem-terracotta text-white px-4 sm:px-6 py-3 rounded-full shadow-lg mb-4">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+              <h1 className="text-xl sm:text-2xl font-bold">Services & Products Directory</h1>
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
+            <p className="text-gray-800 max-w-2xl mx-auto px-6 py-4 text-sm sm:text-base bg-white/90 backdrop-blur-sm rounded-lg shadow-lg border border-white/20">
+              Discover trusted businesses, services, and quality products from our faith community. Connect with local entrepreneurs through their offerings.
+            </p>
+          </div>
           </SlideUp>
 
           {/* Stats Section */}
           <ScaleIn delay={300}>
-            <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
             <div className="bg-white/80 backdrop-blur-sm rounded-xl p-2 sm:p-4 text-center shadow-lg">
               <div className="w-6 h-6 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center mx-auto mb-1 sm:mb-2">
                 <Settings className="w-3 h-3 sm:w-6 sm:h-6 text-white" />
@@ -298,7 +298,7 @@ export const DirectoryPage: React.FC = () => {
 
           {/* Epic Search Section */}
           <FadeIn delay={400}>
-            <div className="mb-8">
+          <div className="mb-8">
             {/* Category Indicator */}
             {filters.category && (
               <div className="max-w-4xl mx-auto mb-4">
