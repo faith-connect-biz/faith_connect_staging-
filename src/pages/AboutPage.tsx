@@ -16,7 +16,7 @@ const AboutPage = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleRegisterBusinessClick = () => {
-    navigate('/register-business');
+      navigate('/register-business');
   };
 
   const handleOpenAuthModal = () => {
@@ -100,7 +100,8 @@ const AboutPage = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/business/stats/`);
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://faithconnectbackend-staging.up.railway.app';
+        const response = await fetch(`${API_BASE_URL}/api/stats/`);
         const data = await response.json();
         if (data.success) {
           setStats(data.data);

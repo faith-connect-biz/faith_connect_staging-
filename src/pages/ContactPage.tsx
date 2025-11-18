@@ -34,7 +34,7 @@ const ContactPage = () => {
   const { statusText } = useAutoSaveStatus('contact_form');
 
   const handleRegisterBusinessClick = () => {
-    navigate('/register-business');
+      navigate('/register-business');
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -52,11 +52,8 @@ const ContactPage = () => {
     setSubmitMessage('');
 
     try {
-      // Determine API base URL - use localhost for development
-      const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
-      const API_BASE_URL = isDevelopment 
-        ? 'http://localhost:8000' 
-        : import.meta.env.VITE_API_BASE_URL || 'https://femdjango-production.up.railway.app';
+      // Use staging API base URL
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://faithconnectbackend-staging.up.railway.app';
       
       // Prepare the payload to match the backend API expectations
       const payload = {

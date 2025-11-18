@@ -11,7 +11,7 @@ export const CallToAction = () => {
   const navigate = useNavigate();
 
   const handleListBusinessClick = () => {
-    navigate('/register-business');
+      navigate('/register-business');
   };
 
   return (
@@ -104,16 +104,16 @@ export const CallToAction = () => {
                      </p>
                    </div>
                    
-                   <Button 
-                     onClick={handleListBusinessClick}
-                     variant="outline" 
-                     className="w-full text-base lg:text-lg py-4 lg:py-6 rounded-xl lg:rounded-2xl border-2 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white group-hover:scale-105 transition-all duration-300"
-                   >
-                     <div className="flex items-center justify-center gap-2 lg:gap-3">
-                       <span>List Your Business</span>
-                       <ArrowRight className="w-4 h-4 lg:w-5 lg:h-5" />
-                     </div>
-                   </Button>
+                     <Button 
+                       onClick={handleListBusinessClick}
+                       variant="outline" 
+                       className="w-full text-base lg:text-lg py-4 lg:py-6 rounded-xl lg:rounded-2xl border-2 border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white group-hover:scale-105 transition-all duration-300"
+                     >
+                       <div className="flex items-center justify-center gap-2 lg:gap-3">
+                         <span>List Your Business</span>
+                         <ArrowRight className="w-4 h-4 lg:w-5 lg:h-5" />
+                       </div>
+                     </Button>
                  </div>
                </div>
              </div>

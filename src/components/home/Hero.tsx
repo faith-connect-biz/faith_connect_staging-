@@ -174,7 +174,8 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/business/stats/`;
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://faithconnectbackend-staging.up.railway.app';
+        const apiUrl = `${API_BASE_URL}/api/stats/`;
         console.log('Fetching stats from:', apiUrl);
         
         const response = await fetch(apiUrl, {
@@ -261,8 +262,8 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
             {/* Faith Connect Text */}
             <div className="flex justify-center mb-4">
               <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black bg-gradient-to-r from-fem-gold via-fem-terracotta to-fem-gold bg-clip-text text-transparent leading-tight">
-                Faith Connect
-              </h1>
+              Faith Connect
+            </h1>
             </div>
             <div className="text-white font-bold text-xl md:text-2xl lg:text-3xl xl:text-4xl drop-shadow-lg">
               Business Directory
@@ -365,15 +366,15 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
 
         </div>
 
-        {/* Stats Row */}
-        <div className="mt-6 md:mt-8 flex flex-wrap items-center justify-center gap-x-1 sm:gap-x-2 md:gap-x-4 gap-y-1 text-white font-semibold text-[10px] sm:text-xs md:text-sm lg:text-base drop-shadow-lg bg-black/20 backdrop-blur-sm rounded-lg px-2 sm:px-3 md:px-6 py-2 md:py-3 mx-2 sm:mx-4 md:mx-0">
-          <span className="whitespace-nowrap">69+ Local Businesses</span>
-          <span className="text-gray-300 hidden sm:inline">•</span>
-          <span className="whitespace-nowrap">Active Community</span>
-          <span className="text-gray-300 hidden sm:inline">•</span>
-          <span className="whitespace-nowrap">Kenya-wide</span>
-          <span className="text-gray-300 hidden sm:inline">•</span>
-          <span className="whitespace-nowrap">Network Reach</span>
+          {/* Stats Row */}
+          <div className="mt-6 md:mt-8 flex flex-wrap items-center justify-center gap-x-1 sm:gap-x-2 md:gap-x-4 gap-y-1 text-white font-semibold text-[10px] sm:text-xs md:text-sm lg:text-base drop-shadow-lg bg-black/20 backdrop-blur-sm rounded-lg px-2 sm:px-3 md:px-6 py-2 md:py-3 mx-2 sm:mx-4 md:mx-0">
+            <span className="whitespace-nowrap">69+ Local Businesses</span>
+            <span className="text-gray-300 hidden sm:inline">•</span>
+            <span className="whitespace-nowrap">Active Community</span>
+            <span className="text-gray-300 hidden sm:inline">•</span>
+            <span className="whitespace-nowrap">Kenya-wide</span>
+            <span className="text-gray-300 hidden sm:inline">•</span>
+            <span className="whitespace-nowrap">Network Reach</span>
         </div>
 
       </div>

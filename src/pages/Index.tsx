@@ -130,20 +130,20 @@ const Index = () => {
          {/* <ApiTester />
          <DataDebugger /> */}
          <FadeIn delay={200}>
-           <BusinessCategories />
+         <BusinessCategories />
          </FadeIn>
          {/* <SearchDemo /> */}
          <SlideUp delay={400}>
-           <ProductServiceCarousel />
+         <ProductServiceCarousel />
          </SlideUp>
          <FadeIn delay={600}>
-           <BusinessLogosCarousel />
+         <BusinessLogosCarousel />
          </FadeIn>
          <ScaleIn delay={800}>
-           <CommunityStats />
+         <CommunityStats />
          </ScaleIn>
          <SlideUp delay={1000}>
-           <CallToAction />
+         <CallToAction />
          </SlideUp>
        </main>
       <Footer />
