@@ -108,12 +108,19 @@ export interface Business {
   reviews?: Review[];
 }
 
+export interface Subcategory {
+  id: number;
+  name: string;
+  slug: string;
+  category_name: string;
+}
+
 export interface Category {
   id: number;
   name: string;
   slug: string;
   description?: string;
-  subcategories?: string[];
+  subcategories?: Subcategory[] | string[]; // Support both API format (Subcategory[]) and legacy (string[])
   icon?: string;
   is_active?: boolean;
   sort_order?: number;
@@ -212,6 +219,7 @@ export interface RegisterRequest {
 export interface BusinessCreateRequest {
   business_name: string;
   category_id: number;
+  subcategory_id?: number;
   sector?: string;
   subcategory?: string;
   description?: string;
@@ -223,11 +231,15 @@ export interface BusinessCreateRequest {
   office_address?: string;
   country?: string;
   city?: string;
+  county?: string;
   fem_church_id?: number;
   latitude?: number;
   longitude?: number;
   business_image_url?: string;
   business_logo_url?: string;
+  // New offering and operation fields from vset API
+  offering_type?: 'products' | 'services' | 'both';
+  operation_mode?: 'online' | 'physical' | 'hybrid';
   // Social media links
   facebook_url?: string;
   instagram_url?: string;
@@ -1049,6 +1061,7 @@ class ApiService {
       const businessData = {
         business_name: data.business_name,
         category_id: data.category_id,
+        subcategory_id: data.subcategory_id,
         sector: data.sector,
         subcategory: data.subcategory,
         description: data.description,
@@ -1060,11 +1073,14 @@ class ApiService {
         office_address: data.office_address,
         country: data.country,
         city: data.city,
+        county: data.county,
         fem_church_id: data.fem_church_id,
         latitude: data.latitude,
         longitude: data.longitude,
         business_image_url: data.business_image_url,
         business_logo_url: data.business_logo_url,
+        offering_type: data.offering_type,
+        operation_mode: data.operation_mode,
         // Social media links
         facebook_url: data.facebook_url,
         instagram_url: data.instagram_url,
@@ -1226,6 +1242,7 @@ class ApiService {
       const businessData = {
         business_name: data.business_name,
         category_id: data.category_id,
+        subcategory_id: data.subcategory_id,
         sector: data.sector,
         subcategory: data.subcategory,
         description: data.description,
@@ -1237,11 +1254,14 @@ class ApiService {
         office_address: data.office_address,
         country: data.country,
         city: data.city,
+        county: data.county,
         fem_church_id: data.fem_church_id,
         latitude: data.latitude,
         longitude: data.longitude,
         business_image_url: data.business_image_url,
         business_logo_url: data.business_logo_url,
+        offering_type: data.offering_type,
+        operation_mode: data.operation_mode,
         // Social media links
         facebook_url: data.facebook_url,
         instagram_url: data.instagram_url,
@@ -1736,11 +1756,56 @@ class ApiService {
     { id: 25, name: 'Import & Export Trade 🚢', slug: 'import-export-trade' }
   ];
 
-  // Get categories from backend API
+  // Get categories with subcategories from backend API (vset endpoint)
+  async getCategoriesWithSubcategories(): Promise<{ results: Category[]; count: number }> {
+    try {
+      console.log('📡 API: Fetching categories from /api/business/vset/categories/');
+      const response = await this.api.get('/api/business/vset/categories/');
+      const data = response.data;
+
+      let categories: Category[] = [];
+      let count = 0;
+
+      if (data && typeof data === 'object' && 'results' in data) {
+        categories = data.results || [];
+        count = data.count || categories.length;
+
+        // Fetch all pages if paginated
+        let nextUrl = data.next as string | null | undefined;
+        while (nextUrl) {
+          try {
+            const page = await this.api.get(nextUrl.startsWith('http') ? nextUrl : nextUrl.replace(/^\/api/, ''));
+            const pageData = page.data;
+            if (pageData?.results) {
+              categories = categories.concat(pageData.results);
+              nextUrl = pageData.next;
+            } else {
+              nextUrl = null;
+            }
+          } catch (pageError) {
+            console.error('Error fetching category page:', pageError);
+            nextUrl = null;
+          }
+        }
+      } else if (Array.isArray(data)) {
+        categories = data;
+        count = categories.length;
+      }
+
+      return { results: categories, count };
+    } catch (error) {
+      console.error('Error fetching categories with subcategories:', error);
+      // Fallback to regular categories endpoint (which now also uses vset)
+      return this.getCategories();
+    }
+  }
+
+  // Get categories from backend API (uses vset endpoint)
   async getCategories(): Promise<{ results: Category[]; count: number }> {
     try {
-      // Attempt to fetch all pages if the endpoint is paginated
-      const first = await this.api.get('/api/business/categories/');
+      // Use the vset endpoint which includes subcategories
+      console.log('📡 API: getCategories() - Fetching from /api/business/vset/categories/');
+      const first = await this.api.get('/api/business/vset/categories/');
       const data = first.data;
 
       let categories: Category[] = [];
@@ -1777,6 +1842,19 @@ class ApiService {
         results: this.hardcodedCategories,
         count: this.hardcodedCategories.length,
       };
+    }
+  }
+
+  // Get single category with subcategories by slug
+  async getCategoryBySlug(slug: string): Promise<Category | null> {
+    try {
+      console.log(`📡 API: getCategoryBySlug() - Fetching from /api/business/vset/categories/${slug}/`);
+      const response = await this.api.get(`/api/business/vset/categories/${slug}/`);
+      console.log(`✅ Category ${slug} fetched successfully:`, response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`❌ Error fetching category ${slug} from /api/business/vset/categories/${slug}/:`, error);
+      return null;
     }
   }
 
@@ -2856,7 +2934,9 @@ class ApiService {
   async createBusinessFromRegistration(data: {
     name: string;
     category: string;
+    category_id?: string | number;
     subcategory?: string;
+    subcategory_id?: string | number;
     description: string;
     businessType?: string;
     address?: string;
@@ -2895,37 +2975,53 @@ class ApiService {
     message: string;
   }> {
     try {
-      // Find category ID from the category input (supporting multiple formats)
-      let category;
-      try {
-        const categories = await this.getCategories();
-        const normalizedInput = (data.category || '').trim().toLowerCase();
-
-        category = categories.results.find((cat) => {
-          const nameMatch = cat.name?.trim().toLowerCase() === normalizedInput;
-          const slugMatch = (cat.slug || '').trim().toLowerCase() === normalizedInput;
-          return nameMatch || slugMatch;
-        });
-
-        if (!category && categories.results.length > 0) {
-          console.warn(
-            `[API] Category "${data.category}" not found. Using default category "${categories.results[0].name}".`
-          );
-          category = categories.results[0];
-        }
-      } catch (error) {
-        console.warn('Could not fetch categories, using demo category:', error);
-        // Use a demo category for fallback
-        category = { id: 1, name: data.category };
-      }
+      // Use category_id if provided, otherwise find category by name/slug
+      let categoryId: number;
+      let subcategoryId: number | undefined;
       
-      if (!category) {
-        throw new Error('Invalid business category');
+      if (data.category_id) {
+        // Use provided category_id directly
+        categoryId = Number(data.category_id);
+      } else {
+        // Find category ID from the category input (supporting multiple formats)
+        let category;
+        try {
+          const categories = await this.getCategories();
+          const normalizedInput = (data.category || '').trim().toLowerCase();
+
+          category = categories.results.find((cat) => {
+            const nameMatch = cat.name?.trim().toLowerCase() === normalizedInput;
+            const slugMatch = (cat.slug || '').trim().toLowerCase() === normalizedInput;
+            return nameMatch || slugMatch;
+          });
+
+          if (!category && categories.results.length > 0) {
+            console.warn(
+              `[API] Category "${data.category}" not found. Using default category "${categories.results[0].name}".`
+            );
+            category = categories.results[0];
+          }
+        } catch (error) {
+          console.warn('Could not fetch categories, using demo category:', error);
+          // Use a demo category for fallback
+          category = { id: 1, name: data.category };
+        }
+        
+        if (!category) {
+          throw new Error('Invalid business category');
+        }
+        categoryId = category.id;
+      }
+
+      // Use subcategory_id if provided
+      if (data.subcategory_id) {
+        subcategoryId = Number(data.subcategory_id);
       }
 
       const businessData: BusinessCreateRequest = {
         business_name: data.name,
-        category_id: category.id,
+        category_id: categoryId,
+        subcategory_id: subcategoryId,
         description: data.description,
         address: data.address || '',
         city: data.city || '',

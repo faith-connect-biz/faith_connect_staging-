@@ -1,116 +1,99 @@
-import React, { useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { 
-  Utensils, 
-  ShoppingBag, 
-  Settings, 
-  Heart, 
-  Car, 
-  Home, 
-  GraduationCap, 
-  Monitor,
-  Building2,
-  Palette,
-  Wrench,
-  Briefcase,
-  Hammer,
-  HardHat
-} from "lucide-react";
+import { Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useBusiness } from "@/contexts/BusinessContext";
+import { apiService, Category } from "@/services/api";
+import { motion } from "framer-motion";
 
-// Icon mapping for categories
-const categoryIcons: { [key: string]: any } = {
-  "Restaurant": Utensils,
-  "Retail": ShoppingBag,
-  "Services": Settings,
-  "Health & Wellness": Heart,
-  "Automotive": Car,
-  "Real Estate": HardHat,
-  "Education": GraduationCap,
-  "Technology": Monitor,
-  "Beauty & Personal Care": Palette,
-  "Home & Garden": Building2,
-  "Professional Services": Briefcase,
-  "Automotive Services": Wrench,
-  // New categories from API
-  "Food & Dining": Utensils,
-  "Health & Beauty": Heart,
-  "Fashion & Clothing": ShoppingBag,
-  "Sports & Fitness": Heart,
-  "Entertainment": Monitor,
-  // Add more mappings as needed
+// Icon mapping for categories (emoji-based)
+const getCategoryIcon = (categoryName: string): string => {
+  const iconMap: { [key: string]: string } = {
+    'Restaurant': '🍽️',
+    'Retail': '🛍️',
+    'Services': '🔧',
+    'Health & Wellness': '💚',
+    'Automotive': '🚗',
+    'Real Estate': '🏠',
+    'Education': '📚',
+    'Entertainment': '🎬',
+    'Financial Services': '💰',
+    'Legal Services': '⚖️',
+    'Construction': '🏗️',
+    'Beauty & Personal Care': '💄',
+    'Home & Garden': '🏡',
+    'Professional Services': '💼',
+    'Non-Profit': '🤝',
+  };
+  return iconMap[categoryName] || '📦';
 };
 
-// Default icon for unknown categories
-const DefaultIcon = Building2;
+// Color mapping for categories
+const getCategoryColor = (categoryName: string): string => {
+  const colorMap: { [key: string]: string } = {
+    "Restaurant": "text-orange-600 bg-orange-50 border-orange-200",
+    "Retail": "text-blue-600 bg-blue-50 border-blue-200",
+    "Services": "text-green-600 bg-green-50 border-green-200",
+    "Health & Wellness": "text-red-600 bg-red-50 border-red-200",
+    "Automotive": "text-purple-600 bg-purple-50 border-purple-200",
+    "Real Estate": "text-yellow-600 bg-yellow-50 border-yellow-200",
+    "Education": "text-indigo-600 bg-indigo-50 border-indigo-200",
+    "Entertainment": "text-pink-600 bg-pink-50 border-pink-200",
+    "Financial Services": "text-emerald-600 bg-emerald-50 border-emerald-200",
+    "Legal Services": "text-slate-600 bg-slate-50 border-slate-200",
+    "Construction": "text-amber-600 bg-amber-50 border-amber-200",
+    "Beauty & Personal Care": "text-rose-600 bg-rose-50 border-rose-200",
+    "Home & Garden": "text-teal-600 bg-teal-50 border-teal-200",
+    "Professional Services": "text-cyan-600 bg-cyan-50 border-cyan-200",
+    "Non-Profit": "text-violet-600 bg-violet-50 border-violet-200",
+  };
+  return colorMap[categoryName] || "text-gray-600 bg-gray-50 border-gray-200";
+};
 
 export const BusinessCategories = () => {
-  const { categories, businesses, isLoading } = useBusiness();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Calculate business count for each category - memoized to prevent unnecessary recalculations
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setIsLoading(true);
+        console.log('🔄 Fetching categories from /api/business/vset/categories/');
+        const response = await apiService.getCategoriesWithSubcategories();
+        console.log('✅ Categories fetched successfully:', response.results?.length || 0, 'categories');
+        setCategories(response.results || []);
+      } catch (error) {
+        console.error('❌ Error fetching categories from /api/business/vset/categories/:', error);
+        setCategories([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // Prepare category display data
   const categoryStats = useMemo(() => {
-    // Check if data is still loading
-    if (isLoading) {
-      return [];
-    }
-
     if (!Array.isArray(categories) || !categories.length) {
       return [];
     }
 
-    if (!Array.isArray(businesses)) {
-      return [];
-    }
-
-    // Color mapping object - defined outside the map to avoid recreation
-    const colorMap: { [key: string]: string } = {
-      "Restaurant": "text-orange-600 bg-orange-50",
-      "Retail": "text-blue-600 bg-blue-50",
-      "Services": "text-green-600 bg-green-50",
-      "Health & Wellness": "text-red-600 bg-red-50",
-      "Automotive": "text-purple-600 bg-purple-50",
-      "Real Estate": "text-yellow-600 bg-yellow-50",
-      "Education": "text-indigo-600 bg-indigo-50",
-      "Technology": "text-teal-600 bg-teal-50",
-      "Beauty & Personal Care": "text-pink-600 bg-pink-50",
-      "Home & Garden": "text-emerald-600 bg-emerald-50",
-      "Professional Services": "text-slate-600 bg-slate-50",
-      "Automotive Services": "text-amber-600 bg-amber-50",
-      "Food & Dining": "text-orange-600 bg-orange-50",
-      "Health & Beauty": "text-pink-600 bg-pink-50",
-      "Fashion & Clothing": "text-purple-600 bg-purple-50",
-      "Sports & Fitness": "text-green-600 bg-green-50",
-      "Entertainment": "text-blue-600 bg-blue-50"
-    };
-
-    const stats = categories.map(category => {
-      const matchingBusinesses = businesses.filter(business => {
-        // Handle both object and number category types
-        const categoryId = category.id;
-        const businessCategoryId = typeof business.category === 'object' ? business.category?.id : business.category;
-        return categoryId == businessCategoryId; // Use loose equality to handle type differences
-      });
-      
-      const businessCount = matchingBusinesses.length;
-      const IconComponent = categoryIcons[category.name] || DefaultIcon;
+    return categories.map(category => {
+      const subcategoryCount = Array.isArray(category.subcategories) 
+        ? category.subcategories.length 
+        : 0;
 
       return {
         id: category.id,
         name: category.name,
         slug: category.slug,
-        count: businessCount,
-        icon: IconComponent,
-        color: colorMap[category.name] || "text-gray-600 bg-gray-50"
+        subcategoryCount,
+        icon: getCategoryIcon(category.name),
+        color: getCategoryColor(category.name)
       };
     });
-
-    // Show only categories with businesses, sorted by count, limited to top 10
-    return stats
-      .filter(stat => stat.count > 0) // Only show categories with businesses
-      .sort((a, b) => b.count - a.count) // Sort by business count (highest first)
-      .slice(0, 10); // Show only top 10 categories
-  }, [categories, businesses, isLoading]);
+  }, [categories]);
 
   if (isLoading) {
     return (
@@ -181,61 +164,95 @@ export const BusinessCategories = () => {
           <>
             {/* Enhanced Mobile App Style Grid */}
             <div className="grid grid-cols-4 gap-3 max-w-md mx-auto mb-8 md:hidden">
-              {categoryStats.slice(0, 12).map((category, index) => (
-                <Link 
+              {categoryStats.slice(0, 16).map((category, index) => (
+                <motion.div
                   key={category.id}
-                  to={`/directory?category=${category.slug}`}
-                  className="block"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.05 }}
                 >
-                  <div className={`flex flex-col items-center justify-between gap-2 p-3 rounded-xl ${category.color} hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl border border-white/50 cursor-pointer backdrop-blur-sm h-20`}>
-                    {React.createElement(category.icon, { className: "w-5 h-5 drop-shadow-sm flex-shrink-0" })}
-                    <span className="text-[9px] font-semibold text-center leading-tight drop-shadow-sm line-clamp-2 flex-grow flex items-center justify-center">{category.name}</span>
-                  </div>
-                </Link>
+                  <Link 
+                    to={`/directory?category=${category.slug}`}
+                    className="block"
+                  >
+                    <div className={`flex flex-col items-center justify-between gap-2 p-3 rounded-xl ${category.color.split(' ')[1]} hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl border-2 ${category.color.split(' ')[2]} cursor-pointer backdrop-blur-sm h-20`}>
+                      <span className="text-2xl drop-shadow-sm flex-shrink-0">{category.icon}</span>
+                      <span className="text-[9px] font-semibold text-center leading-tight drop-shadow-sm line-clamp-2 flex-grow flex items-center justify-center">{category.name}</span>
+                    </div>
+                  </Link>
+                </motion.div>
               ))}
             </div>
             
             {/* Enhanced Desktop Grid - 5 Columns */}
             <div className="hidden lg:grid grid-cols-5 gap-4 mb-8">
-              {categoryStats.slice(0, 12).map((category, index) => (
-                <Link 
+              {categoryStats.slice(0, 15).map((category, index) => (
+                <motion.div
                   key={category.id}
-                  to={`/directory?category=${category.slug}`}
-                  className="block h-full"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  whileHover={{ y: -8 }}
                 >
-                  <Card className={`hover-card-effect cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 border-0 shadow-lg h-[180px] ${category.color.split(' ')[1]}`}>
-                    <CardContent className="p-6 text-center h-full flex flex-col justify-between">
-                      <div className="flex flex-col items-center h-full">
-                        <div className={`mx-auto w-16 h-16 mb-4 flex items-center justify-center rounded-xl bg-white/80 backdrop-blur-sm shadow-md ${category.color.split(' ')[0]}`}>
-                          {React.createElement(category.icon, { className: "w-8 h-8" })}
+                  <Link 
+                    to={`/directory?category=${category.slug}`}
+                    className="block h-full"
+                  >
+                    <Card className={`cursor-pointer transition-all duration-300 hover:shadow-xl border-2 h-[200px] ${category.color.split(' ')[2]} hover:border-opacity-100`}>
+                      <CardContent className="p-6 text-center h-full flex flex-col justify-between">
+                        <div className="flex flex-col items-center h-full">
+                          <div className={`mx-auto w-20 h-20 mb-4 flex items-center justify-center rounded-2xl ${category.color.split(' ')[1]} shadow-lg`}>
+                            <span className="text-4xl">{category.icon}</span>
+                          </div>
+                          <div className="flex-grow flex flex-col justify-center">
+                            <h3 className="font-semibold text-fem-navy mb-1 text-sm line-clamp-2 leading-tight">
+                              {category.name}
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {category.subcategoryCount} {category.subcategoryCount === 1 ? 'subcategory' : 'subcategories'}
+                            </p>
+                          </div>
                         </div>
-                        <h3 className="font-semibold text-fem-navy mb-2 text-sm line-clamp-2 leading-tight flex-grow flex items-center justify-center text-center">{category.name}</h3>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </motion.div>
               ))}
             </div>
             
             {/* Medium Screen Grid - 3 Columns */}
             <div className="hidden md:grid lg:hidden grid-cols-3 gap-4 mb-8">
-              {categoryStats.slice(0, 12).map((category, index) => (
-                <Link 
+              {categoryStats.slice(0, 15).map((category, index) => (
+                <motion.div
                   key={category.id}
-                  to={`/directory?category=${category.slug}`}
-                  className="block h-full"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  whileHover={{ y: -8 }}
                 >
-                  <Card className={`hover-card-effect cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 border-0 shadow-lg h-[160px] ${category.color.split(' ')[1]}`}>
-                    <CardContent className="p-5 text-center h-full flex flex-col justify-between">
-                      <div className="flex flex-col items-center h-full">
-                        <div className={`mx-auto w-14 h-14 mb-3 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm shadow-md ${category.color.split(' ')[0]}`}>
-                          {React.createElement(category.icon, { className: "w-7 h-7" })}
+                  <Link 
+                    to={`/directory?category=${category.slug}`}
+                    className="block h-full"
+                  >
+                    <Card className={`cursor-pointer transition-all duration-300 hover:shadow-xl border-2 h-[180px] ${category.color.split(' ')[2]} hover:border-opacity-100`}>
+                      <CardContent className="p-5 text-center h-full flex flex-col justify-between">
+                        <div className="flex flex-col items-center h-full">
+                          <div className={`mx-auto w-16 h-16 mb-3 flex items-center justify-center rounded-xl ${category.color.split(' ')[1]} shadow-lg`}>
+                            <span className="text-3xl">{category.icon}</span>
+                          </div>
+                          <div className="flex-grow flex flex-col justify-center">
+                            <h3 className="font-semibold text-fem-navy mb-1 text-sm line-clamp-2 leading-tight">
+                              {category.name}
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {category.subcategoryCount} {category.subcategoryCount === 1 ? 'subcategory' : 'subcategories'}
+                            </p>
+                          </div>
                         </div>
-                        <h3 className="font-semibold text-fem-navy mb-2 text-sm line-clamp-2 leading-tight flex-grow flex items-center justify-center text-center">{category.name}</h3>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </motion.div>
               ))}
             </div>
             

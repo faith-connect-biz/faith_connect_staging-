@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { useBusiness } from "@/contexts/BusinessContext";
+import { CategorySelector } from "@/components/ui/CategorySelector";
 
 interface BusinessFiltersProps {
   onApplyFilters: (filters: any) => void;
@@ -17,7 +18,10 @@ interface BusinessFiltersProps {
 export const BusinessFilters = ({ onApplyFilters, onClearFilters }: BusinessFiltersProps) => {
   const { categories } = useBusiness();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | undefined>(undefined);
+  const [selectedCategoryName, setSelectedCategoryName] = useState("");
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<number | undefined>(undefined);
+  const [selectedSubcategoryName, setSelectedSubcategoryName] = useState("");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [sortBy, setSortBy] = useState("default");
   const [appliedFilters, setAppliedFilters] = useState<string[]>([]);
@@ -25,7 +29,10 @@ export const BusinessFilters = ({ onApplyFilters, onClearFilters }: BusinessFilt
   const handleApplyFilters = () => {
     const filters = {
       searchTerm,
-      category: selectedCategory === "all" ? "" : selectedCategory,
+      category: selectedCategoryName || "",
+      category_id: selectedCategoryId,
+      subcategory: selectedSubcategoryName || "",
+      subcategory_id: selectedSubcategoryId,
       verifiedOnly,
       sortBy: sortBy === "default" ? "" : sortBy
     };
@@ -33,7 +40,12 @@ export const BusinessFilters = ({ onApplyFilters, onClearFilters }: BusinessFilt
     // Create applied filters array for display
     const newAppliedFilters = [];
     if (searchTerm) newAppliedFilters.push(`Search: ${searchTerm}`);
-    if (selectedCategory !== "all") newAppliedFilters.push(`Category: ${selectedCategory}`);
+    if (selectedCategoryName) {
+      newAppliedFilters.push(`Category: ${selectedCategoryName}`);
+      if (selectedSubcategoryName) {
+        newAppliedFilters.push(`Subcategory: ${selectedSubcategoryName}`);
+      }
+    }
     if (verifiedOnly) newAppliedFilters.push("Verified Only");
     if (sortBy !== "default") newAppliedFilters.push(`Sort: ${sortBy}`);
     
@@ -43,7 +55,10 @@ export const BusinessFilters = ({ onApplyFilters, onClearFilters }: BusinessFilt
 
   const handleClearFilters = () => {
     setSearchTerm("");
-    setSelectedCategory("all");
+    setSelectedCategoryId(undefined);
+    setSelectedCategoryName("");
+    setSelectedSubcategoryId(undefined);
+    setSelectedSubcategoryName("");
     setVerifiedOnly(false);
     setSortBy("default");
     setAppliedFilters([]);
@@ -56,7 +71,16 @@ export const BusinessFilters = ({ onApplyFilters, onClearFilters }: BusinessFilt
     
     // Reset the corresponding filter state
     if (filterToRemove.startsWith("Search:")) setSearchTerm("");
-    if (filterToRemove.startsWith("Category:")) setSelectedCategory("all");
+    if (filterToRemove.startsWith("Category:")) {
+      setSelectedCategoryId(undefined);
+      setSelectedCategoryName("");
+      setSelectedSubcategoryId(undefined);
+      setSelectedSubcategoryName("");
+    }
+    if (filterToRemove.startsWith("Subcategory:")) {
+      setSelectedSubcategoryId(undefined);
+      setSelectedSubcategoryName("");
+    }
     if (filterToRemove === "Verified Only") setVerifiedOnly(false);
     if (filterToRemove.startsWith("Sort:")) setSortBy("default");
     
@@ -81,22 +105,31 @@ export const BusinessFilters = ({ onApplyFilters, onClearFilters }: BusinessFilt
             />
           </div>
 
-          {/* Category */}
+          {/* Category & Subcategory */}
           <div className="space-y-2">
-            <Label>Category</Label>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {Array.isArray(categories) && categories.map((category) => (
-                  <SelectItem key={category.id} value={category.name}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Category & Subcategory</Label>
+            <CategorySelector
+              selectedCategoryId={selectedCategoryId}
+              selectedSubcategoryId={selectedSubcategoryId}
+              onCategorySelect={(categoryId, categoryName) => {
+                setSelectedCategoryId(categoryId);
+                setSelectedCategoryName(categoryName);
+                setSelectedSubcategoryId(undefined);
+                setSelectedSubcategoryName("");
+              }}
+              onSubcategorySelect={(subcategoryId, subcategoryName) => {
+                setSelectedSubcategoryId(subcategoryId);
+                setSelectedSubcategoryName(subcategoryName);
+              }}
+              onClear={() => {
+                setSelectedCategoryId(undefined);
+                setSelectedCategoryName("");
+                setSelectedSubcategoryId(undefined);
+                setSelectedSubcategoryName("");
+              }}
+              showSearch={true}
+              viewMode="grid"
+            />
           </div>
 
           {/* Verified Only */}

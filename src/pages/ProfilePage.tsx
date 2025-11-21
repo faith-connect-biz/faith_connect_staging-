@@ -608,16 +608,16 @@ const ProfilePage = () => {
                         {user.first_name || user.firstName} {user.last_name || user.lastName}
                       </h2>
                       {user.user_type && (
-                        <p className="text-gray-600 capitalize text-sm font-medium mb-3">
+                      <p className="text-gray-600 capitalize text-sm font-medium mb-3">
                           {user.user_type.replace('_', ' ')}
-                        </p>
+                      </p>
                       )}
                       
                       <div className="flex flex-wrap gap-2 justify-center mb-4">
                         {(user.partnership_number || (user as any).partnershipNumber) && (
-                          <Badge className="bg-gradient-to-r from-fem-gold to-fem-terracotta text-white px-3 py-1 text-xs font-medium">
+                        <Badge className="bg-gradient-to-r from-fem-gold to-fem-terracotta text-white px-3 py-1 text-xs font-medium">
                             {user.partnership_number || (user as any).partnershipNumber}
-                          </Badge>
+                        </Badge>
                         )}
                         {user.is_verified && (
                           <Badge className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs font-medium">

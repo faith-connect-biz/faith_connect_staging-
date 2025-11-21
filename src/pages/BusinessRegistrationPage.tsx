@@ -14,6 +14,7 @@ import { apiService } from '@/services/api';
 import { toast } from 'sonner';
 import { Navbar } from '@/components/layout/Navbar';
 import { ProductServiceManager } from '@/components/ProductServiceManager';
+import { CategorySelector } from '@/components/ui/CategorySelector';
 
 export interface ProductService {
   id: string;
@@ -37,7 +38,11 @@ export interface BusinessData {
   // Page 1 - Business Registration
   businessName: string;
   category: string;
+  category_id?: string;
+  category_slug?: string;
   subcategory: string;
+  subcategory_id?: string;
+  subcategory_slug?: string;
   businessDescription: string;
   isPhysicalAddress: boolean;
   onlineAddress: string;
@@ -87,7 +92,11 @@ export interface BusinessData {
 const initialBusinessData: BusinessData = {
   businessName: '',
   category: '',
+  category_id: '',
+  category_slug: '',
   subcategory: '',
+  subcategory_id: '',
+  subcategory_slug: '',
   businessDescription: '',
   isPhysicalAddress: false,
   onlineAddress: '',
@@ -312,7 +321,9 @@ const BusinessRegistrationPage: React.FC = () => {
       const response = await apiService.createBusinessFromRegistration({
         name: completeData.businessName,
         category: completeData.category,
+        category_id: completeData.category_id,
         subcategory: completeData.subcategory,
+        subcategory_id: completeData.subcategory_id,
         description: completeData.businessDescription,
         businessType: completeData.isPhysicalAddress ? 'physical' : 'online',
         address: completeData.physicalAddress.street,
@@ -366,11 +377,11 @@ const BusinessRegistrationPage: React.FC = () => {
       newErrors.businessName = 'Business name is required';
     }
 
-    if (!businessData.category) {
+    if (!businessData.category_id) {
       newErrors.category = 'Please select a business category';
     }
 
-    if (businessData.category && !businessData.subcategory) {
+    if (businessData.category_id && !businessData.subcategory_id) {
       newErrors.subcategory = 'Please select a subcategory';
     }
 
@@ -419,8 +430,10 @@ const BusinessRegistrationPage: React.FC = () => {
     setBusinessData(prev => {
       const newData = { ...prev, [field]: value };
       // Reset subcategory when category changes
-      if (field === 'category') {
+      if (field === 'category' || field === 'category_id') {
         newData.subcategory = '';
+        newData.subcategory_id = '';
+        newData.subcategory_slug = '';
       }
       return newData;
     });
@@ -566,50 +579,42 @@ const BusinessRegistrationPage: React.FC = () => {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="category" className="text-fem-navy font-semibold">Business Category *</Label>
-                          <Select value={businessData.category} onValueChange={(value) => updateFormData('category', value)}>
-                            <SelectTrigger className={`h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300 ${
-                              errors.category ? 'border-red-500' : ''
-                            }`}>
-                              <SelectValue placeholder="Select a category" />
-          </SelectTrigger>
-                            <SelectContent className="bg-white/95 backdrop-blur-xl border border-white/20">
-            {businessCategories.map((category) => (
-                                <SelectItem key={category} value={category} className="hover:bg-fem-lightgold/20">
-                {category}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+                          <Label className="text-fem-navy font-semibold">Business Category & Subcategory *</Label>
+                          <CategorySelector
+                            selectedCategoryId={businessData.category_id ? Number(businessData.category_id) : undefined}
+                            selectedSubcategoryId={businessData.subcategory_id ? Number(businessData.subcategory_id) : undefined}
+                            onCategorySelect={(categoryId, categoryName, categorySlug) => {
+                              updateFormData('category', categoryName);
+                              updateFormData('category_id', categoryId.toString());
+                              updateFormData('category_slug', categorySlug);
+                              // Clear subcategory when category changes
+                              updateFormData('subcategory', '');
+                              updateFormData('subcategory_id', '');
+                              updateFormData('subcategory_slug', '');
+                            }}
+                            onSubcategorySelect={(subcategoryId, subcategoryName, subcategorySlug) => {
+                              updateFormData('subcategory', subcategoryName);
+                              updateFormData('subcategory_id', subcategoryId.toString());
+                              updateFormData('subcategory_slug', subcategorySlug);
+                            }}
+                            onClear={() => {
+                              updateFormData('category', '');
+                              updateFormData('category_id', '');
+                              updateFormData('category_slug', '');
+                              updateFormData('subcategory', '');
+                              updateFormData('subcategory_id', '');
+                              updateFormData('subcategory_slug', '');
+                            }}
+                            className="mt-2"
+                          />
                           {errors.category && (
-                            <p className="text-red-500 text-sm font-medium">{errors.category}</p>
+                            <p className="text-red-500 text-sm font-medium mt-2">{errors.category}</p>
+                          )}
+                          {errors.subcategory && (
+                            <p className="text-red-500 text-sm font-medium mt-2">{errors.subcategory}</p>
                           )}
                         </div>
                       </div>
-
-                      {/* Subcategory Field - Only show when category is selected */}
-                      {businessData.category && subcategoriesMap[businessData.category] && (
-                        <div className="space-y-2">
-                          <Label htmlFor="subcategory" className="text-fem-navy font-semibold">Business Subcategory *</Label>
-                          <Select value={businessData.subcategory} onValueChange={(value) => updateFormData('subcategory', value)}>
-                            <SelectTrigger className={`h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300 ${
-                              errors.subcategory ? 'border-red-500' : ''
-                            }`}>
-                              <SelectValue placeholder="Select a subcategory" />
-            </SelectTrigger>
-                            <SelectContent className="bg-white/95 backdrop-blur-xl border border-white/20">
-                              {subcategoriesMap[businessData.category].map((subcategory) => (
-                                <SelectItem key={subcategory} value={subcategory} className="hover:bg-fem-lightgold/20">
-                                  {subcategory}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-                          {errors.subcategory && (
-                            <p className="text-red-500 text-sm font-medium">{errors.subcategory}</p>
-                          )}
-                        </div>
-                      )}
 
                       <div className="space-y-2">
                         <Label htmlFor="businessDescription" className="text-fem-navy font-semibold">Business Description *</Label>
