@@ -48,7 +48,8 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { apiService } from "@/services/api";
-import { useAutoSave, useAutoSaveStatus } from '@/utils/autoSaveUtils';
+// Auto-save temporarily disabled to prevent interference with input
+// import { useAutoSave, useAutoSaveStatus } from '@/utils/autoSaveUtils';
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
@@ -71,19 +72,20 @@ const ProfilePage = () => {
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   
-  // Auto-save functionality - only active when editing
-  const { clearSavedData } = useAutoSave(
-    `user_profile_${user?.id}`,
-    profileData,
-    setProfileData,
-    user?.id,
-    {
-      delay: 3000, // 3 seconds for profile editing
-      showToast: true
-    }
-  );
+  // Track if we've loaded initial data
+  const hasLoadedInitialData = useRef(false);
   
-  const { statusText } = useAutoSaveStatus(`user_profile_${user?.id}`, user?.id);
+  // Auto-save functionality disabled to prevent interference with typing
+  // Manual clear function for auto-save (if needed in future)
+  const clearSavedData = () => {
+    if (user?.id) {
+      const key = `autosave_user_profile_${user.id}`;
+      localStorage.removeItem(key);
+    }
+  };
+  
+  // Status text for auto-save (disabled)
+  const statusText = null;
   const [userStats, setUserStats] = useState({
     favorites: 0,
     reviewsGiven: 0,
@@ -137,6 +139,7 @@ const ProfilePage = () => {
       console.log('ProfilePage: User data first_name:', userData.first_name);
       console.log('ProfilePage: User data last_name:', userData.last_name);
       console.log('ProfilePage: User data phone:', userData.phone);
+      console.log('ProfilePage: User data partnership_number:', userData.partnership_number);
       console.log('ProfilePage: User data address:', userData.address);
       console.log('ProfilePage: User data city:', userData.city);
       console.log('ProfilePage: User data county:', userData.county);
@@ -154,6 +157,19 @@ const ProfilePage = () => {
         };
         
         setProfileData(newProfileData);
+        hasLoadedInitialData.current = true;
+        
+        // Update the user object in AuthContext with the complete data including partnership_number
+        if (userData.partnership_number || userData.first_name || userData.last_name) {
+          updateUser({
+            ...user,
+            ...userData,
+            partnership_number: userData.partnership_number,
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+          });
+        }
+        
         setLoading(false);
         
         // Fetch user stats after profile is loaded
@@ -268,16 +284,22 @@ const ProfilePage = () => {
       console.log('ProfilePage: Updating profile with data:', profileData);
       
       // Prepare data for API update
-      const updateData = {
+      const updateData: any = {
         first_name: profileData.firstName,
         last_name: profileData.lastName,
-        phone: user.phone, // Keep existing phone number
-        address: profileData.address,
-        city: profileData.city,
-        county: profileData.county,
-        bio: profileData.bio,
-        website: profileData.website  // Add website field
+        email: user.email, // Include email
+        address: profileData.address || undefined,
+        city: profileData.city || undefined,
+        county: profileData.county || undefined,
+        bio: profileData.bio || undefined,
+        website: profileData.website || undefined,
+        profile_photo_url: user.profile_image_url || undefined
       };
+      
+      // Only include phone if it exists
+      if (user.phone) {
+        updateData.phone = user.phone;
+      }
       
       console.log('ProfilePage: Sending update data to API:', updateData);
       
@@ -338,14 +360,14 @@ const ProfilePage = () => {
       // Upload file to S3
       const uploadSuccess = await apiService.uploadFileToS3(uploadData.presigned_url, file);
       
-      if (uploadSuccess) {
-        // Update profile with uploaded image
-        const updatedProfile = await apiService.updateProfilePhoto(uploadData.file_key);
+      if (uploadSuccess && uploadData.s3_url) {
+        // Update profile with uploaded image using s3_url
+        const updatedProfile = await apiService.updateProfilePhoto(uploadData.s3_url);
         
         // Update local user state
         updateUser({
           ...user,
-          profile_image_url: updatedProfile.profile_image_url
+          profile_image_url: updatedProfile.profile_image_url || uploadData.s3_url
         });
         
         toast({
@@ -374,9 +396,9 @@ const ProfilePage = () => {
 
   const handleRemoveProfilePhoto = async () => {
     try {
-      // Update profile to remove photo
+      // Update profile to remove photo using profile_photo_url field
       const response = await apiService.updateProfile({
-        profile_image_url: null
+        profile_photo_url: ""
       });
       
       if (response.success && response.user) {
@@ -583,16 +605,20 @@ const ProfilePage = () => {
                   <CardContent className="pt-16 pb-8 px-8">
                     <motion.div variants={itemVariants} className="text-center mb-6">
                       <h2 className="text-2xl font-bold text-fem-navy mb-2">
-                        {user.first_name} {user.last_name}
+                        {user.first_name || user.firstName} {user.last_name || user.lastName}
                       </h2>
-                      <p className="text-gray-600 capitalize text-sm font-medium mb-3">
-                        {user.user_type ? user.user_type.replace('_', ' ') : 'User'}
-                      </p>
+                      {user.user_type && (
+                        <p className="text-gray-600 capitalize text-sm font-medium mb-3">
+                          {user.user_type.replace('_', ' ')}
+                        </p>
+                      )}
                       
                       <div className="flex flex-wrap gap-2 justify-center mb-4">
-                        <Badge className="bg-gradient-to-r from-fem-gold to-fem-terracotta text-white px-3 py-1 text-xs font-medium">
-                          Partnership #{user.partnership_number}
-                        </Badge>
+                        {(user.partnership_number || (user as any).partnershipNumber) && (
+                          <Badge className="bg-gradient-to-r from-fem-gold to-fem-terracotta text-white px-3 py-1 text-xs font-medium">
+                            {user.partnership_number || (user as any).partnershipNumber}
+                          </Badge>
+                        )}
                         {user.is_verified && (
                           <Badge className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs font-medium">
                             <Shield className="w-3 h-3 mr-1" />

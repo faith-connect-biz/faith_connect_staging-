@@ -19,6 +19,7 @@ const ProfileUpdatePage: React.FC = () => {
   const { getOTPData, clearOTPData, login } = useAuth();
   
   const userType = location.state?.userType as 'community' | 'business';
+  const userId = location.state?.userId as number | undefined;
   const otpData = getOTPData();
   
   const [formData, setFormData] = useState({
@@ -103,6 +104,7 @@ const ProfileUpdatePage: React.FC = () => {
         userType,
         bio: formData.bio.trim() || undefined,
         profileImageUrl: formData.profileImageUrl || undefined,
+        userId: userId || otpData?.userId,
       });
 
       if (response.success) {

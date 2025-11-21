@@ -65,6 +65,26 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
     setUploading(true);
 
     try {
+      // Normalize content type - ensure it matches common image MIME types
+      let contentType = file.type || 'image/jpeg';
+      
+      // Handle cases where file.type might be empty or incorrect
+      if (!contentType || contentType === 'application/octet-stream') {
+        const extension = file.name.split('.').pop()?.toLowerCase();
+        const mimeTypes: { [key: string]: string } = {
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'png': 'image/png',
+          'gif': 'image/gif',
+          'webp': 'image/webp',
+          'svg': 'image/svg+xml',
+        };
+        contentType = mimeTypes[extension || ''] || 'image/jpeg';
+      }
+      
+      // Normalize to lowercase
+      contentType = contentType.toLowerCase();
+      
       // Step 1: Get presigned URL
       let presignedUrlData;
       
@@ -75,23 +95,23 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
             identifier,
             authMethod,
             file.name,
-            file.type
+            contentType
           );
         } else {
           // Authenticated upload
-          presignedUrlData = await apiService.getProfilePhotoUploadUrl(file.name, file.type);
+          presignedUrlData = await apiService.getProfilePhotoUploadUrl(file.name, contentType);
         }
       } else if (variant === 'business' && businessId) {
         presignedUrlData = await apiService.getBusinessProfileImageUploadUrl(
           businessId,
           file.name,
-          file.type
+          contentType
         );
       } else if (variant === 'logo' && businessId) {
         presignedUrlData = await apiService.getBusinessLogoUploadUrl(
           businessId,
           file.name,
-          file.type
+          contentType
         );
       } else {
         throw new Error('Invalid upload configuration');
@@ -99,74 +119,46 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 
       const { presigned_url, file_key, s3_url } = presignedUrlData;
 
-      // Step 2: Upload file
-      // Check if this is a local development upload (presigned URL points to our backend)
-      const isLocalUpload = presigned_url.includes('/api/profile-photo-upload-direct') || 
-                           presigned_url.includes('/api/') && !presigned_url.includes('amazonaws.com');
-      
-      let uploadSuccess = false;
-      
-      let localUploadResponse: any = null;
-      
-      if (isLocalUpload) {
-        // Local development: upload directly to our backend endpoint
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('file_key', file_key);
-        
-        const response = await fetch(presigned_url, {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Failed to upload image');
-        }
-        
-        localUploadResponse = await response.json();
-        uploadSuccess = true;
-      } else {
-        // Production: upload to S3 using presigned URL
-        uploadSuccess = await apiService.uploadFileToS3(presigned_url, file);
+      // Step 2: Upload file to S3 using presigned URL
+      try {
+        const uploadSuccess = await apiService.uploadFileToS3(presigned_url, file);
         
         if (!uploadSuccess) {
           throw new Error('Failed to upload image to S3');
         }
+      } catch (uploadError: any) {
+        console.error('S3 upload error:', uploadError);
+        // Provide more helpful error message
+        if (uploadError.message?.includes('CORS') || uploadError.message?.includes('OPTIONS')) {
+          throw new Error('Upload failed due to CORS configuration. Please contact support.');
+        }
+        throw new Error(uploadError.message || 'Failed to upload image to S3. Please try again.');
       }
 
-      // Step 3: Save image URL to backend (if authenticated)
+      // Step 3: Use the s3_url from the response
+      // For unauthenticated uploads (profile completion), the s3_url will be sent when completing profile
+      // For authenticated uploads, we can optionally update the profile with the file_key
       let finalImageUrl: string;
       
       if (variant === 'profile') {
         if (identifier && authMethod) {
-          // For unauthenticated uploads, use the URL from the response
+          // For unauthenticated uploads, use the s3_url from the response
           // The complete-profile endpoint will save it when the profile is completed
-          if (isLocalUpload && localUploadResponse) {
-            finalImageUrl = localUploadResponse.s3_url || localUploadResponse.url || '';
-          } else {
-            finalImageUrl = s3_url || presignedUrlData.s3_url || '';
+          if (!s3_url) {
+            throw new Error('Image URL (s3_url) not provided in response');
           }
-          if (!finalImageUrl) {
-            throw new Error('Image URL not provided in response');
-          }
+          finalImageUrl = s3_url;
         } else {
-          // Authenticated upload - save to profile
-          if (isLocalUpload && localUploadResponse) {
-            // For local uploads, update profile with the file_key from response
-            const result = await apiService.updateProfilePhoto(localUploadResponse.file_key || file_key);
-            finalImageUrl = result.profile_image_url || result.s3_url;
-          } else {
-            const result = await apiService.updateProfilePhoto(file_key);
-            finalImageUrl = result.profile_image_url || result.s3_url;
-          }
+          // Authenticated upload - update profile with the s3_url
+          const result = await apiService.updateProfilePhoto(s3_url);
+          finalImageUrl = result.profile_image_url || s3_url || '';
         }
       } else if (variant === 'business' && businessId) {
         const result = await apiService.updateBusinessProfileImage(businessId, file_key);
-        finalImageUrl = result.business_image_url || result.s3_url;
+        finalImageUrl = result.business_image_url || s3_url || '';
       } else if (variant === 'logo' && businessId) {
         const result = await apiService.updateBusinessLogo(businessId, file_key);
-        finalImageUrl = result.business_logo_url || result.s3_url;
+        finalImageUrl = result.business_logo_url || s3_url || '';
       } else {
         throw new Error('Invalid upload configuration');
       }

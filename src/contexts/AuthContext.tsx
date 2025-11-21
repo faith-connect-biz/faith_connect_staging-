@@ -7,10 +7,20 @@ export interface User {
   phone?: string;
   firstName?: string;
   lastName?: string;
+  first_name?: string; // API format
+  last_name?: string; // API format
+  partnership_number?: string; // API format
   userType?: 'community' | 'business';
+  user_type?: 'community' | 'business'; // API format
   profilePicture?: string;
+  profile_image_url?: string; // API format
   bio?: string;
+  address?: string;
+  county?: string;
+  city?: string;
+  website?: string;
   isComplete?: boolean;
+  is_profile_complete?: boolean; // API format
 }
 
 export interface AuthTokens {

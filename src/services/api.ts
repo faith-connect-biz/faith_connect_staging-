@@ -509,10 +509,10 @@ class ApiService {
         const publicEndpoints = [
           '/health/',
           '/api/stats/',
-          '/api/auth/initiate-auth',
-          '/api/auth/verify-otp',
-          '/api/auth/resend-otp',
-          '/api/auth/complete-profile',
+          '/api/initiate-auth',
+          '/api/verify-otp',
+          '/api/resend-otp',
+          '/api/complete-profile',
           '/api/profile-photo-upload-url-unauthenticated',
           'register',
           'verify-registration-otp',
@@ -688,7 +688,7 @@ class ApiService {
    * Initiate authentication - sends OTP to email or phone
    */
   async initiateAuth(data: InitiateAuthRequest): Promise<InitiateAuthResponse> {
-    const response = await this.api.post('/api/auth/initiate-auth', data);
+    const response = await this.api.post('/api/initiate-auth', data);
     return response.data;
   }
 
@@ -696,39 +696,47 @@ class ApiService {
    * Verify OTP (using identifier)
    */
   async verifyOTPWithIdentifier(data: VerifyOTPRequest): Promise<VerifyOTPResponse> {
-    const response = await this.api.post('/api/auth/verify-otp', data);
+    const response = await this.api.post('/api/verify-otp', data);
     return response.data;
   }
 
   /**
    * Verify OTP (using user_id)
    */
-  async verifyOTPWithUserId(userId: string, otp: string): Promise<VerifyOTPResponse> {
-    const response = await this.api.post('/api/auth/verify-otp', {
+  async verifyOTPWithUserId(userId: string, otp: string, identifier?: string, authMethod?: 'email' | 'phone'): Promise<VerifyOTPResponse> {
+    const requestBody: any = {
       user_id: userId,
       otp: otp
-    });
+    };
+    
+    // Include identifier and auth_method if provided
+    if (identifier && authMethod) {
+      requestBody.identifier = identifier;
+      requestBody.auth_method = authMethod;
+    }
+    
+    const response = await this.api.post('/api/verify-otp', requestBody);
     return response.data;
   }
 
   /**
    * Resend OTP
    */
-  async resendOTP(data: ResendOTPRequest): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.post('/api/auth/resend-otp', data);
+  async resendOTP(data: ResendOTPRequest): Promise<{ success: boolean; message: string; user_id?: number }> {
+    const response = await this.api.post('/api/resend-otp', data);
     return response.data;
   }
 
   /**
    * Complete profile after OTP verification (includes profile_image_url if uploaded)
    */
-  async completeProfile(data: CompleteProfileRequest): Promise<{
+  async completeProfile(data: CompleteProfileRequest & { user_id?: string }): Promise<{
     success: boolean;
     message: string;
     user: User;
     tokens: AuthTokens;
   }> {
-    const response = await this.api.post('/api/auth/complete-profile', data);
+    const response = await this.api.post('/api/complete-profile', data);
     return response.data;
   }
 
@@ -1635,20 +1643,42 @@ class ApiService {
       console.log('Starting S3 upload with presigned URL:', presignedUrl);
       console.log('File details:', { name: file.name, type: file.type, size: file.size });
       
+      // Extract signed headers from the presigned URL
+      // The presigned URL includes X-Amz-SignedHeaders which tells us which headers are signed
+      const url = new URL(presignedUrl);
+      const signedHeaders = url.searchParams.get('X-Amz-SignedHeaders');
+      
+      // Normalize content type (ensure lowercase)
+      const contentType = file.type.toLowerCase();
+      
+      // Build headers object - only include headers that are signed
+      const headers: HeadersInit = {};
+      
+      // Content-Type is typically always signed for presigned URLs
+      // Check if content-type is in the signed headers (it might be URL encoded)
+      if (signedHeaders && (signedHeaders.includes('content-type') || signedHeaders.includes('content%2Dtype'))) {
+        headers['Content-Type'] = contentType;
+      }
+      
+      // Don't send any other headers that aren't signed, as S3 will reject them
+      console.log('Upload headers:', headers);
+      console.log('Signed headers from URL:', signedHeaders);
+      
       const response = await fetch(presignedUrl, {
         method: 'PUT',
         body: file,
-        headers: {
-          'Content-Type': file.type,
-          'Cache-Control': 'no-cache',
-        },
+        headers: Object.keys(headers).length > 0 ? headers : undefined,
         mode: 'cors',
         credentials: 'omit', // Don't send cookies to S3
       });
       
-      console.log('S3 upload response:', { status: response.status, statusText: response.statusText });
+      console.log('S3 upload response:', { 
+        status: response.status, 
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
       
-      if (response.ok) {
+      if (response.ok || response.status === 200 || response.status === 204) {
         console.log('S3 upload successful');
         return true;
       } else {
@@ -1657,14 +1687,23 @@ class ApiService {
         try {
           const errorText = await response.text();
           console.error('S3 error response:', errorText);
+          throw new Error(`S3 upload failed: ${response.status} ${response.statusText}. ${errorText}`);
         } catch (e) {
+          if (e instanceof Error && e.message.includes('S3 upload failed')) {
+            throw e;
+          }
           console.error('Could not read error response:', e);
+          throw new Error(`S3 upload failed: ${response.status} ${response.statusText}`);
         }
-        return false;
       }
     } catch (error) {
       console.error('Error uploading to S3:', error);
-      return false;
+      // If it's already an Error with a message, re-throw it
+      if (error instanceof Error) {
+        throw error;
+      }
+      // Otherwise wrap it
+      throw new Error(`Failed to upload file to S3: ${error}`);
     }
   }
 
@@ -2258,7 +2297,7 @@ class ApiService {
     presigned_url: string;
     file_key: string;
     expires_in_minutes: number;
-    s3_url?: string;
+    s3_url: string;
   }> {
     try {
       const response = await this.api.post('/api/profile-photo-upload-url', {
@@ -2360,19 +2399,14 @@ class ApiService {
 
   // Update profile with uploaded photo
   // Note: After uploading to S3, update the profile with the image URL directly via PATCH
-  async updateProfilePhoto(fileKey: string): Promise<{
+  async updateProfilePhoto(s3Url: string): Promise<{
     profile_image_url: string | null;
     s3_url: string;
   }> {
     try {
-      // Construct S3 URL from file_key
-      const bucketName = import.meta.env.VITE_AWS_STORAGE_BUCKET_NAME || 'faithconnectapp';
-      const region = import.meta.env.VITE_AWS_S3_REGION_NAME || 'af-south-1';
-      const s3Url = `https://${bucketName}.s3.${region}.amazonaws.com/${fileKey}`;
-      
-      // Update profile with the image URL
+      // Update profile with the image URL using profile_photo_url field
       const response = await this.api.patch('/api/profile-update', {
-        profile_image_url: s3Url
+        profile_photo_url: s3Url
       });
       return {
         profile_image_url: response.data.user?.profile_image_url || s3Url,
@@ -2613,7 +2647,7 @@ class ApiService {
       otp?: string;
     }> {
       try {
-        const response = await this.api.post('/api/auth/initiate-auth', {
+        const response = await this.api.post('/api/initiate-auth', {
           identifier: contact,
           auth_method: method
         });
@@ -2629,91 +2663,16 @@ class ApiService {
       } catch (error: any) {
         console.error('Send OTP failed:', error);
 
-        let currentError: any = error;
-        let statusCode = currentError.response?.status;
-        let errorMessage =
+        const currentError: any = error;
+        const statusCode = currentError.response?.status;
+        const errorMessage =
           currentError.response?.data?.message ||
           currentError.response?.data?.detail ||
+          currentError.message ||
           '';
 
-        // Fallback to legacy endpoints if new auth endpoints aren't available
-        if (statusCode === 404) {
-          try {
-            const legacyEndpoint = method === 'email' ? '/api/verify-email' : '/api/verify-phone';
-            const legacyRequestData =
-              method === 'email' ? { email: contact } : { phone: contact };
-
-            const legacyResponse = await this.api.post(legacyEndpoint, legacyRequestData);
-            const legacyData = legacyResponse.data || {};
-
-            return {
-              success: legacyData.success ?? true,
-              message: legacyData.message || `OTP sent to your ${method}`,
-              userId: legacyData.user_id,
-              requiresProfileCompletion: legacyData.requires_profile_completion ?? false,
-              otp: legacyData.otp,
-            };
-          } catch (legacyError: any) {
-            console.error('Legacy OTP endpoint failed:', legacyError);
-            // Continue to existing fallback logic using the legacy error
-            currentError = legacyError;
-            statusCode = currentError.response?.status;
-            errorMessage =
-              currentError.response?.data?.message ||
-              currentError.response?.data?.detail ||
-              currentError.message ||
-              '';
-          }
-        }
-        
-        // If backend is not available, fall back to demo mode
-        if (currentError.message?.includes('Backend server is not running') || 
-            currentError.message?.includes('ERR_CONNECTION_REFUSED') ||
-            currentError.message?.includes('Network Error')) {
-          
-          console.log(`Demo mode: Sending OTP to ${contact} via ${method}`);
-          
-          // Simulate API delay
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Store OTP in localStorage for demo purposes
-          const demoOTP = '123456';
-          localStorage.setItem('demo_otp', demoOTP);
-          localStorage.setItem('demo_contact', contact);
-          localStorage.setItem('demo_method', method);
-          localStorage.setItem('demo_user_id', Date.now().toString());
-          
-          return {
-            success: true,
-            message: `OTP sent to your ${method} (Demo mode)`,
-            requiresProfileCompletion: true,
-            otp: demoOTP
-          };
-        }
-        
-        // If backend reports a user lookup issue, fall back to demo mode
-        if (errorMessage.includes('does not exist') || 
-            errorMessage.includes('User not found') ||
-            errorMessage.includes('not registered')) {
-          console.log(`[API] New user detected: ${contact}. Using demo OTP for sign-up flow.`);
-          
-          // Store demo OTP for verification
-          const demoOTP = '123456';
-          localStorage.setItem('demo_otp', demoOTP);
-          localStorage.setItem('demo_contact', contact);
-          localStorage.setItem('demo_method', method);
-          localStorage.setItem('demo_user_id', Date.now().toString());
-          
-          return {
-            success: true,
-            message: `OTP sent to your ${method} (Demo mode - use: ${demoOTP})`,
-            requiresProfileCompletion: true,
-            otp: demoOTP
-          };
-        }
-        
         throw new Error(
-          errorMessage || currentError.message || 'Failed to send verification code'
+          errorMessage || 'Failed to send verification code'
         );
       }
     }
@@ -2721,7 +2680,7 @@ class ApiService {
   /**
    * Verify OTP and get user info
    */
-  async verifyOTP(contact: string, otp: string, method: 'email' | 'phone'): Promise<{
+  async verifyOTP(contact: string, otp: string, method: 'email' | 'phone', userId?: number): Promise<{
     success: boolean;
     user?: User;
     tokens?: {
@@ -2731,17 +2690,25 @@ class ApiService {
     is_new_user: boolean;
     message: string;
     user_id?: number;
+    requires_profile_completion?: boolean;
   }> {
     try {
-      const response = await this.api.post('/api/auth/verify-otp', {
+      const requestBody: any = {
         identifier: contact,
         auth_method: method,
         otp,
-      });
+      };
+
+      // Include user_id if provided
+      if (userId) {
+        requestBody.user_id = userId.toString();
+      }
+
+      const response = await this.api.post('/api/verify-otp', requestBody);
 
       const data = response.data || {};
       const requiresProfileCompletion =
-        data.requires_profile_completion ?? data.is_new_user ?? false;
+        data.requires_profile_completion ?? false;
 
       let mappedUser: User | undefined;
       if (data.user) {
@@ -2756,68 +2723,21 @@ class ApiService {
         tokens: data.tokens,
         is_new_user: requiresProfileCompletion,
         message: data.message || 'OTP verified successfully',
-        user_id: data.user_id,
+        user_id: data.user_id || userId,
+        requires_profile_completion: requiresProfileCompletion,
       };
     } catch (error: any) {
       console.error('Verify OTP failed:', error);
 
       const currentError: any = error;
-      const statusCode = currentError.response?.status;
       const errorMessage =
         currentError.response?.data?.message ||
         currentError.response?.data?.detail ||
         currentError.message ||
         '';
 
-      const isNetworkError =
-        currentError.message?.includes('Backend server is not running') ||
-        currentError.message?.includes('ERR_CONNECTION_REFUSED') ||
-        currentError.message?.includes('Network Error');
-      const isUserNotFound =
-        errorMessage.includes('does not exist') ||
-        errorMessage.includes('User not found') ||
-        errorMessage.includes('not registered');
-
-      if (isNetworkError || isUserNotFound || statusCode === 400) {
-        console.log(`[API] Falling back to demo mode for OTP verification`);
-
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Check if OTP matches demo OTP
-        const demoOTP = localStorage.getItem('demo_otp');
-        const demoContact = localStorage.getItem('demo_contact');
-        const demoMethod = localStorage.getItem('demo_method');
-
-        console.log('[API] Demo verification check:', {
-          enteredOTP: otp,
-          demoOTP: demoOTP,
-          enteredContact: contact,
-          demoContact: demoContact,
-          enteredMethod: method,
-          demoMethod: demoMethod,
-        });
-
-        if (otp === demoOTP && contact === demoContact && method === demoMethod) {
-          const simulatedUserId = Number(localStorage.getItem('demo_user_id') || Date.now());
-          // Simulate new user for demo
-          return {
-            success: true,
-            is_new_user: true,
-            message: 'OTP verified successfully (Demo mode)',
-            user_id: simulatedUserId,
-          };
-        }
-
-        return {
-          success: false,
-          is_new_user: false,
-          message: 'Invalid OTP. Please try again.',
-        };
-      }
-
       throw new Error(
-        errorMessage || currentError.message || 'Failed to verify OTP. Please try again.',
+        errorMessage || 'Failed to verify OTP. Please try again.',
       );
     }
   }
@@ -2825,7 +2745,7 @@ class ApiService {
   /**
    * Complete profile after OTP verification
    */
-  async registerWithOTP(payload: CompleteProfilePayload): Promise<{
+  async registerWithOTP(payload: CompleteProfilePayload & { userId?: number }): Promise<{
     success: boolean;
     user: User;
     tokens: {
@@ -2844,6 +2764,11 @@ class ApiService {
         user_type: payload.userType,
       };
 
+      // Include user_id if provided
+      if (payload.userId) {
+        requestData.user_id = payload.userId.toString();
+      }
+
       if (payload.bio) requestData.bio = payload.bio;
       if (payload.profileImageUrl) requestData.profile_image_url = payload.profileImageUrl;
       if (payload.address) requestData.address = payload.address;
@@ -2851,7 +2776,7 @@ class ApiService {
       if (payload.city) requestData.city = payload.city;
       if (payload.website) requestData.website = payload.website;
 
-      const response = await this.api.post('/api/auth/complete-profile', requestData);
+      const response = await this.api.post('/api/complete-profile', requestData);
       const data = response.data || {};
 
       if (!data.user || !data.tokens) {

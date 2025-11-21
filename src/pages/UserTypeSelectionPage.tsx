@@ -1,14 +1,22 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, Building2, ArrowRight, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 const UserTypeSelectionPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { getOTPData } = useAuth();
   const [selectedType, setSelectedType] = useState<'community' | 'business' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Get userId from location state or OTP data
+  const userId = location.state?.userId as number | undefined;
+  const otpData = getOTPData();
+  const finalUserId = userId || otpData?.userId;
 
   const handleTypeSelection = (type: 'community' | 'business') => {
     setSelectedType(type);
@@ -21,7 +29,7 @@ const UserTypeSelectionPage: React.FC = () => {
     
     // Simulate a brief loading state for better UX
     setTimeout(() => {
-      navigate('/profile-update', { state: { userType: selectedType } });
+      navigate('/profile-update', { state: { userType: selectedType, userId: finalUserId } });
     }, 500);
   };
 

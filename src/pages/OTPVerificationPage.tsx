@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 
 const OTPVerificationPage: React.FC = () => {
   const navigate = useNavigate();
-  const { getOTPData, clearOTPData, login } = useAuth();
+  const { getOTPData, clearOTPData, login, setOTPData } = useAuth();
   const [otp, setOtp] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -52,31 +52,50 @@ const OTPVerificationPage: React.FC = () => {
     setOtp(otpValue);
 
     try {
-      const response = await apiService.verifyOTP(otpData.contact, otpValue, otpData.method);
+      // Pass user_id if available from OTP data
+      const userId = otpData.userId;
+      const response = await apiService.verifyOTP(otpData.contact, otpValue, otpData.method, userId);
       console.log('OTP verification response:', response);
       
       if (response.success) {
         setIsVerified(true);
         
-        if (response.is_new_user) {
-          toast.success('OTP verified! Let’s create your account.');
-          clearOTPData();
+        // Check if profile completion is required
+        if (response.requires_profile_completion || response.is_new_user) {
+          toast.success("OTP verified! Let's create your account.");
+          // Update OTP data with user_id if returned
+          if (response.user_id) {
+            setOTPData({ ...otpData, userId: response.user_id });
+          }
           setTimeout(() => {
             navigate('/user-type-selection', {
               state: {
                 contact: otpData.contact,
                 method: otpData.method,
+                userId: response.user_id || otpData.userId,
               },
             });
           }, 1200);
         } else if (response.user && response.tokens) {
-          // Existing user - log them in
-          login(response.user, response.tokens);
+          // Existing user with complete profile - log them in
+          // Map API user object to AuthContext User format
+          const mappedUser = {
+            id: response.user.id?.toString() || '',
+            email: response.user.email,
+            phone: response.user.phone,
+            firstName: response.user.first_name,
+            lastName: response.user.last_name,
+            userType: response.user.user_type as 'community' | 'business',
+            profilePicture: response.user.profile_image_url,
+            bio: response.user.bio,
+            isComplete: response.user.is_profile_complete,
+          };
+          login(mappedUser, response.tokens);
           clearOTPData();
           toast.success('Welcome back!');
           
           // Check user type and redirect accordingly
-          const userType = response.user.userType;
+          const userType = mappedUser.userType;
           setTimeout(() => {
             if (userType === 'business' || userType === 'business_owner') {
               navigate('/manage-business');
@@ -89,9 +108,9 @@ const OTPVerificationPage: React.FC = () => {
         toast.error(response.message || 'Invalid OTP. Please try again.');
         setOtp('');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error verifying OTP:', error);
-      toast.error('Something went wrong. Please try again.');
+      toast.error(error.message || 'Something went wrong. Please try again.');
       setOtp('');
     } finally {
       setIsVerifying(false);
@@ -104,10 +123,17 @@ const OTPVerificationPage: React.FC = () => {
     setIsResending(true);
 
     try {
-      const response = await apiService.sendOTP(otpData.contact, otpData.method);
+      const response = await apiService.resendOTP({
+        identifier: otpData.contact,
+        auth_method: otpData.method,
+      });
       
       if (response.success) {
         toast.success(`OTP resent to your ${otpData.method}`);
+        // Update user_id if returned
+        if (response.user_id) {
+          setOTPData({ ...otpData, userId: response.user_id });
+        }
         setResendTimer(30);
         
         // Restart timer
@@ -123,9 +149,9 @@ const OTPVerificationPage: React.FC = () => {
       } else {
         toast.error(response.message || 'Failed to resend OTP');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error resending OTP:', error);
-      toast.error('Something went wrong. Please try again.');
+      toast.error(error.message || 'Something went wrong. Please try again.');
     } finally {
       setIsResending(false);
     }
