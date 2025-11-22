@@ -172,14 +172,14 @@ export const BusinessCategories = () => {
                   transition={{ delay: index * 0.05 }}
                 >
                   <Link 
-                    to={`/directory?category=${category.slug}`}
-                    className="block"
-                  >
+                  to={`/directory?category=${category.slug}`}
+                  className="block"
+                >
                     <div className={`flex flex-col items-center justify-between gap-2 p-3 rounded-xl ${category.color.split(' ')[1]} hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl border-2 ${category.color.split(' ')[2]} cursor-pointer backdrop-blur-sm h-20`}>
                       <span className="text-2xl drop-shadow-sm flex-shrink-0">{category.icon}</span>
-                      <span className="text-[9px] font-semibold text-center leading-tight drop-shadow-sm line-clamp-2 flex-grow flex items-center justify-center">{category.name}</span>
-                    </div>
-                  </Link>
+                    <span className="text-[9px] font-semibold text-center leading-tight drop-shadow-sm line-clamp-2 flex-grow flex items-center justify-center">{category.name}</span>
+                  </div>
+                </Link>
                 </motion.div>
               ))}
             </div>
@@ -195,12 +195,12 @@ export const BusinessCategories = () => {
                   whileHover={{ y: -8 }}
                 >
                   <Link 
-                    to={`/directory?category=${category.slug}`}
-                    className="block h-full"
-                  >
+                  to={`/directory?category=${category.slug}`}
+                  className="block h-full"
+                >
                     <Card className={`cursor-pointer transition-all duration-300 hover:shadow-xl border-2 h-[200px] ${category.color.split(' ')[2]} hover:border-opacity-100`}>
-                      <CardContent className="p-6 text-center h-full flex flex-col justify-between">
-                        <div className="flex flex-col items-center h-full">
+                    <CardContent className="p-6 text-center h-full flex flex-col justify-between">
+                      <div className="flex flex-col items-center h-full">
                           <div className={`mx-auto w-20 h-20 mb-4 flex items-center justify-center rounded-2xl ${category.color.split(' ')[1]} shadow-lg`}>
                             <span className="text-4xl">{category.icon}</span>
                           </div>
@@ -212,10 +212,10 @@ export const BusinessCategories = () => {
                               {category.subcategoryCount} {category.subcategoryCount === 1 ? 'subcategory' : 'subcategories'}
                             </p>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
                 </motion.div>
               ))}
             </div>
@@ -231,12 +231,12 @@ export const BusinessCategories = () => {
                   whileHover={{ y: -8 }}
                 >
                   <Link 
-                    to={`/directory?category=${category.slug}`}
-                    className="block h-full"
-                  >
+                  to={`/directory?category=${category.slug}`}
+                  className="block h-full"
+                >
                     <Card className={`cursor-pointer transition-all duration-300 hover:shadow-xl border-2 h-[180px] ${category.color.split(' ')[2]} hover:border-opacity-100`}>
-                      <CardContent className="p-5 text-center h-full flex flex-col justify-between">
-                        <div className="flex flex-col items-center h-full">
+                    <CardContent className="p-5 text-center h-full flex flex-col justify-between">
+                      <div className="flex flex-col items-center h-full">
                           <div className={`mx-auto w-16 h-16 mb-3 flex items-center justify-center rounded-xl ${category.color.split(' ')[1]} shadow-lg`}>
                             <span className="text-3xl">{category.icon}</span>
                           </div>
@@ -248,10 +248,10 @@ export const BusinessCategories = () => {
                               {category.subcategoryCount} {category.subcategoryCount === 1 ? 'subcategory' : 'subcategories'}
                             </p>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
                 </motion.div>
               ))}
             </div>

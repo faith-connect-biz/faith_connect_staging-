@@ -238,6 +238,7 @@ export interface BusinessCreateRequest {
   business_image_url?: string;
   business_logo_url?: string;
   // New offering and operation fields from vset API
+  // NOTE: Backend accepts: 'products' | 'services' | 'both'
   offering_type?: 'products' | 'services' | 'both';
   operation_mode?: 'online' | 'physical' | 'hybrid';
   // Social media links
@@ -1058,7 +1059,14 @@ class ApiService {
   async createBusiness(data: BusinessCreateRequest): Promise<Business> {
     try {
       // Prepare the business data for the API
-      const businessData = {
+      // Ensure required fields have sensible defaults if missing
+      const normalizedOfferingType: BusinessCreateRequest['offering_type'] =
+        data.offering_type || 'both';
+      const normalizedOperationMode: BusinessCreateRequest['operation_mode'] =
+        data.operation_mode || 'online';
+
+      // Start with core fields
+      const businessData: any = {
         business_name: data.business_name,
         category_id: data.category_id,
         subcategory_id: data.subcategory_id,
@@ -1079,21 +1087,56 @@ class ApiService {
         longitude: data.longitude,
         business_image_url: data.business_image_url,
         business_logo_url: data.business_logo_url,
-        offering_type: data.offering_type,
-        operation_mode: data.operation_mode,
+        offering_type: normalizedOfferingType,
+        operation_mode: normalizedOperationMode,
         // Social media links
         facebook_url: data.facebook_url,
         instagram_url: data.instagram_url,
         twitter_url: data.twitter_url,
-        youtube_url: data.youtube_url,
-        // Include additional data that the backend expects
-        hours: data.hours || [],
-        services_data: data.services_data || [],
-        products_data: data.products_data || [],
-        features: data.features || [],
-        photo_request: data.photo_request || null,
-        photo_request_notes: data.photo_request_notes || null
+        youtube_url: data.youtube_url
       };
+
+      // Only include optional array fields if they have content
+      if (data.hours && data.hours.length > 0) {
+        businessData.hours = data.hours;
+      }
+      if (data.services_data && data.services_data.length > 0) {
+        businessData.services_data = data.services_data;
+      }
+      if (data.products_data && data.products_data.length > 0) {
+        businessData.products_data = data.products_data;
+      }
+      if (data.features && data.features.length > 0) {
+        businessData.features = data.features;
+      }
+
+      // Only include photo_request fields if explicitly set
+      if (data.photo_request !== undefined && data.photo_request !== null) {
+        businessData.photo_request = data.photo_request;
+      }
+      if (data.photo_request_notes !== undefined && data.photo_request_notes !== null) {
+        businessData.photo_request_notes = data.photo_request_notes;
+      }
+
+      // Remove empty string / null optional fields the backend doesn't need
+      [
+        'phone',
+        'website',
+        'office_address',
+        'country',
+        'city',
+        'county',
+        'sector',
+        'subcategory',
+        'facebook_url',
+        'instagram_url',
+        'twitter_url',
+        'youtube_url'
+      ].forEach((key) => {
+        if (businessData[key] === '' || businessData[key] === null || businessData[key] === undefined) {
+          delete businessData[key];
+        }
+      });
 
       const response = await this.api.post('/api/business/vset/businesses/', businessData);
 
@@ -1967,19 +2010,31 @@ class ApiService {
   }
 
   // Product Methods
-  async createProduct(businessId: string, data: {
-    name: string;
-    description?: string;
-    price: number;
-    price_currency: string;
-    images?: string[]; // Up to 10 images
-    in_stock?: boolean;
-    is_active?: boolean;
-  }): Promise<Product> {
+  async createProduct(
+    businessId: string,
+    data: {
+      name: string;
+      description?: string;
+      price: number | string;
+      price_currency: string;
+      images?: string[]; // Up to 10 images
+      in_stock?: boolean;
+      is_active?: boolean;
+    }
+  ): Promise<Product> {
+    // Backend expects body: { business_id, name, description, price (string), ... }
     const productData = {
-      ...data
+      business_id: businessId,
+      name: data.name,
+      description: data.description,
+      price: typeof data.price === 'number' ? data.price.toFixed(2) : data.price,
+      price_currency: data.price_currency,
+      images: data.images,
+      in_stock: data.in_stock ?? true,
+      is_active: data.is_active ?? true,
     };
-    const response = await this.api.post(`/api/business/vset/products/?business_id=${businessId}`, productData);
+
+    const response = await this.api.post(`/api/business/vset/products/`, productData);
     return response.data;
   }
 
@@ -3018,44 +3073,45 @@ class ApiService {
         subcategoryId = Number(data.subcategory_id);
       }
 
+      // Map business type selection from the registration flow to offering_type and operation_mode
+      // Always provide a value so backend "required" validators are satisfied
+      let offeringType: BusinessCreateRequest['offering_type'];
+      if (data.businessTypeRadio === 'products') {
+        offeringType = 'products';
+      } else if (data.businessTypeRadio === 'services') {
+        offeringType = 'services';
+      } else {
+        // Default to both if not explicitly set
+        offeringType = 'both';
+      }
+
+      let operationMode: BusinessCreateRequest['operation_mode'];
+      if (data.businessType === 'physical') {
+        operationMode = 'physical';
+      } else if (data.businessType === 'online') {
+        operationMode = 'online';
+      } else {
+        // Default to online if not explicitly set
+        operationMode = 'online';
+      }
+
       const businessData: BusinessCreateRequest = {
         business_name: data.name,
         category_id: categoryId,
         subcategory_id: subcategoryId,
-        description: data.description,
+        // Use long_description for the full business description to avoid character limits
+        description: data.description ? data.description.slice(0, 255) : '',
+        long_description: data.description,
         address: data.address || '',
         city: data.city || '',
         country: data.country || 'Kenya',
         phone: data.phone || '',
         email: data.email,
         website: data.website,
-        // Add additional fields as needed
-        hours: data.hours ? [{
-          day_of_week: 1,
-          open_time: '09:00',
-          close_time: '17:00',
-          is_closed: false
-        }] : [],
-        services_data: data.productsServices && data.productsServices.length > 0 
-          ? data.productsServices.map((item) => ({
-              name: item.name,
-              description: item.description,
-              price_range: item.price ? `${item.currency || 'KES'} ${item.price}${item.negotiable ? ' (Negotiable)' : ''}` : 'Contact for pricing',
-              duration: 'N/A',
-              is_available: true,
-              photos: item.images.map(img => img.preview).filter(Boolean),
-              type: item.type
-            }))
-          : data.services 
-            ? [{
-                name: 'General Services',
-                description: data.services,
-                price_range: 'Contact for pricing',
-                duration: 'Varies',
-                is_available: true,
-                photos: []
-              }]
-            : []
+        offering_type: offeringType,
+        operation_mode: operationMode
+        // NOTE: We intentionally do not send hours, products_data, services_data, features, or photo_request here.
+        // Those are handled via dedicated endpoints after the business is created.
       };
 
       try {
