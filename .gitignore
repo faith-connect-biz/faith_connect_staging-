@@ -121,3 +121,4 @@ jspm_packages/
 Downloads/
 !../fem-family-business-directory-main/
 .env.staging
+*.backup
