@@ -1,152 +1,15 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Building2, Users, Shield } from "lucide-react";
-import { useBusiness } from "@/contexts/BusinessContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { apiService } from "@/services/api";
-import { useEffect, useState } from "react";
-import { AnimatedStat } from "@/components/ui/AnimatedStat";
-
-interface PlatformStats {
-  total_businesses: number;
-  total_users: number;
-  verified_businesses: number;
-  average_rating: number;
-}
 
 export const CommunityStats = () => {
-  const { businesses, isLoading, fetchBusinesses } = useBusiness();
-  const { user } = useAuth();
-  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
-  // Ensure businesses are fetched when component mounts
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        console.log('🔄 CommunityStats - Fetching businesses...');
-        await fetchBusinesses({ limit: 100 }); // Fetch more businesses for accurate stats
-      } catch (error) {
-        console.error('❌ CommunityStats - Error fetching businesses:', error);
-      }
-    };
-
-    if (!businesses || businesses.length === 0) {
-      fetchData();
-    }
-  }, [fetchBusinesses, businesses]);
-
-  // Fetch platform statistics from API
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setIsLoadingStats(true);
-        console.log('🔄 CommunityStats - Fetching platform statistics...');
-        const stats = await apiService.getStats();
-        console.log('✅ CommunityStats - Platform stats received:', stats);
-        setPlatformStats(stats);
-      } catch (error) {
-        console.error('❌ CommunityStats - Error fetching platform statistics:', error);
-        setPlatformStats(null);
-      } finally {
-        setIsLoadingStats(false);
-      }
-    };
-
-    fetchStats();
-  }, []);
-
-  // Debug business data
-  useEffect(() => {
-    console.log('🔍 CommunityStats - Business data:', {
-      isLoading,
-      businessesLength: businesses?.length || 0,
-      businesses: businesses?.slice(0, 3) // Log first 3 businesses for debugging
-    });
-  }, [businesses, isLoading]);
-
-  // Calculate real statistics from the data
-  const calculateStats = () => {
-    console.log('🔄 CommunityStats - Calculating stats:', {
-      platformStats,
-      isLoadingStats,
-      businessesLength: businesses?.length || 0
-    });
-
-    // Use platform stats if available, otherwise fall back to business data calculations
-    if (platformStats && !isLoadingStats) {
-      const verifiedPercentage = platformStats.total_businesses > 0 
-        ? Math.round((platformStats.verified_businesses / platformStats.total_businesses) * 100)
-        : 0;
-
-      // Safety check for average rating - handle scientific notation and invalid values
-      let safeAverageRating = "0.0";
-      if (platformStats.average_rating !== null && platformStats.average_rating !== undefined) {
-        const rating = Number(platformStats.average_rating);
-        if (!isNaN(rating) && rating >= 0 && rating <= 5 && !isFinite(rating) === false) {
-          safeAverageRating = rating.toFixed(1);
-        }
-      }
-
-      const stats = {
-        totalBusinesses: platformStats.total_businesses.toString(),
-        verifiedBusinesses: verifiedPercentage.toString(),
-        averageRating: safeAverageRating,
-        totalUsers: platformStats.total_users.toString()
-      };
-
-      console.log('✅ CommunityStats - Using platform stats:', stats);
-      return stats;
-    }
-
-    // Fallback to business data calculations if platform stats are not available
-    if (isLoading || !Array.isArray(businesses) || !businesses.length) {
-      console.log('⚠️ CommunityStats - No business data available, using demo data for testing');
-      // Use demo data to test the component
-      return {
-        totalBusinesses: "80",
-        verifiedBusinesses: "50",
-        averageRating: "4.5",
-        totalUsers: "200"
-      };
-    }
-
-    const totalBusinesses = businesses.length;
-    const verifiedBusinesses = businesses.filter(b => b.is_verified).length;
-    
-    // Calculate average rating from businesses with ratings > 0
-    const businessesWithRatings = businesses.filter(b => 
-      b.rating && b.rating > 0 && !isNaN(Number(b.rating))
-    );
-    
-    const averageRating = businessesWithRatings.length > 0 
-      ? (businessesWithRatings.reduce((sum, b) => {
-          const rating = Number(b.rating);
-          return sum + (isNaN(rating) ? 0 : rating);
-        }, 0) / businessesWithRatings.length).toFixed(1)
-      : "0.0";
-    
-    // Estimate users based on businesses (assuming 1 user per business + community users)
-    const totalUsers = totalBusinesses + Math.floor(totalBusinesses * 0.5);
-
-    const stats = {
-      totalBusinesses: totalBusinesses.toString(),
-      verifiedBusinesses: Math.round((verifiedBusinesses / totalBusinesses) * 100).toString(),
-      averageRating,
-      totalUsers: totalUsers.toString()
-    };
-
-    console.log('✅ CommunityStats - Using business data fallback:', {
-      totalBusinesses,
-      verifiedBusinesses,
-      averageRating,
-      totalUsers,
-      finalStats: stats
-    });
-
-    return stats;
+  // Use mock data for statistics
+  const stats = {
+    totalBusinesses: "150",
+    verifiedBusinesses: "85",
+    averageRating: "4.8",
+    totalUsers: "500"
   };
-
-  const stats = calculateStats();
 
   const statsData = [
     {
@@ -158,7 +21,7 @@ export const CommunityStats = () => {
     },
     {
       icon: Users,
-      value: `${stats.totalUsers}`,
+      value: `${stats.totalUsers}+`,
       label: "Community Members",
       description: "Active church family members",
       delay: 200
@@ -201,16 +64,7 @@ export const CommunityStats = () => {
                       <stat.icon className="w-6 h-6 text-fem-terracotta" />
                     </div>
                     <div className="text-2xl font-bold text-fem-navy mb-1">
-                      {isLoadingStats && !platformStats ? (
-                        <div className="bg-gray-200 h-6 w-12 rounded mx-auto"></div>
-                      ) : (
-                        <AnimatedStat
-                          value={stat.value}
-                          duration={2000}
-                          delay={stat.delay}
-                          className="text-2xl font-bold text-fem-navy"
-                        />
-                      )}
+                      {stat.value}
                     </div>
                     <h3 className="font-semibold text-fem-navy mb-1 text-sm">{stat.label}</h3>
                     <p className="text-xs text-fem-darkgray leading-tight">{stat.description}</p>
@@ -234,16 +88,7 @@ export const CommunityStats = () => {
                   <stat.icon className="w-8 h-8 text-fem-terracotta" />
                 </div>
                 <div className="text-3xl font-bold text-fem-navy mb-2">
-                  {isLoadingStats && !platformStats ? (
-                    <div className="bg-gray-200 h-8 w-16 rounded mx-auto"></div>
-                  ) : (
-                    <AnimatedStat
-                      value={stat.value}
-                      duration={2000}
-                      delay={stat.delay}
-                      className="text-3xl font-bold text-fem-navy"
-                    />
-                  )}
+                  {stat.value}
                 </div>
                 <h3 className="font-semibold text-fem-navy mb-2">{stat.label}</h3>
                 <p className="text-sm text-fem-darkgray">{stat.description}</p>

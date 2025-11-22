@@ -49,7 +49,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { MotionWrapper, HoverCard, GlassmorphismCard } from "@/components/ui/MotionWrapper";
 import { getBusinessImageUrl, getBusinessLogoUrl } from "@/utils/imageUtils";
 import { apiService } from "@/services/api";
-import type { Business, Review } from "@/services/api";
+import type { Business, Review, BusinessHour } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -73,6 +73,19 @@ const BusinessDetailPage = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to view business details.",
+        variant: "default"
+      });
+      navigate('/login', { state: { from: `/business/${id}` } });
+      return;
+    }
+  }, [isAuthenticated, navigate, id]);
+  
   // Use React Query hook for business data
   const { business, reviews, isBusinessOwner: queryIsBusinessOwner, isLoading, error } = useBusinessQuery(id);
   
@@ -88,6 +101,8 @@ const BusinessDetailPage = () => {
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
+  const [isLoadingHours, setIsLoadingHours] = useState(false);
 
   
   // Image viewer state
@@ -219,6 +234,25 @@ const BusinessDetailPage = () => {
       });
     }
   }, [business]);
+
+  // Load business hours for public view
+  useEffect(() => {
+    const loadHours = async () => {
+      if (!business?.id) return;
+      try {
+        setIsLoadingHours(true);
+        const hoursData = await apiService.getBusinessHoursPublic(String(business.id));
+        setBusinessHours(hoursData || []);
+      } catch (err) {
+        console.error("Error loading business hours (public view):", err);
+        setBusinessHours([]);
+      } finally {
+        setIsLoadingHours(false);
+      }
+    };
+
+    loadHours();
+  }, [business?.id]);
 
   // Debug active tab changes
   useEffect(() => {
@@ -1624,40 +1658,128 @@ const BusinessDetailPage = () => {
                   </GlassmorphismCard>
                 </MotionWrapper>
 
-                {/* Contact Card */}
+                {/* Contact & Business Hours Card */}
                 <Card className="backdrop-blur-sm bg-white/80 border-0 shadow-xl">
                   <CardHeader className="bg-gradient-to-r from-fem-navy to-fem-terracotta text-white rounded-t-lg">
                     <CardTitle className="flex items-center gap-2">
                       <Phone className="w-5 h-5" />
-                      Contact Business
+                      Contact & Hours
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-6">
+                  <CardContent className="p-6 space-y-6">
+                    {/* Contact */}
                     <div className="space-y-4">
-                      <ProtectedContactInfo 
+                      <ProtectedContactInfo
                         phone={business.phone}
                         email={business.email}
                         variant="card"
                       />
-                      
+
                       {business.website ? (
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           className="w-full"
-                          onClick={() => window.open(business.website, '_blank')}
+                          onClick={() => window.open(business.website, "_blank")}
                         >
                           <ExternalLink className="w-4 h-4 mr-2" />
                           Visit Website
                         </Button>
                       ) : (
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           className="w-full opacity-50 cursor-not-allowed"
                           disabled
                         >
                           <ExternalLink className="w-4 h-4 mr-2" />
                           No Website
                         </Button>
+                      )}
+                    </div>
+
+                    {/* Business Hours */}
+                    <div className="pt-4 border-t border-gray-200/70">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-fem-terracotta" />
+                          <span className="text-sm font-semibold text-gray-900">
+                            Business Hours
+                          </span>
+                        </div>
+                        {isLoadingHours && (
+                          <span className="text-xs text-gray-500">Loading...</span>
+                        )}
+                      </div>
+                      {businessHours && businessHours.length > 0 ? (
+                        <div className="space-y-2 text-sm">
+                          {/* Today summary */}
+                          {(() => {
+                            const todayIdx = new Date().getDay(); // 0-6
+                            const today = businessHours.find(h => h.day_of_week === todayIdx);
+                            const fmt = (t?: string | null) =>
+                              t ? t.split(':').slice(0, 2).join(':') : '';
+                            const label = !today
+                              ? 'Hours not available'
+                              : today.is_closed
+                              ? 'Closed today'
+                              : `Open today ${fmt(today.open_time)} - ${fmt(today.close_time)}`;
+                            return (
+                              <div className="inline-flex items-center gap-2 rounded-full bg-fem-terracotta/5 px-3 py-1 border border-fem-terracotta/20 text-fem-terracotta">
+                                <span className="text-xs font-semibold uppercase tracking-wide">
+                                  Today
+                                </span>
+                                <span className="text-xs font-medium">{label}</span>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Condensed weekly view */}
+                          {(() => {
+                            const daysShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                            const fmt = (t?: string | null) =>
+                              t ? t.split(':').slice(0, 2).join(':') : '';
+
+                            const sorted = businessHours
+                              .slice()
+                              .sort((a, b) => a.day_of_week - b.day_of_week);
+
+                            type Segment = { start: number; end: number; label: string };
+                            const segments: Segment[] = [];
+
+                            sorted.forEach(h => {
+                              const label = h.is_closed
+                                ? 'Closed'
+                                : `${fmt(h.open_time)}-${fmt(h.close_time)}`;
+                              const last = segments[segments.length - 1];
+                              if (last && last.label === label && last.end === h.day_of_week - 1) {
+                                last.end = h.day_of_week;
+                              } else {
+                                segments.push({ start: h.day_of_week, end: h.day_of_week, label });
+                              }
+                            });
+
+                            const summary = segments
+                              .map(seg => {
+                                const dayRange =
+                                  seg.start === seg.end
+                                    ? daysShort[seg.start]
+                                    : `${daysShort[seg.start]}–${daysShort[seg.end]}`;
+                                return seg.label === 'Closed'
+                                  ? `${dayRange}: Closed`
+                                  : `${dayRange}: ${seg.label.replace('-', '–')}`;
+                              })
+                              .join(' • ');
+
+                            return (
+                              <p className="text-xs text-gray-700 leading-relaxed">
+                                {summary}
+                              </p>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500">
+                          Business hours have not been added yet.
+                        </p>
                       )}
                     </div>
                   </CardContent>

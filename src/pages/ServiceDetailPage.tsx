@@ -22,12 +22,14 @@ import {
   Eye,
   MessageSquare
 } from 'lucide-react';
-import { apiService, Service } from '@/services/api';
+import { apiService, Service, type BusinessHour } from '@/services/api';
 import { formatToBritishDate } from '@/utils/dateUtils';
 import { toast } from '@/hooks/use-toast';
 import { BookingModal } from '@/components/modals/BookingModal';
 import { ContactModal } from '@/components/modals/ContactModal';
 import { analytics } from '@/services/analytics';
+import { ReviewSection } from '@/components/ReviewSection';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const ServiceDetailPage: React.FC = () => {
   const { id, categorySlug, serviceSlug } = useParams<{ 
@@ -36,6 +38,7 @@ export const ServiceDetailPage: React.FC = () => {
     serviceSlug?: string; 
   }>();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [service, setService] = useState<Service | null>(null);
   const [business, setBusiness] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,12 +46,46 @@ export const ServiceDetailPage: React.FC = () => {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [contactDetails, setContactDetails] = useState<any>(null);
+  const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
+  const [isLoadingHours, setIsLoadingHours] = useState(false);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to view service details.",
+        variant: "default"
+      });
+      navigate('/login', { state: { from: `/service/${id || (categorySlug && serviceSlug ? `${categorySlug}/${serviceSlug}` : '')}` } });
+      return;
+    }
+  }, [isAuthenticated, navigate, id, categorySlug, serviceSlug]);
 
   useEffect(() => {
-    if (id || (categorySlug && serviceSlug)) {
+    if (isAuthenticated && (id || (categorySlug && serviceSlug))) {
       loadServiceDetails();
     }
-  }, [id, categorySlug, serviceSlug]);
+  }, [id, categorySlug, serviceSlug, isAuthenticated]);
+
+  // Load business hours when business info is available
+  useEffect(() => {
+    const loadHours = async () => {
+      if (!business?.id) return;
+      try {
+        setIsLoadingHours(true);
+        const hoursData = await apiService.getBusinessHoursPublic(String(business.id));
+        setBusinessHours(hoursData || []);
+      } catch (err) {
+        console.error('Error loading business hours for service view:', err);
+        setBusinessHours([]);
+      } finally {
+        setIsLoadingHours(false);
+      }
+    };
+
+    loadHours();
+  }, [business?.id]);
 
   const loadServiceDetails = async () => {
     try {
@@ -510,113 +547,125 @@ export const ServiceDetailPage: React.FC = () => {
 
               {/* Provider Quick Info */}
               {business && (
-                <Card className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Provider Details</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center">
-                        <span className="text-white font-bold">
-                        {business.business_name?.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">{business.business_name}</p>
-                        <p className="text-sm text-gray-600">Verified Provider</p>
+                <Card className="p-6 space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Provider Details</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-r from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center">
+                          <span className="text-white font-bold">
+                            {business.business_name?.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{business.business_name}</p>
+                          <p className="text-sm text-gray-600">Verified Provider</p>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <MapPin className="h-4 w-4 text-fem-terracotta" />
-                        <span>{business.city}, {business.county}</span>
-                      </div>
+                      
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <MapPin className="h-4 w-4 text-fem-terracotta" />
+                          <span>{business.city}, {business.county}</span>
+                        </div>
                         {business.phone && (
-                            <div className="flex items-center gap-2 text-gray-700">
-                              <Phone className="h-4 w-4 text-fem-terracotta" />
-                          <span>{business.phone}</span>
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <Phone className="h-4 w-4 text-fem-terracotta" />
+                            <span>{business.phone}</span>
                           </div>
                         )}
                         {business.email && (
-                            <div className="flex items-center gap-2 text-gray-700">
-                              <Mail className="h-4 w-4 text-fem-terracotta" />
-                          <span>{business.email}</span>
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <Mail className="h-4 w-4 text-fem-terracotta" />
+                            <span>{business.email}</span>
                           </div>
                         )}
                       </div>
-
-                    <div className="pt-3 border-t border-gray-200">
-                      <Link to={`/business/${business.id}`} className="block">
-                        <Button className="w-full bg-fem-terracotta hover:bg-fem-terracotta/90 text-white">
-                          <Building2 className="h-4 w-4 mr-2" />
-                          Visit Business Profile
-                        </Button>
-                        </Link>
-                      </div>
+                    </div>
                   </div>
-                  </Card>
-                )}
+
+                  {/* Business Hours */}
+                  <div className="pt-3 border-t border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-fem-terracotta" />
+                        <span className="text-sm font-semibold text-gray-900">
+                          Business Hours
+                        </span>
+                      </div>
+                      {isLoadingHours && (
+                        <span className="text-xs text-gray-500">Loading...</span>
+                      )}
+                    </div>
+                    {businessHours && businessHours.length > 0 ? (
+                      <div className="space-y-1 text-sm">
+                        {businessHours
+                          .slice()
+                          .sort((a, b) => a.day_of_week - b.day_of_week)
+                          .map((hour) => {
+                            const dayName = [
+                              'Sunday',
+                              'Monday',
+                              'Tuesday',
+                              'Wednesday',
+                              'Thursday',
+                              'Friday',
+                              'Saturday',
+                            ][hour.day_of_week];
+
+                            const formatTime = (time?: string | null) => {
+                              if (!time) return 'N/A';
+                              return time.split(':').slice(0, 2).join(':');
+                            };
+
+                            const isClosed = hour.is_closed;
+                            const openTime = formatTime(hour.open_time);
+                            const closeTime = formatTime(hour.close_time);
+
+                            return (
+                              <div
+                                key={hour.day_of_week}
+                                className="flex items-center justify-between"
+                              >
+                                <span className="text-gray-700">{dayName}</span>
+                                <span className="font-medium text-gray-900">
+                                  {isClosed ? 'Closed' : `${openTime} - ${closeTime}`}
+                                </span>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500">
+                        Business hours have not been added yet.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="pt-3 border-t border-gray-200">
+                    <Link to={`/business/${business.id}`} className="block">
+                      <Button className="w-full bg-fem-terracotta hover:bg-fem-terracotta/90 text-white">
+                        <Building2 className="h-4 w-4 mr-2" />
+                        Visit Business Profile
+                      </Button>
+                    </Link>
+                  </div>
+                </Card>
+              )}
 
             </div>
           </div>
 
         {/* Service Reviews Section - placed at the bottom */}
         <div className="container mx-auto px-4 pb-12">
-          <Card className="mt-8">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="w-8 h-8 bg-gradient-to-r from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center">
-                  <Star className="h-4 w-4 text-white" />
-                </div>
-                <h2 className="text-xl font-semibold text-gray-900">Service Reviews</h2>
-                <Badge variant="outline" className="ml-auto bg-gradient-to-r from-fem-terracotta/10 to-fem-gold/10 text-fem-terracotta border-fem-terracotta/30">
-                  0 Reviews
-                </Badge>
-              </div>
-
-              <div className="text-center py-12">
-                <div className="relative mb-6">
-                  <div className="w-24 h-24 bg-gradient-to-br from-fem-terracotta/10 to-fem-gold/10 rounded-full mx-auto flex items-center justify-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-fem-terracotta/20 to-fem-gold/20 rounded-full flex items-center justify-center">
-                      <Star className="h-8 w-8 text-fem-terracotta/60" />
-                    </div>
-                  </div>
-                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-fem-gold rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">!</span>
-                  </div>
-                </div>
-                
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Reviews Yet</h3>
-                <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                  Be the first to share your experience with this service! Your review helps others make informed decisions.
-                </p>
-                
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white">
-                    <Star className="h-4 w-4 mr-2" />
-                    Write First Review
-                  </Button>
-                  <Button variant="outline" className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white">
-                    <Heart className="h-4 w-4 mr-2" />
-                    Save for Later
-                  </Button>
-                </div>
-              </div>
-
-              <div className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
-                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs">i</span>
-                  </div>
-                  Review Guidelines
-                </h4>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Share your honest experience with the service</li>
-                  <li>• Include details about quality, timeliness, and communication</li>
-                  <li>• Help other customers make informed decisions</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
+          {service && (
+            <ReviewSection
+              type="service"
+              itemId={service.id.toString()}
+              itemName={service.name}
+              canReview={true}
+            />
+          )}
         </div>
         </div>
       </main>

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from 'sonner';
 import LikeButton from "@/components/LikeButton";
 import ShareModal from "@/components/ui/ShareModal";
 import { type ShareData } from "@/utils/sharing";
@@ -84,9 +85,14 @@ export const ServiceList: React.FC<ServiceListProps> = ({
       searchParams.search = filters.searchTerm.trim();
     }
     
-    // Add category filter if provided
+    // Map directory filters to backend vset query params
+    // Category → business__category (category slug/name)
     if (filters.category && filters.category.trim()) {
-      searchParams.category = filters.category.trim();
+      searchParams.business__category = filters.category.trim();
+    }
+    // Location filter (county/city field) → business__city for now
+    if (filters.county && filters.county.trim()) {
+      searchParams.business__city = filters.county.trim();
     }
     
     // Debounce search to prevent excessive API calls
@@ -108,12 +114,25 @@ export const ServiceList: React.FC<ServiceListProps> = ({
     if (filters.searchTerm && filters.searchTerm.trim()) {
       searchParams.search = filters.searchTerm.trim();
     }
+    if (filters.category && filters.category.trim()) {
+      searchParams.business__category = filters.category.trim();
+    }
+    if (filters.county && filters.county.trim()) {
+      searchParams.business__city = filters.county.trim();
+    }
     
     fetchServicesWithPagination(searchParams);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleServiceClick = (service: Service) => {
+    // Check authentication first
+    if (!isAuthenticated) {
+      toast.error("Please log in to view service details.");
+      navigate('/login', { state: { from: `/service/${service.id}` } });
+      return;
+    }
+    
     // Navigate to service detail page using category-based URL if available
     const business = typeof service.business === 'string' 
       ? businesses.find(b => b.id === service.business)

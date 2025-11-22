@@ -482,14 +482,38 @@ export interface PublicStats {
 }
 
 export interface BusinessAnalyticsResponse {
-  business_id: string;
-  business_name: string;
-  total_views: number;
-  total_favorites: number;
-  total_likes: number;
-  total_reviews: number;
-  average_rating: number;
-  rating_distribution: Record<string, number>;
+  success?: boolean;
+  data?: {
+    business_id: string;
+    business_name: string;
+    total_reviews: number;
+    average_rating: number;
+    rating_distribution: { [key: string]: number };
+    recent_reviews: Array<{
+      id: number;
+      user: string;
+      rating: number;
+      review_text: string;
+      is_verified: boolean;
+      created_at: string;
+      updated_at: string;
+    }>;
+  };
+  // Direct response format (fallback)
+  business_id?: string;
+  business_name?: string;
+  total_reviews?: number;
+  average_rating?: number;
+  rating_distribution?: { [key: string]: number };
+  recent_reviews?: Array<{
+    id: number;
+    user: string;
+    rating: number;
+    review_text: string;
+    is_verified: boolean;
+    created_at: string;
+    updated_at: string;
+  }>;
 }
 
 // API Configuration
@@ -1156,7 +1180,9 @@ class ApiService {
    */
   async getBusinessHoursPublic(businessId: string): Promise<BusinessHour[]> {
     const response = await this.api.get(`/api/business/vset/businesses/${businessId}/hours/`);
-    return response.data;
+    // Backend returns { success: boolean, data: [...] }
+    const payload = response.data;
+    return payload?.data ?? payload ?? [];
   }
 
   /**
@@ -1355,7 +1381,15 @@ class ApiService {
   async getBusinessServices(businessId: string): Promise<Service[]> {
     try {
       const response = await this.api.get(`/api/business/vset/services/?business=${businessId}`);
-      return response.data.results || response.data || [];
+      const services = response.data.results || response.data || [];
+
+      // Extra safety: ensure we only ever return services for this business
+      return services.filter((service: any) => {
+        const svcBusiness = service.business;
+        const svcBusinessId =
+          typeof svcBusiness === 'string' ? svcBusiness : svcBusiness?.id;
+        return svcBusinessId === businessId;
+      });
     } catch (error) {
       console.error('Error fetching business services:', error);
       return [];
@@ -1365,8 +1399,18 @@ class ApiService {
   // Get business products
   async getBusinessProducts(businessId: string): Promise<Product[]> {
     try {
-      const response = await this.api.get(`/api/business/vset/products/?business=${businessId}`);
-      return response.data.results || response.data || [];
+      const response = await this.api.get(`/api/business/vset/products/`, {
+        params: { business: businessId },
+      });
+      const products = response.data.results || response.data || [];
+
+      // Extra safety: ensure we only ever return products for this business
+      return products.filter((product: any) => {
+        const prodBusiness = product.business;
+        const prodBusinessId =
+          typeof prodBusiness === 'string' ? prodBusiness : prodBusiness?.id;
+        return prodBusinessId === businessId;
+      });
     } catch (error) {
       console.error('Error fetching business products:', error);
       return [];
@@ -1587,16 +1631,17 @@ class ApiService {
     is_closed: boolean;
   }>> {
     try {
-      const response = await this.api.get(`/business/${businessId}/hours/`);
+      const response = await this.api.get(`/api/business/vset/businesses/${businessId}/hours/`);
       // Backend returns { success: true, data: [...] }
-      return response.data.data || [];
+      const payload = response.data;
+      return payload?.data ?? payload ?? [];
     } catch (error) {
       console.error('Error fetching business hours:', error);
       return [];
     }
   }
 
-  // Get business analytics
+  // Get business analytics (using vset endpoint)
   async getBusinessAnalytics(businessId: string): Promise<{
     business_id: string;
     business_name: string;
@@ -1614,8 +1659,20 @@ class ApiService {
     }>;
   } | null> {
     try {
-      const response = await this.api.get(`/business/${businessId}/analytics/`);
-      return response.data.data || null;
+      const response = await this.getBusinessAnalyticsVSet(businessId);
+      // Handle response format: { success: true, data: {...} }
+      if (response && typeof response === 'object') {
+        if ('success' in response && 'data' in response && response.success) {
+          return response.data as any;
+        }
+        // Fallback for direct data response
+        if ('data' in response) {
+          return response.data as any;
+        }
+        // Fallback for direct object response
+        return response as any;
+      }
+      return null;
     } catch (error) {
       console.error('Error fetching business analytics:', error);
       return null;
@@ -1638,9 +1695,10 @@ class ApiService {
       console.log('API: Updating business hours for business:', businessId);
       console.log('API: Hours data being sent:', JSON.stringify(hours, null, 2));
       
-      const response = await this.api.post(`/business/${businessId}/hours/`, { hours });
+      const response = await this.api.post(`/api/business/vset/businesses/${businessId}/hours/`, { hours });
       console.log('API: Business hours update response:', response.data);
-      return response.data.data || [];
+      const payload = response.data;
+      return payload?.data ?? payload ?? [];
     } catch (error) {
       console.error('API: Error updating business hours:', error);
       if (error.response) {
@@ -2022,12 +2080,15 @@ class ApiService {
       is_active?: boolean;
     }
   ): Promise<Product> {
-    // Backend expects body: { business_id, name, description, price (string), ... }
+    // Backend expects price as a number in the JSON payload
+    const numericPrice =
+      typeof data.price === 'number' ? data.price : parseFloat(data.price || '0');
+
     const productData = {
       business_id: businessId,
       name: data.name,
       description: data.description,
-      price: typeof data.price === 'number' ? data.price.toFixed(2) : data.price,
+      price: numericPrice,
       price_currency: data.price_currency,
       images: data.images,
       in_stock: data.in_stock ?? true,
@@ -2680,11 +2741,11 @@ class ApiService {
     }
   }
 
-  // Product Review Methods
+  // Product Review Methods (using vset endpoints)
   async getProductReviews(productId: string): Promise<Review[]> {
     try {
-      const response = await this.api.get(`/business/products/${productId}/reviews/`);
-      return response.data.results || response.data;
+      const response = await this.getProductReviewsVSet(productId);
+      return response.results || [];
     } catch (error) {
       console.error('Error fetching product reviews:', error);
       return [];
@@ -2696,19 +2757,18 @@ class ApiService {
     review_text?: string;
   }): Promise<Review> {
     try {
-      const response = await this.api.post(`/business/products/${productId}/reviews/`, data);
-      return response.data;
+      return await this.createProductReviewVSet(productId, data);
     } catch (error) {
       console.error('Error creating product review:', error);
       throw error;
     }
   }
 
-  // Service Review Methods
+  // Service Review Methods (using vset endpoints)
   async getServiceReviews(serviceId: string): Promise<Review[]> {
     try {
-      const response = await this.api.get(`/api/business/vset/services/${serviceId}/reviews/`);
-      return response.data.results || response.data || [];
+      const response = await this.getServiceReviewsVSet(serviceId);
+      return response.results || [];
     } catch (error) {
       console.error('Error fetching service reviews:', error);
       return [];
@@ -2720,8 +2780,7 @@ class ApiService {
     review_text?: string;
   }): Promise<Review> {
     try {
-      const response = await this.api.post(`/api/business/vset/services/${serviceId}/reviews/`, data);
-      return response.data;
+      return await this.createServiceReviewVSet(serviceId, data);
     } catch (error) {
       console.error('Error creating service review:', error);
       throw error;

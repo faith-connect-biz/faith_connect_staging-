@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,12 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { Building2, MapPin, Globe, Church, Loader2, CheckCircle } from 'lucide-react';
+import { Building2, MapPin, Globe, Church, Loader2, CheckCircle, Clock } from 'lucide-react';
 import { apiService } from '@/services/api';
 import { toast } from 'sonner';
 import { Navbar } from '@/components/layout/Navbar';
 import { ProductServiceManager } from '@/components/ProductServiceManager';
 import { CategorySelector } from '@/components/ui/CategorySelector';
+import { Switch } from '@/components/ui/switch';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface ProductService {
   id: string;
@@ -285,15 +287,111 @@ const subcategoriesMap: Record<string, string[]> = {
 
 const BusinessRegistrationPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const isEditMode = Boolean((location.state as any)?.editMode);
+  const editingBusinessIdFromState = (location.state as any)?.businessId as string | undefined;
   const [currentStep, setCurrentStep] = useState(1);
   const [businessData, setBusinessData] = useState<BusinessData>(initialBusinessData);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [createdBusinessId, setCreatedBusinessId] = useState<string | null>(null);
+  const [editingBusinessId, setEditingBusinessId] = useState<string | null>(editingBusinessIdFromState || null);
+
+  // Redirect community members - they cannot register businesses
+  useEffect(() => {
+    if (authLoading) return;
+    
+    if (!isAuthenticated || !user) {
+      toast.error("Please log in to register a business");
+      navigate('/login');
+      return;
+    }
+    
+    if (user.user_type === 'community' || user.userType === 'community') {
+      toast.error("Community members cannot register businesses. Please use the directory to browse.");
+      navigate("/directory");
+      return;
+    }
+  }, [authLoading, isAuthenticated, user, navigate]);
+
+  // Guard: users can only have ONE business (unless explicitly in edit mode)
+  useEffect(() => {
+    const checkExistingBusiness = async () => {
+      try {
+        if (isEditMode) {
+          // In edit mode, prefill form with existing business data
+          const businessId = editingBusinessIdFromState;
+          const existingBusiness = businessId
+            ? await apiService.getBusiness(businessId)
+            : await apiService.getUserBusiness();
+
+          if (existingBusiness) {
+            setEditingBusinessId(existingBusiness.id);
+            setBusinessData(prev => ({
+              ...prev,
+              businessName: existingBusiness.business_name || '',
+              category: existingBusiness.category?.name || '',
+              category_id: existingBusiness.category?.id
+                ? String(existingBusiness.category.id)
+                : '',
+              category_slug: existingBusiness.category?.slug || '',
+              subcategory: (existingBusiness as any).subcategory?.name || '',
+              subcategory_id: (existingBusiness as any).subcategory?.id
+                ? String((existingBusiness as any).subcategory.id)
+                : '',
+              subcategory_slug: (existingBusiness as any).subcategory?.slug || '',
+              businessDescription:
+                existingBusiness.long_description ||
+                existingBusiness.description ||
+                '',
+              isPhysicalAddress:
+                (existingBusiness as any).operation_mode === 'physical' ||
+                (existingBusiness as any).operation_mode === 'hybrid',
+              onlineAddress:
+                (existingBusiness as any).operation_mode === 'online'
+                  ? existingBusiness.address || ''
+                  : '',
+              physicalAddress: {
+                street: existingBusiness.address || '',
+                city: existingBusiness.city || '',
+                state: (existingBusiness as any).county || '',
+                zipCode: (existingBusiness as any).zip_code || '',
+                country: (existingBusiness as any).country || 'Kenya',
+              },
+              businessType:
+                (existingBusiness as any).offering_type === 'products' ||
+                (existingBusiness as any).offering_type === 'services' ||
+                (existingBusiness as any).offering_type === 'both'
+                  ? (existingBusiness as any).offering_type
+                  : '',
+              contactDetails: {
+                phone: existingBusiness.phone || '',
+                email: existingBusiness.email || '',
+                website: existingBusiness.website || '',
+              },
+            }));
+          }
+        } else {
+          // Creation mode: if user already has a business, redirect them to manage page
+          const existing = await apiService.getUserBusiness();
+          if (existing && existing.id) {
+            navigate('/manage-business', { replace: true });
+            toast.error('You already have a business. You can only edit your existing listing.');
+          }
+        }
+      } catch (error) {
+        // If user has no business yet, backend may return a 404 or custom response – we ignore it
+        console.warn('Business pre-check during registration/edit:', error);
+      }
+    };
+
+    checkExistingBusiness();
+  }, [isEditMode, editingBusinessIdFromState, navigate]);
 
   const handleStepComplete = (stepData: Partial<BusinessData>) => {
     setBusinessData(prev => ({ ...prev, ...stepData }));
-    if (currentStep === 1) {
+    if (!isEditMode && currentStep === 1) {
       setCurrentStep(2);
     }
   };
@@ -318,6 +416,45 @@ const BusinessRegistrationPage: React.FC = () => {
 
     try {
       const items = completeData.productsServices || [];
+
+      // ---------- Business Hours ----------
+      // Map workingHours state to API payload format
+      const workingHours = completeData.workingHours;
+      if (workingHours && createdBusinessId) {
+        const dayMap: { key: keyof BusinessData['workingHours']; day_of_week: number }[] = [
+          { key: 'monday', day_of_week: 1 },
+          { key: 'tuesday', day_of_week: 2 },
+          { key: 'wednesday', day_of_week: 3 },
+          { key: 'thursday', day_of_week: 4 },
+          { key: 'friday', day_of_week: 5 },
+          { key: 'saturday', day_of_week: 6 },
+          { key: 'sunday', day_of_week: 0 },
+        ];
+
+        const hoursPayload = {
+          hours: dayMap.map(({ key, day_of_week }) => {
+            const config = workingHours[key];
+            const isClosed = !!config.closed;
+            return {
+              day_of_week,
+              is_closed: isClosed,
+              // Only send times when the business is open
+              open_time: isClosed ? undefined : config.open,
+              close_time: isClosed ? undefined : config.close,
+            };
+          }),
+        };
+
+        try {
+          await apiService.replaceBusinessHours(createdBusinessId, hoursPayload);
+    } catch (error: any) {
+          console.error('Error saving business hours:', error);
+          toast.error(
+            error.response?.data?.message ||
+              'Failed to save business hours. You can update them later from Manage Your Listing.'
+          );
+        }
+      }
 
       const productItems = items.filter((item) => item.type === 'product');
       const serviceItems = items.filter((item) => item.type === 'service');
@@ -436,48 +573,91 @@ const BusinessRegistrationPage: React.FC = () => {
     try {
       const completeData = { ...businessData };
 
-      const payload = {
-        name: completeData.businessName,
-        category: completeData.category,
-        category_id: completeData.category_id,
-        subcategory: completeData.subcategory,
-        subcategory_id: completeData.subcategory_id,
-        description: completeData.businessDescription,
-        businessType: completeData.isPhysicalAddress ? 'physical' : 'online',
-        address: completeData.physicalAddress.street,
-        city: completeData.physicalAddress.city,
-        state: completeData.physicalAddress.state,
-        zipCode: completeData.physicalAddress.zipCode,
-        country: completeData.physicalAddress.country,
-        onlinePresence: completeData.onlineAddress,
-        churchAffiliation: completeData.churchAffiliation,
-        businessTypeRadio: completeData.businessType,
-        phone: completeData.contactDetails.phone,
-        email: completeData.contactDetails.email,
-        website: completeData.contactDetails.website,
-        productsServices: completeData.productsServices
-      };
+      if (isEditMode && editingBusinessId) {
+        // ----- Edit existing business (no re-registration) -----
+        const offeringType =
+          completeData.businessType === 'products'
+            ? 'products'
+            : completeData.businessType === 'services'
+            ? 'services'
+            : 'both';
 
-      console.log('📡 Submitting business registration to backend:', payload);
+        const operationMode = completeData.isPhysicalAddress ? 'physical' : 'online';
 
-      const response = await apiService.createBusinessFromRegistration(payload);
+        const updatePayload: Partial<any> = {
+          business_name: completeData.businessName,
+          category_id: completeData.category_id ? Number(completeData.category_id) : undefined,
+          subcategory_id: completeData.subcategory_id
+            ? Number(completeData.subcategory_id)
+            : undefined,
+          description: completeData.businessDescription
+            ? completeData.businessDescription.slice(0, 255)
+            : '',
+          long_description: completeData.businessDescription || '',
+          address: completeData.isPhysicalAddress
+            ? completeData.physicalAddress.street
+            : completeData.onlineAddress,
+          city: completeData.physicalAddress.city || '',
+          county: completeData.physicalAddress.state || '',
+          country: completeData.physicalAddress.country || 'Kenya',
+          phone: completeData.contactDetails.phone || '',
+          email: completeData.contactDetails.email || '',
+          website: completeData.contactDetails.website || '',
+          offering_type: offeringType,
+          operation_mode: operationMode,
+        };
 
-      console.log('✅ Business registration response:', response);
+        console.log('📡 Submitting business update to backend:', updatePayload);
+        const updated = await apiService.updateBusinessVSet(editingBusinessId, updatePayload);
+        console.log('✅ Business update response:', updated);
 
-      if (response.success) {
-        // Save the created business ID for the management page
-        if (response.business?.id) {
-          setCreatedBusinessId(response.business.id);
-        }
-
-        // Move to step 2 only after successful backend creation
-        toast.success('Business registered successfully! Now complete your profile.');
-        handleStepComplete(completeData);
+        toast.success('Business details updated successfully.');
+        navigate('/manage-business', { state: { businessId: updated.id } });
       } else {
-        toast.error(response.message || 'Failed to register business');
+        // ----- Create new business (first-time registration) -----
+        const payload = {
+          name: completeData.businessName,
+          category: completeData.category,
+          category_id: completeData.category_id,
+          subcategory: completeData.subcategory,
+          subcategory_id: completeData.subcategory_id,
+          description: completeData.businessDescription,
+          businessType: completeData.isPhysicalAddress ? 'physical' : 'online',
+          address: completeData.physicalAddress.street,
+          city: completeData.physicalAddress.city,
+          state: completeData.physicalAddress.state,
+          zipCode: completeData.physicalAddress.zipCode,
+          country: completeData.physicalAddress.country,
+          onlinePresence: completeData.onlineAddress,
+          churchAffiliation: completeData.churchAffiliation,
+          businessTypeRadio: completeData.businessType,
+          phone: completeData.contactDetails.phone,
+          email: completeData.contactDetails.email,
+          website: completeData.contactDetails.website,
+          productsServices: completeData.productsServices
+        };
+
+        console.log('📡 Submitting business registration to backend:', payload);
+
+        const response = await apiService.createBusinessFromRegistration(payload);
+
+        console.log('✅ Business registration response:', response);
+
+        if (response.success) {
+          // Save the created business ID for the management page
+          if (response.business?.id) {
+            setCreatedBusinessId(response.business.id);
+          }
+
+          // Move to step 2 only after successful backend creation
+          toast.success('Business registered successfully! Now complete your profile.');
+          handleStepComplete(completeData);
+        } else {
+          toast.error(response.message || 'Failed to register business');
+        }
       }
     } catch (error: any) {
-      console.error('Error registering business:', error);
+      console.error('Error registering/updating business:', error);
 
       if (error.response?.status === 401) {
         toast.error('Your session has expired. Please log in again.');
@@ -528,7 +708,8 @@ const BusinessRegistrationPage: React.FC = () => {
 
   // We no longer use a separate full-screen success state; flows go directly to manage-business
 
-  const progressValue = (currentStep / 2) * 100;
+  const totalSteps = isEditMode ? 1 : 2;
+  const progressValue = (currentStep / totalSteps) * 100;
 
     return (
       <div className="min-h-screen bg-white relative">
@@ -542,8 +723,14 @@ const BusinessRegistrationPage: React.FC = () => {
         <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fem-navy mb-3">Business Registration</h1>
-            <p className="text-fem-darkgray text-sm sm:text-base lg:text-lg">Complete your business profile in 2 simple steps</p>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fem-navy mb-3">
+              {isEditMode ? 'Edit Business' : 'Business Registration'}
+            </h1>
+            <p className="text-fem-darkgray text-sm sm:text-base lg:text-lg">
+              {isEditMode
+                ? 'Update your existing business information.'
+                : 'Complete your business profile in 2 simple steps'}
+            </p>
           </div>
 
           {/* Progress Bar */}
@@ -559,7 +746,7 @@ const BusinessRegistrationPage: React.FC = () => {
                   <span className={`font-semibold transition-colors text-lg ${
                     currentStep >= 1 ? 'text-fem-terracotta' : 'text-fem-darkgray'
                   }`}>
-                    Business Registration
+                    {isEditMode ? 'Edit Business' : 'Business Registration'}
                   </span>
                 </div>
                 
@@ -574,6 +761,7 @@ const BusinessRegistrationPage: React.FC = () => {
                   </div>
                 </div>
                 
+                {!isEditMode && (
                 <div className="flex items-center space-x-3">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white transition-all duration-300 shadow-lg ${
                     currentStep >= 2 ? 'bg-gradient-to-r from-fem-terracotta to-fem-gold shadow-xl' : 'bg-gray-300'
@@ -586,6 +774,7 @@ const BusinessRegistrationPage: React.FC = () => {
                     Profile Completion
                   </span>
                 </div>
+                )}
               </div>
             </CardHeader>
           </Card>
@@ -1095,6 +1284,96 @@ const BusinessRegistrationPage: React.FC = () => {
                           placeholder="https://your-website.com"
                           className="h-12 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-xl bg-white text-gray-900 transition-all duration-300"
               />
+            </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Business Hours */}
+                  <Card className="shadow-lg border-0 bg-white border border-white/20">
+                    <CardHeader className="pb-4">
+                      <CardTitle className="flex items-center gap-3 text-fem-navy text-xl">
+                        <div className="p-2 bg-gradient-to-r from-fem-terracotta to-fem-gold rounded-lg">
+                          <Clock className="h-6 w-6 text-white" />
+                        </div>
+                        Business Hours
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-sm text-fem-darkgray">
+                        Set when your business is open each day. These hours will appear on your public profile and
+                        under <span className="font-semibold">Manage Your Listing</span>.
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {[
+                          { key: 'monday', label: 'Monday' },
+                          { key: 'tuesday', label: 'Tuesday' },
+                          { key: 'wednesday', label: 'Wednesday' },
+                          { key: 'thursday', label: 'Thursday' },
+                          { key: 'friday', label: 'Friday' },
+                          { key: 'saturday', label: 'Saturday' },
+                          { key: 'sunday', label: 'Sunday' },
+                        ].map((day) => {
+                          const config = businessData.workingHours[day.key as keyof BusinessData['workingHours']];
+                          return (
+                            <div
+                              key={day.key}
+                              className="flex flex-col gap-2 p-3 rounded-xl border border-gray-200/70 bg-gray-50/80"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-fem-navy">{day.label}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-600">
+                                    {config.closed ? 'Closed' : 'Open'}
+                                  </span>
+                                  <Switch
+                                    checked={config.closed}
+                                    onCheckedChange={(checked) => {
+                                      const updated = {
+                                        ...businessData.workingHours,
+                                        [day.key]: { ...config, closed: checked },
+                                      };
+                                      updateFormData('workingHours', updated);
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              {!config.closed && (
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="time"
+                                    value={config.open}
+                                    onChange={(e) => {
+                                      const updated = {
+                                        ...businessData.workingHours,
+                                        [day.key]: { ...config, open: e.target.value },
+                                      };
+                                      updateFormData('workingHours', updated);
+                                    }}
+                                    className="h-10 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-lg bg-white text-gray-900"
+                                  />
+                                  <span className="text-xs text-gray-500">to</span>
+                                  <Input
+                                    type="time"
+                                    value={config.close}
+                                    onChange={(e) => {
+                                      const updated = {
+                                        ...businessData.workingHours,
+                                        [day.key]: { ...config, close: e.target.value },
+                                      };
+                                      updateFormData('workingHours', updated);
+                                    }}
+                                    className="h-10 border-gray-300 focus:border-fem-terracotta focus:ring-fem-terracotta rounded-lg bg-white text-gray-900"
+                                  />
+                                </div>
+                              )}
+                              {config.closed && (
+                                <p className="text-xs text-gray-500">
+                                  Customers will see this day as <span className="font-medium">Closed</span>.
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
             </div>
                     </CardContent>
                   </Card>

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from 'sonner';
 import LikeButton from "@/components/LikeButton";
 import ShareModal from "@/components/ui/ShareModal";
 import { type ShareData } from "@/utils/sharing";
@@ -132,6 +133,13 @@ export const BusinessList: React.FC<BusinessListProps> = ({
   };
 
   const handleBusinessClick = (business: Business) => {
+    // Check authentication first
+    if (!isAuthenticated) {
+      toast.error("Please log in to view business details.");
+      navigate('/login', { state: { from: `/business/${business.id}` } });
+      return;
+    }
+    
     navigate(`/business/${business.id}`);
   };
 

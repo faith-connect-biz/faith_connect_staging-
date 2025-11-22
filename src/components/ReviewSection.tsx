@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +8,6 @@ import { Star, MessageSquare, Plus, X, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { apiService, Review } from '@/services/api';
-import LikeButton from './LikeButton';
 import { formatToBritishDate } from '@/utils/dateUtils';
 
 interface ReviewSectionProps {
@@ -266,18 +264,6 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                       {formatToBritishDate(review.created_at)}
                     </div>
                   </div>
-                  
-                                     {/* Like Button */}
-                   {user && review.user !== user.partnership_number && (
-                     <LikeButton
-                       id={review.id.toString()}
-                       type="review"
-                       initialLiked={false}
-                       likeCount={0}
-                       onLikeChange={() => {}}
-                       disabled={false}
-                     />
-                   )}
                 </div>
               </div>
             ))

@@ -124,6 +124,7 @@ export const DirectoryPage: React.FC = () => {
     hasPhotos: false,
     sortBy: 'name'
   });
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Session-based randomization key
   const [sessionKey] = useState(() => Math.random().toString(36).substring(7));
@@ -133,45 +134,91 @@ export const DirectoryPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // Handle URL parameters for search from landing page
+  // Handle URL parameters for search from landing page - only read from URL, don't write back
   useEffect(() => {
     const urlSearchTerm = searchParams.get('search');
     const urlCategory = searchParams.get('category');
     
-    if (urlSearchTerm) {
-      setSearchTerm(decodeURIComponent(urlSearchTerm));
+    // On initial load, read from URL
+    if (isInitialLoad) {
+      if (urlSearchTerm) {
+        const decoded = decodeURIComponent(urlSearchTerm);
+        setSearchTerm(decoded);
+        setFilters(prev => ({ ...prev, searchTerm: decoded, category: urlCategory ? decodeURIComponent(urlCategory) : prev.category }));
+      } else if (urlCategory) {
+        setFilters(prev => ({ ...prev, category: decodeURIComponent(urlCategory) }));
+      }
+      setIsInitialLoad(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
     
-    if (urlCategory) {
-      const decodedCategory = decodeURIComponent(urlCategory);
-      setFilters(prev => ({ ...prev, category: decodedCategory }));
-    }
+    // After initial load, only update if URL actually changed externally (e.g., from hero search)
+    // Compare with current state to avoid unnecessary updates
+    const urlSearchDecoded = urlSearchTerm ? decodeURIComponent(urlSearchTerm) : '';
+    const urlCategoryDecoded = urlCategory ? decodeURIComponent(urlCategory) : '';
     
-    // Scroll to top when URL parameters change (e.g., category filter from landing page)
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [searchParams]);
+    if (urlSearchDecoded !== searchTerm || urlCategoryDecoded !== filters.category) {
+      // URL changed externally, update state
+      if (urlSearchDecoded !== searchTerm) {
+        setSearchTerm(urlSearchDecoded);
+      }
+      if (urlCategoryDecoded !== filters.category) {
+        setFilters(prev => ({ 
+          ...prev, 
+          category: urlCategoryDecoded,
+          searchTerm: urlSearchDecoded || prev.searchTerm
+        }));
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [searchParams]); // Only depend on searchParams to prevent loops
 
-  // Instant search - update filters immediately when search term changes
+  // Update filters when searchTerm changes locally (user typing in search box on directory page)
+  // This doesn't update URL to prevent circular updates
   useEffect(() => {
-    setFilters(prev => ({ ...prev, searchTerm }));
-    
-    // Update URL parameters when search term changes, but preserve category
-    const currentCategory = searchParams.get('category');
-    if (searchTerm) {
-      const newParams: any = { search: searchTerm };
-      if (currentCategory) {
-        newParams.category = currentCategory;
-      }
-      setSearchParams(newParams, { replace: true });
-    } else {
-      // Only clear search, keep category if it exists
-      if (currentCategory) {
-        setSearchParams({ category: currentCategory }, { replace: true });
-      } else {
-        setSearchParams({}, { replace: true });
-      }
+    if (!isInitialLoad) {
+      setFilters(prev => {
+        if (prev.searchTerm !== searchTerm) {
+          return { ...prev, searchTerm };
+        }
+        return prev;
+      });
     }
-  }, [searchTerm, setSearchParams, searchParams]);
+  }, [searchTerm, isInitialLoad]);
+
+  // Load initial data when page mounts - fetch all stats upfront
+  useEffect(() => {
+    const loadInitialData = async () => {
+      const baseParams = { page: 1, limit: 15 };
+      
+      // Fetch all stats upfront regardless of active tab
+      await Promise.all([
+        fetchServicesWithPagination(baseParams),
+        fetchBusinesses(baseParams),
+        fetchProductsWithPagination(baseParams)
+      ]);
+    };
+    
+    loadInitialData();
+  }, []); // Only run on mount
+
+  // Load data when active tab changes
+  useEffect(() => {
+    const loadTabData = async () => {
+      const baseParams = { page: 1, limit: 15 };
+      
+      if (activeTab === 'services') {
+        await fetchServicesWithPagination(baseParams);
+      } else if (activeTab === 'businesses') {
+        await fetchBusinesses(baseParams);
+      } else if (activeTab === 'products') {
+        await fetchProductsWithPagination(baseParams);
+      }
+    };
+    
+    loadTabData();
+  }, [activeTab, fetchServicesWithPagination, fetchBusinesses, fetchProductsWithPagination]);
 
   // Scroll to top when active tab changes
   useEffect(() => {
@@ -266,7 +313,7 @@ export const DirectoryPage: React.FC = () => {
           </div>
           </SlideUp>
 
-          {/* Stats Section */}
+          {/* Stats Section - Reordered: Services, Businesses, Products */}
           <ScaleIn delay={300}>
           <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
             <div className="bg-white/80 backdrop-blur-sm rounded-xl p-2 sm:p-4 text-center shadow-lg">
@@ -278,19 +325,19 @@ export const DirectoryPage: React.FC = () => {
             </div>
             
             <div className="bg-white/80 backdrop-blur-sm rounded-xl p-2 sm:p-4 text-center shadow-lg">
+              <div className="w-6 h-6 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-gold to-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-1 sm:mb-2">
+                <Building2 className="w-3 h-3 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <div className="text-sm sm:text-2xl font-bold text-fem-navy">{businesses.length}</div>
+              <div className="text-xs text-gray-700 font-medium">Total Businesses</div>
+            </div>
+            
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-2 sm:p-4 text-center shadow-lg">
               <div className="w-6 h-6 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-navy to-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-1 sm:mb-2">
                 <Package className="w-3 h-3 sm:w-6 sm:h-6 text-white" />
               </div>
               <div className="text-sm sm:text-2xl font-bold text-fem-navy">{totalProductsCount || 0}</div>
               <div className="text-xs text-gray-700 font-medium">Total Products</div>
-            </div>
-            
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-2 sm:p-4 text-center shadow-lg">
-              <div className="w-6 h-6 sm:w-12 sm:h-12 bg-gradient-to-br from-fem-gold to-fem-terracotta rounded-full flex items-center justify-center mx-auto mb-1 sm:mb-2">
-                <Star className="w-3 h-3 sm:w-6 sm:h-6 text-white" />
-              </div>
-              <div className="text-sm sm:text-2xl font-bold text-fem-navy">{averageRating}</div>
-              <div className="text-xs text-gray-700 font-medium">Avg Rating</div>
             </div>
             
           </div>
@@ -449,8 +496,14 @@ export const DirectoryPage: React.FC = () => {
                   </div>
                   {isLoadingBusinesses ? (
                     <DirectorySkeleton count={6} type="business" />
-                  ) : (
+                  ) : businesses && businesses.length > 0 ? (
                     <BusinessList filters={filters} />
+                  ) : (
+                    <div className="text-center py-12">
+                      <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No businesses found</h3>
+                      <p className="text-gray-500">Try adjusting your filters or search terms.</p>
+                    </div>
                   )}
                 </TabsContent>
 
@@ -461,8 +514,14 @@ export const DirectoryPage: React.FC = () => {
                   </div>
                   {isLoadingProducts ? (
                     <DirectorySkeleton count={6} type="product" />
-                  ) : (
+                  ) : products && products.length > 0 ? (
                     <ProductList filters={filters} />
+                  ) : (
+                    <div className="text-center py-12">
+                      <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+                      <p className="text-gray-500">Try adjusting your filters or search terms.</p>
+                    </div>
                   )}
                 </TabsContent>
               </Tabs>

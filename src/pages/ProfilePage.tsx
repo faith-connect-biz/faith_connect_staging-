@@ -5,14 +5,12 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { UserActivitySection } from "@/components/UserActivitySection";
 import { 
   Plus, 
   Star, 
@@ -38,7 +36,8 @@ import {
   PenTool,
   X,
   Upload,
-  MessageSquare
+  MessageSquare,
+  Package
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
@@ -67,7 +66,14 @@ const ProfilePage = () => {
     bio: "",
     website: ""
   });
+  const [userData, setUserData] = useState<any>(null);
+  const isEditingRef = useRef(false);
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Update ref when editing state changes
+  useEffect(() => {
+    isEditingRef.current = isEditing;
+  }, [isEditing]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -87,10 +93,9 @@ const ProfilePage = () => {
   // Status text for auto-save (disabled)
   const statusText = null;
   const [userStats, setUserStats] = useState({
-    favorites: 0,
-    reviewsGiven: 0,
-    businessLikes: 0,
-    reviewLikes: 0
+    totalServices: 0,
+    totalProducts: 0,
+    totalBusinesses: 0
   });
   const navigate = useNavigate();
   const headerRef = useRef<HTMLDivElement>(null);
@@ -101,31 +106,44 @@ const ProfilePage = () => {
   // Hidden file input for profile photo upload
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch user stats
+  // Fetch user stats (for business users only)
   const fetchUserStats = async () => {
     try {
-      // Fetch favorites count
-      const favorites = await apiService.getUserFavorites();
-      const favoritesCount = favorites.length;
+      // Only fetch stats for business users
+      if (user?.user_type !== 'business' && user?.userType !== 'business') {
+        return;
+      }
 
-      // Fetch user reviews
-      const userReviews = await apiService.getUserReviews();
-      const reviewsCount = userReviews.length;
+      // Get user's business
+      const userBusiness = await apiService.getUserBusiness();
+      if (!userBusiness) {
+        setUserStats({ totalServices: 0, totalProducts: 0, totalBusinesses: 0 });
+        return;
+      }
 
-      // Fetch user activity for likes
-      const userActivityResponse = await apiService.getUserActivity();
-      const businessLikesCount = userActivityResponse.activities.filter(activity => activity.type === 'business_like').length;
-      const reviewLikesCount = userActivityResponse.activities.filter(activity => activity.type === 'review_like').length;
+      // Fetch services and products for the business
+      let servicesCount = 0;
+      let productsCount = 0;
+
+      if (userBusiness.offering_type === 'services' || userBusiness.offering_type === 'both') {
+        const services = await apiService.getBusinessServices(userBusiness.id);
+        servicesCount = services.length;
+      }
+
+      if (userBusiness.offering_type === 'products' || userBusiness.offering_type === 'both') {
+        const products = await apiService.getBusinessProducts(userBusiness.id);
+        productsCount = products.length;
+      }
 
       setUserStats({
-        favorites: favoritesCount,
-        reviewsGiven: reviewsCount,
-        businessLikes: businessLikesCount,
-        reviewLikes: reviewLikesCount
+        totalServices: servicesCount,
+        totalProducts: productsCount,
+        totalBusinesses: userBusiness ? 1 : 0
       });
     } catch (error) {
       console.error('Error fetching user stats:', error);
       // Keep default values if there's an error
+      setUserStats({ totalServices: 0, totalProducts: 0, totalBusinesses: 0 });
     }
   };
 
@@ -136,6 +154,7 @@ const ProfilePage = () => {
       const userData = await apiService.getCurrentUser();
       console.log('ProfilePage: Complete user profile received:', userData);
       console.log('ProfilePage: User data keys:', Object.keys(userData));
+      console.log('ProfilePage: User data email:', userData.email);
       console.log('ProfilePage: User data first_name:', userData.first_name);
       console.log('ProfilePage: User data last_name:', userData.last_name);
       console.log('ProfilePage: User data phone:', userData.phone);
@@ -146,29 +165,61 @@ const ProfilePage = () => {
       console.log('ProfilePage: User data bio:', userData.bio);
       
       if (userData) {
-        const newProfileData = {
-          firstName: userData.first_name || "",
-          lastName: userData.last_name || "",
-          address: userData.address || "",
-          city: userData.city || "",
-          county: userData.county || "",
-          bio: userData.bio || "",
-          website: userData.website || ""  // Use actual website value from user data
-        };
+        // Store userData in state for email access
+        setUserData(userData);
         
-        setProfileData(newProfileData);
-        hasLoadedInitialData.current = true;
-        
-        // Update the user object in AuthContext with the complete data including partnership_number
-        if (userData.partnership_number || userData.first_name || userData.last_name) {
-          updateUser({
-            ...user,
-            ...userData,
-            partnership_number: userData.partnership_number,
-            first_name: userData.first_name,
-            last_name: userData.last_name,
-          });
+        // Only update profileData if we haven't loaded initial data yet AND user is not editing
+        // This prevents overwriting user input while they're typing
+        if (!hasLoadedInitialData.current && !isEditingRef.current) {
+          const newProfileData = {
+            firstName: userData.first_name || "",
+            lastName: userData.last_name || "",
+            address: userData.address || "",
+            city: userData.city || "",
+            county: userData.county || "",
+            bio: userData.bio || "",
+            website: userData.website || ""  // Use actual website value from user data
+          };
+          
+          setProfileData(newProfileData);
+          hasLoadedInitialData.current = true;
         }
+        
+        // Update the user object in AuthContext with ALL data from login/registration
+        updateUser({
+          ...user,
+          ...userData,
+          // Ensure all fields are included - check multiple possible email fields
+          email: (() => {
+            // Priority: email > email_address > identifier (if email) > user.email
+            if (userData.email) return userData.email;
+            if (userData.email_address) return userData.email_address;
+            if (userData.identifier && userData.identifier.includes('@')) return userData.identifier;
+            if (user?.email) return user.email;
+            // Check localStorage as last resort
+            try {
+              const stored = localStorage.getItem('user');
+              if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed.identifier && parsed.identifier.includes('@')) return parsed.identifier;
+                return parsed.email || parsed.email_address;
+              }
+            } catch (e) {
+              console.error('Error reading email from localStorage:', e);
+            }
+            return null;
+          })(),
+          phone: userData.phone || user?.phone || userData.phone_number,
+          partnership_number: userData.partnership_number || user?.partnership_number,
+          first_name: userData.first_name || user?.first_name,
+          last_name: userData.last_name || user?.last_name,
+          address: userData.address || user?.address,
+          city: userData.city || user?.city,
+          county: userData.county || user?.county,
+          bio: userData.bio || user?.bio,
+          website: userData.website || user?.website,
+          profile_image_url: userData.profile_image_url || userData.profile_photo_url || user?.profile_image_url,
+        });
         
         setLoading(false);
         
@@ -186,17 +237,33 @@ const ProfilePage = () => {
     }
   };
 
-  // Initialize profile data from user
+  // Initialize profile data from user - only fetch once on mount
   useEffect(() => {
-    if (user) {
+    if (user && !hasLoadedInitialData.current) {
       console.log('ProfilePage: User object received:', user);
       console.log('ProfilePage: User type:', user.user_type);
       console.log('ProfilePage: User keys:', Object.keys(user));
+      console.log('ProfilePage: User email from context:', user.email);
       
-      // Fetch complete user profile from API
+      // Also check localStorage for email if not in user object
+      try {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          console.log('ProfilePage: Stored user email:', parsedUser.email);
+          if (parsedUser.email && !user.email) {
+            // Update user with email from localStorage
+            updateUser({ ...user, email: parsedUser.email });
+          }
+        }
+      } catch (error) {
+        console.error('ProfilePage: Error reading from localStorage:', error);
+      }
+      
+      // Fetch complete user profile from API only once
       fetchUserProfile();
     }
-  }, [user]);
+  }, [user?.id]); // Only depend on user.id to prevent re-fetching
 
   // Check authentication
   useEffect(() => {
@@ -631,12 +698,43 @@ const ProfilePage = () => {
                     <Separator className="my-6" />
 
                     <motion.div variants={itemVariants} className="space-y-4 mb-6">
-                      {user.email && (
-                        <div className="flex items-center gap-3 text-sm text-gray-600 p-3 rounded-xl bg-gray-50/50">
-                          <Mail className="w-4 h-4 text-fem-terracotta" />
-                          <span className="font-medium">{user.email}</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-3 text-sm text-gray-600 p-3 rounded-xl bg-gray-50/50">
+                        <Mail className="w-4 h-4 text-fem-terracotta" />
+                        <span className="font-medium">
+                          {(() => {
+                            // Try multiple sources for email - check all possible locations
+                            let email = user?.email || 
+                                       (user as any)?.email || 
+                                       userData?.email ||
+                                       userData?.email_address;
+                            
+                            // If still no email, check localStorage
+                            if (!email) {
+                              try {
+                                const stored = localStorage.getItem('user');
+                                if (stored) {
+                                  const parsed = JSON.parse(stored);
+                                  // Check if identifier is an email (contains @)
+                                  if (parsed.identifier && parsed.identifier.includes('@')) {
+                                    email = parsed.identifier;
+                                  } else {
+                                    email = parsed.email || parsed.email_address;
+                                  }
+                                }
+                              } catch (e) {
+                                console.error('Error reading email from localStorage:', e);
+                              }
+                            }
+                            
+                            // If still no email, check user object identifier
+                            if (!email && (user as any)?.identifier && (user as any).identifier.includes('@')) {
+                              email = (user as any).identifier;
+                            }
+                            
+                            return email || 'Email not available';
+                          })()}
+                        </span>
+                      </div>
                       {user.phone && (
                         <div className="flex items-center gap-3 text-sm text-gray-600 p-3 rounded-xl bg-gray-50/50">
                           <Phone className="w-4 h-4 text-fem-terracotta" />
@@ -703,25 +801,15 @@ const ProfilePage = () => {
                     </div>
                   </CardHeader>
                   <CardContent className="p-8">
-                    <Tabs defaultValue="personal" className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 bg-gray-100/50 backdrop-blur-sm p-1 rounded-xl mb-8">
-                        <TabsTrigger 
-                          value="personal" 
-                          className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-fem-terracotta data-[state=active]:to-fem-gold data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg py-3 px-6 transition-all duration-200"
-                        >
-                          <User className="w-4 h-4" />
-                          Personal Info
-                        </TabsTrigger>
-                        <TabsTrigger 
-                          value="activity" 
-                          className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-fem-terracotta data-[state=active]:to-fem-gold data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg py-3 px-6 transition-all duration-200"
-                        >
-                          <TrendingUp className="w-4 h-4" />
-                          Activity
-                        </TabsTrigger>
-                      </TabsList>
+                    <div className="w-full">
+                      <div className="mb-8">
+                        <h3 className="text-lg font-semibold text-fem-navy flex items-center gap-2">
+                          <User className="w-5 h-5" />
+                          Personal Information
+                        </h3>
+                      </div>
                       
-                      <TabsContent value="personal" className="mt-8">
+                      <div className="mt-8">
                         <motion.div variants={itemVariants} className="space-y-8">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
@@ -845,18 +933,15 @@ const ProfilePage = () => {
                             </motion.div>
                           )}
                         </motion.div>
-                      </TabsContent>
-                      
-                      <TabsContent value="activity" className="mt-8">
-                        <UserActivitySection />
-                      </TabsContent>
-                    </Tabs>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
             </div>
 
-            {/* Enhanced Stats Section with Glassmorphism */}
+            {/* Enhanced Stats Section with Glassmorphism - Only show for business users */}
+            {(user.user_type === 'business' || user.userType === 'business') && (
             <motion.div 
               ref={statsRef}
               variants={containerVariants}
@@ -866,36 +951,29 @@ const ProfilePage = () => {
             >
               <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 text-center shadow-2xl border border-white/20 hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2">
                 <div className="w-16 h-16 bg-gradient-to-br from-fem-terracotta to-fem-gold rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Heart className="w-8 h-8 text-white" />
+                  <Settings className="w-8 h-8 text-white" />
                 </div>
-                <div className="text-3xl font-bold text-fem-navy mb-2">{userStats.favorites}</div>
-                <div className="text-sm text-gray-600 font-medium">Favorites</div>
+                <div className="text-3xl font-bold text-fem-navy mb-2">{userStats.totalServices}</div>
+                <div className="text-sm text-gray-600 font-medium">Total Services</div>
               </motion.div>
               
               <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 text-center shadow-2xl border border-white/20 hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2">
                 <div className="w-16 h-16 bg-gradient-to-br from-fem-gold to-fem-terracotta rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Star className="w-8 h-8 text-white" />
+                  <Package className="w-8 h-8 text-white" />
                 </div>
-                <div className="text-3xl font-bold text-fem-navy mb-2">{userStats.reviewsGiven}</div>
-                <div className="text-sm text-gray-600 font-medium">Reviews Given</div>
+                <div className="text-3xl font-bold text-fem-navy mb-2">{userStats.totalProducts}</div>
+                <div className="text-sm text-gray-600 font-medium">Total Products</div>
               </motion.div>
 
               <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 text-center shadow-2xl border border-white/20 hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2">
                 <div className="w-16 h-16 bg-gradient-to-br from-fem-navy to-fem-terracotta rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Heart className="w-8 h-8 text-white" />
+                  <Building2 className="w-8 h-8 text-white" />
                 </div>
-                <div className="text-3xl font-bold text-fem-navy mb-2">{userStats.businessLikes}</div>
-                <div className="text-sm text-gray-600 font-medium">Business Likes</div>
-              </motion.div>
-
-              <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 text-center shadow-2xl border border-white/20 hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2">
-                <div className="w-16 h-16 bg-gradient-to-br from-fem-terracotta to-fem-navy rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <MessageSquare className="w-8 h-8 text-white" />
-                </div>
-                <div className="text-3xl font-bold text-fem-navy mb-2">{userStats.reviewLikes}</div>
-                <div className="text-sm text-gray-600 font-medium">Review Likes</div>
+                <div className="text-3xl font-bold text-fem-navy mb-2">{userStats.totalBusinesses}</div>
+                <div className="text-sm text-gray-600 font-medium">Total Businesses</div>
               </motion.div>
             </motion.div>
+            )}
           </div>
         </main>
         <Footer />

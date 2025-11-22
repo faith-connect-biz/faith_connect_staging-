@@ -367,7 +367,7 @@ export const Hero: React.FC<HeroProps> = ({ actionButtons }) => {
         </div>
 
           {/* Stats Row */}
-          <div className="mt-6 md:mt-8 flex flex-wrap items-center justify-center gap-x-1 sm:gap-x-2 md:gap-x-4 gap-y-1 text-white font-semibold text-[10px] sm:text-xs md:text-sm lg:text-base drop-shadow-lg bg-black/20 backdrop-blur-sm rounded-lg px-2 sm:px-3 md:px-6 py-2 md:py-3 mx-2 sm:mx-4 md:mx-0">
+          <div className="mt-6 md:mt-8 flex flex-wrap items-center justify-center gap-x-1 sm:gap-x-2 md:gap-x-4 gap-y-1 text-white font-semibold text-sm md:text-base lg:text-lg drop-shadow-lg bg-black/20 backdrop-blur-sm rounded-lg px-2 sm:px-3 md:px-6 py-2 md:py-3 mx-2 sm:mx-4 md:mx-0">
             <span className="whitespace-nowrap">69+ Local Businesses</span>
             <span className="text-gray-300 hidden sm:inline">•</span>
             <span className="whitespace-nowrap">Active Community</span>
