@@ -288,8 +288,8 @@ const BusinessRegistrationPage: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [businessData, setBusinessData] = useState<BusinessData>(initialBusinessData);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [createdBusinessId, setCreatedBusinessId] = useState<string | null>(null);
 
   const handleStepComplete = (stepData: Partial<BusinessData>) => {
     setBusinessData(prev => ({ ...prev, ...stepData }));
@@ -306,65 +306,63 @@ const BusinessRegistrationPage: React.FC = () => {
 
   const handleFinalSubmit = async (finalData: Partial<BusinessData>) => {
     const completeData = { ...businessData, ...finalData };
-    
-    // Check if user is authenticated
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      toast.error('Please log in to continue');
-      navigate('/login');
+    setBusinessData(completeData);
+
+    if (!createdBusinessId) {
+      toast.error('Please register your business first before adding products or services.');
+      setCurrentStep(1);
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const response = await apiService.createBusinessFromRegistration({
-        name: completeData.businessName,
-        category: completeData.category,
-        category_id: completeData.category_id,
-        subcategory: completeData.subcategory,
-        subcategory_id: completeData.subcategory_id,
-        description: completeData.businessDescription,
-        businessType: completeData.isPhysicalAddress ? 'physical' : 'online',
-        address: completeData.physicalAddress.street,
-        city: completeData.physicalAddress.city,
-        state: completeData.physicalAddress.state,
-        zipCode: completeData.physicalAddress.zipCode,
-        country: completeData.physicalAddress.country,
-        onlinePresence: completeData.onlineAddress,
-        churchAffiliation: completeData.churchAffiliation,
-        businessTypeRadio: completeData.businessType,
-        phone: completeData.contactDetails.phone,
-        email: completeData.contactDetails.email,
-        website: completeData.contactDetails.website,
-        productsServices: completeData.productsServices
-      });
+      const items = completeData.productsServices || [];
 
-      if (response.success) {
-        setIsSuccess(true);
-        toast.success('Business registered successfully!');
-        
-        // Redirect to Business Management page after 1 second
-        setTimeout(() => {
-          navigate('/manage-business');
-        }, 1000);
-      } else {
-        toast.error(response.message || 'Failed to register business');
+      const productItems = items.filter((item) => item.type === 'product');
+      const serviceItems = items.filter((item) => item.type === 'service');
+
+      // Create products
+      if (productItems.length > 0) {
+        await Promise.all(
+          productItems.map((item) =>
+            apiService.createProduct(createdBusinessId, {
+              name: item.name,
+              description: item.description,
+              price: Number(item.price || 0),
+              price_currency: item.currency || 'KES',
+              in_stock: true,
+              is_active: true,
+            })
+          )
+        );
       }
+
+      // Create services
+      if (serviceItems.length > 0) {
+        await Promise.all(
+          serviceItems.map((item) =>
+            apiService.createService(createdBusinessId, {
+              name: item.name,
+              description: item.description,
+              price_range: item.price
+                ? `${item.currency || 'KES'} ${item.price}`
+                : 'Contact for pricing',
+              duration: '1 hour',
+              is_active: true,
+            })
+          )
+        );
+      }
+
+      toast.success('Business profile completed with products and services!');
+      navigate('/manage-business', { state: { businessId: createdBusinessId } });
     } catch (error: any) {
-      console.error('Error registering business:', error);
-      
-      // Handle authentication errors specifically
-      if (error.response?.status === 401) {
-        toast.error('Your session has expired. Please log in again.');
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        navigate('/login');
-      } else if (error.message?.includes('Network Error') || error.message?.includes('ERR_NETWORK')) {
-        toast.error('Unable to connect to server. Please check your connection.');
-      } else {
-        toast.error(error.response?.data?.message || 'Something went wrong. Please try again.');
-      }
+      console.error('Error creating products/services:', error);
+      toast.error(
+        error.response?.data?.message ||
+          'Failed to save products and services. Please try again.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -419,10 +417,80 @@ const BusinessRegistrationPage: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
-      handleStepComplete(businessData);
+    if (!validateForm()) {
+      return;
+    }
+
+    // Check if user is authenticated before creating the business
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      toast.error('Please log in to continue');
+      navigate('/login');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const completeData = { ...businessData };
+
+      const payload = {
+        name: completeData.businessName,
+        category: completeData.category,
+        category_id: completeData.category_id,
+        subcategory: completeData.subcategory,
+        subcategory_id: completeData.subcategory_id,
+        description: completeData.businessDescription,
+        businessType: completeData.isPhysicalAddress ? 'physical' : 'online',
+        address: completeData.physicalAddress.street,
+        city: completeData.physicalAddress.city,
+        state: completeData.physicalAddress.state,
+        zipCode: completeData.physicalAddress.zipCode,
+        country: completeData.physicalAddress.country,
+        onlinePresence: completeData.onlineAddress,
+        churchAffiliation: completeData.churchAffiliation,
+        businessTypeRadio: completeData.businessType,
+        phone: completeData.contactDetails.phone,
+        email: completeData.contactDetails.email,
+        website: completeData.contactDetails.website,
+        productsServices: completeData.productsServices
+      };
+
+      console.log('📡 Submitting business registration to backend:', payload);
+
+      const response = await apiService.createBusinessFromRegistration(payload);
+
+      console.log('✅ Business registration response:', response);
+
+      if (response.success) {
+        // Save the created business ID for the management page
+        if (response.business?.id) {
+          setCreatedBusinessId(response.business.id);
+        }
+
+        // Move to step 2 only after successful backend creation
+        toast.success('Business registered successfully! Now complete your profile.');
+        handleStepComplete(completeData);
+      } else {
+        toast.error(response.message || 'Failed to register business');
+      }
+    } catch (error: any) {
+      console.error('Error registering business:', error);
+
+      if (error.response?.status === 401) {
+        toast.error('Your session has expired. Please log in again.');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        navigate('/login');
+      } else if (error.message?.includes('Network Error') || error.message?.includes('ERR_NETWORK')) {
+        toast.error('Unable to connect to server. Please check your connection.');
+      } else {
+        toast.error(error.response?.data?.message || 'Something went wrong. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -458,30 +526,7 @@ const BusinessRegistrationPage: React.FC = () => {
     }
   };
 
-  if (isSuccess) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
-          <CardContent className="p-8 text-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-10 h-10 text-green-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Business Registered Successfully! 🎉
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Your business has been registered and is now live in our directory. 
-              You can manage your business profile from your dashboard.
-            </p>
-            <div className="flex items-center justify-center">
-              <div className="w-6 h-6 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
-              <span className="ml-2 text-gray-600">Redirecting to dashboard...</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // We no longer use a separate full-screen success state; flows go directly to manage-business
 
   const progressValue = (currentStep / 2) * 100;
 

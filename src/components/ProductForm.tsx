@@ -42,6 +42,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     in_stock: true,
     is_active: true
   });
+  const [priceInput, setPriceInput] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -64,6 +65,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       if (product.product_image_url) previews.push(product.product_image_url);
       if (product.images) previews.push(...product.images);
       setImagePreviews(previews);
+      setPriceInput(
+        typeof product.price === 'number' && !isNaN(product.price)
+          ? product.price.toString()
+          : ''
+      );
     } else {
       setFormData({
         business: businessId,
@@ -77,6 +83,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         is_active: true
       });
       setImagePreviews([]);
+      setPriceInput('');
     }
   }, [product]);
 
@@ -222,7 +229,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       return;
     }
 
-    if (formData.price <= 0) {
+    const priceNumber = parseFloat(priceInput);
+    if (!priceInput || isNaN(priceNumber) || priceNumber <= 0) {
       toast({
         title: "Validation Error",
         description: "Price must be greater than 0",
@@ -238,7 +246,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         const updateData = {
           name: formData.name,
           description: formData.description,
-          price: formData.price,
+          price: priceNumber,
           price_currency: formData.price_currency,
           product_image_url: formData.product_image_url,
           images: formData.images,
@@ -259,7 +267,10 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         });
       } else {
         // Create new product
-        await apiService.createProduct(businessId, formData);
+        await apiService.createProduct(businessId, {
+          ...formData,
+          price: priceNumber
+        });
         toast({
           title: "Success",
           description: "Product created successfully!",
@@ -358,8 +369,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                 type="number"
                 step="0.01"
                 min="0"
-                value={formData.price}
-                onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
+                value={priceInput}
+                onChange={(e) => setPriceInput(e.target.value)}
                 placeholder="0.00"
                 required
               />

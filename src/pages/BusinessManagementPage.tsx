@@ -222,24 +222,6 @@ export const BusinessManagementPage: React.FC = () => {
       console.log('Business ownership match:', business?.user?.id?.toString() === user?.id?.toString());
       
       if (business) {
-        // Security check: Ensure the business belongs to the current user
-        if (business.user?.id?.toString() !== user?.id?.toString()) {
-          console.error('SECURITY ISSUE: Business does not belong to current user!');
-          console.error('Business user ID:', business.user?.id);
-          console.error('Current user ID:', user?.id);
-          toast({
-            title: "Security Error",
-            description: "This business does not belong to you. Please contact support.",
-            variant: "destructive"
-          });
-          setBusinessData(null);
-          setServices([]);
-          setProducts([]);
-          setBusinessHours([]);
-          setIsLoading(false);
-          return;
-        }
-        
         // Transform the API response to match our local interface
         const transformedBusinessData: BusinessData = {
           id: business.id,
@@ -274,13 +256,36 @@ export const BusinessManagementPage: React.FC = () => {
         // Fetch services, products, and hours for the business
         try {
           console.log('BusinessManagementPage: Fetching business details for business ID (from API):', business.id);
-          
-          const [servicesData, productsData, hoursData, analyticsData] = await Promise.all([
-            apiService.getBusinessServices(business.id),
-            apiService.getBusinessProducts(business.id),
+
+          // Only fetch services/products that belong to this business, based on offering_type
+          const [hoursData, analyticsData] = await Promise.all([
             apiService.getBusinessHours(business.id),
             apiService.getBusinessAnalytics(business.id)
           ]);
+
+          let servicesData: Service[] = [];
+          let productsData: LocalProduct[] = [];
+
+          if (business.offering_type === 'services' || business.offering_type === 'both') {
+            servicesData = await apiService.getBusinessServices(business.id);
+          }
+
+          if (business.offering_type === 'products' || business.offering_type === 'both') {
+            const rawProducts = await apiService.getBusinessProducts(business.id);
+            productsData = rawProducts.map(product => ({
+              id: product.id,
+              name: product.name,
+              description: product.description || '',
+              price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
+              price_currency: product.price_currency || 'KSH',
+              product_image_url: product.product_image_url,
+              images: product.images || [],
+              is_active: product.is_active,
+              in_stock: product.in_stock,
+              created_at: product.created_at,
+              business: typeof product.business === 'string' ? product.business : (product.business as any)?.id || ''
+            }));
+          }
 
           console.log('BusinessManagementPage: Services data received (from API):', servicesData);
           console.log('BusinessManagementPage: Products data received (from API):', productsData);
@@ -288,21 +293,7 @@ export const BusinessManagementPage: React.FC = () => {
           console.log('BusinessManagementPage: Analytics data received (from API):', analyticsData);
 
           setServices(servicesData);
-          // Transform products to match LocalProduct interface
-          const transformedProducts: LocalProduct[] = productsData.map(product => ({
-            id: product.id,
-            name: product.name,
-            description: product.description || '',
-            price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
-            price_currency: product.price_currency || 'KSH',
-            product_image_url: product.product_image_url,
-            images: product.images || [],
-            is_active: product.is_active,
-            in_stock: product.in_stock,
-            created_at: product.created_at,
-            business: typeof product.business === 'string' ? product.business : product.business?.id || ''
-          }));
-          setProducts(transformedProducts);
+          setProducts(productsData);
           setBusinessHours(hoursData);
           setAnalytics(analyticsData);
         } catch (error) {
@@ -334,6 +325,11 @@ export const BusinessManagementPage: React.FC = () => {
 
   const loadBusinessServices = async () => {
     if (!businessData) return;
+    // Only fetch services if this business actually offers services
+    if (businessData && (businessData as any).offering_type && !['services', 'both'].includes((businessData as any).offering_type)) {
+      setServices([]);
+      return;
+    }
     try {
       const servicesData = await apiService.getBusinessServices(businessData.id);
       console.log('Loaded business services:', servicesData);
@@ -346,6 +342,11 @@ export const BusinessManagementPage: React.FC = () => {
 
   const loadBusinessProducts = async () => {
     if (!businessData) return;
+    // Only fetch products if this business actually offers products
+    if (businessData && (businessData as any).offering_type && !['products', 'both'].includes((businessData as any).offering_type)) {
+      setProducts([]);
+      return;
+    }
     try {
       const productsData = await apiService.getBusinessProducts(businessData.id);
       // Transform products to match LocalProduct interface

@@ -511,18 +511,18 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [fetchWithCache]);
 
 
-  // Initialize data on context mount
+  // Initialize core data (categories + featured businesses) on context mount.
+  // NOTE: We intentionally do NOT prefetch all services/products here anymore,
+  // to avoid loading other users' services under "Manage Your Listing".
+  // Directory and search pages call fetchServicesWithPagination/fetchProductsWithPagination themselves.
   useEffect(() => {
-    // Fetch all data on initial load for the home page
     Promise.all([
       fetchCategories(),
-      fetchBusinesses({ page: 1, limit: 20 }), // Server-side pagination
-      fetchServicesWithPagination({ page: 1, limit: 20 }), // Server-side pagination
-      fetchProductsWithPagination({ page: 1, limit: 20 })  // Server-side pagination
+      fetchBusinesses({ page: 1, limit: 20 }) // Server-side pagination for featured/initial businesses
     ]).catch(error => {
       console.error('Error loading initial data:', error);
     });
-  }, [fetchCategories, fetchBusinesses, fetchServicesWithPagination, fetchProductsWithPagination]);
+  }, [fetchCategories, fetchBusinesses]);
 
   // Cache management functions
   const clearCache = useCallback(() => {
