@@ -125,10 +125,18 @@ const Navbar: React.FC = () => {
               <NavLinkItem key={item.path} {...item} />
             ))}
             
-            {/* Authenticated menu items */}
-            {isAuthenticated && authMenuItems.map((item) => (
-              <NavLinkItem key={item.path} {...item} />
-            ))}
+            {/* Authenticated menu items - Only show "Manage Your Listing" for business users */}
+            {isAuthenticated && authMenuItems
+              .filter(item => {
+                // Hide "Manage Your Listing" for community members
+                if (item.path === '/manage-business' && (user?.user_type === 'community' || user?.userType === 'community')) {
+                  return false;
+                }
+                return true;
+              })
+              .map((item) => (
+                <NavLinkItem key={item.path} {...item} />
+              ))}
           </div>
 
           {/* Desktop Auth Section */}
@@ -182,7 +190,7 @@ const Navbar: React.FC = () => {
           />
           
           {/* Mobile Menu Content */}
-          <div className="fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-[60] lg:hidden overflow-y-auto animate-in slide-in-from-right duration-300">
+          <div className="fixed top-0 right-0 h-full w-[90vw] max-w-sm bg-white shadow-2xl z-[60] lg:hidden overflow-y-auto animate-in slide-in-from-right duration-300">
             {/* Header */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-white sticky top-0">
               <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
@@ -202,12 +210,20 @@ const Navbar: React.FC = () => {
                 <MobileNavLink key={item.path} {...item} />
               ))}
               
-              {/* Authenticated Menu Items */}
+              {/* Authenticated Menu Items - Only show "Manage Your Listing" for business users */}
               {isAuthenticated && (
                 <>
-                  {authMenuItems.map((item) => (
-                    <MobileNavLink key={item.path} {...item} />
-                  ))}
+                  {authMenuItems
+                    .filter(item => {
+                      // Hide "Manage Your Listing" for community members
+                      if (item.path === '/manage-business' && (user?.user_type === 'community' || user?.userType === 'community')) {
+                        return false;
+                      }
+                      return true;
+                    })
+                    .map((item) => (
+                      <MobileNavLink key={item.path} {...item} />
+                    ))}
                 </>
               )}
 

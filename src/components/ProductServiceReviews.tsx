@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Star, MessageSquare, Heart, Share2, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService, Review } from '@/services/api';
-import LikeButton from './LikeButton';
 import { formatToBritishDate } from '@/utils/dateUtils';
 
 interface ProductServiceReviewsProps {
@@ -28,23 +27,28 @@ export const ProductServiceReviews: React.FC<ProductServiceReviewsProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [totalReviews, setTotalReviews] = useState(0);
 
-  // Fetch reviews based on type
+  // Fetch reviews based on type (using vset endpoints)
   const fetchReviews = async () => {
     setIsLoading(true);
     try {
-      let response: Review[];
+      let response: { results: Review[]; count: number } | Review[];
       switch (type) {
         case 'product':
-          response = await apiService.getProductReviews(itemId);
+          response = await apiService.getProductReviewsVSet(itemId);
           break;
         case 'service':
-          response = await apiService.getServiceReviews(itemId);
+          response = await apiService.getServiceReviewsVSet(itemId);
           break;
         default:
-          response = [];
+          response = { results: [], count: 0 };
       }
-      setReviews(response);
-      setTotalReviews(response.length);
+      
+      // Handle both response formats
+      const reviewsList = Array.isArray(response) ? response : (response.results || []);
+      const count = Array.isArray(response) ? response.length : (response.count || 0);
+      
+      setReviews(reviewsList);
+      setTotalReviews(count);
     } catch (error) {
       console.error('Error fetching reviews:', error);
       setReviews([]);
@@ -169,20 +173,6 @@ export const ProductServiceReviews: React.FC<ProductServiceReviewsProps> = ({
                     {formatDate(review.created_at)}
                   </div>
                 </div>
-                
-                {/* Like Button */}
-                {user && review.user !== user.partnership_number && (
-                  <div className="ml-2 flex-shrink-0">
-                    <LikeButton
-                      id={review.id.toString()}
-                      type="review"
-                      initialLiked={false}
-                      likeCount={0}
-                      onLikeChange={() => {}}
-                      disabled={false}
-                    />
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>

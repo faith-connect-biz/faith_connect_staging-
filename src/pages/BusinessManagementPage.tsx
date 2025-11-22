@@ -34,7 +34,8 @@ import {
   Youtube,
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBusiness } from '@/contexts/BusinessContext';
@@ -126,8 +127,38 @@ export const BusinessManagementPage: React.FC = () => {
       updated_at: string;
     }>;
   } | null>(null);
+  const [productReviews, setProductReviews] = useState<Array<{
+    id: number;
+    product_id: string;
+    product_name: string;
+    user: string;
+    rating: number;
+    review_text: string;
+    is_verified: boolean;
+    created_at: string;
+    updated_at: string;
+  }>>([]);
+  const [serviceReviews, setServiceReviews] = useState<Array<{
+    id: number;
+    service_id: string;
+    service_name: string;
+    user: string;
+    rating: number;
+    review_text: string;
+    is_verified: boolean;
+    created_at: string;
+    updated_at: string;
+  }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isEditingHours, setIsEditingHours] = useState(false);
+  const [isSavingHours, setIsSavingHours] = useState(false);
+  const [editableHours, setEditableHours] = useState<Array<{
+    day_of_week: number;
+    open_time: string | null;
+    close_time: string | null;
+    is_closed: boolean;
+  }>>([]);
   
   // Form state variables
   const [showServiceForm, setShowServiceForm] = useState(false);
@@ -149,6 +180,17 @@ export const BusinessManagementPage: React.FC = () => {
         variant: "destructive"
       });
       navigate('/login');
+      return;
+    }
+
+    // Redirect community members - they can only view, not manage businesses
+    if (user.user_type === 'community' || user.userType === 'community') {
+      toast({
+        title: "Access Restricted",
+        description: "Community members can only view businesses. Please use the directory to browse.",
+        variant: "destructive"
+      });
+      navigate("/directory");
       return;
     }
 
@@ -256,7 +298,7 @@ export const BusinessManagementPage: React.FC = () => {
         // Fetch services, products, and hours for the business
         try {
           console.log('BusinessManagementPage: Fetching business details for business ID (from API):', business.id);
-
+          
           // Only fetch services/products that belong to this business, based on offering_type
           const [hoursData, analyticsData] = await Promise.all([
             apiService.getBusinessHours(business.id),
@@ -273,18 +315,62 @@ export const BusinessManagementPage: React.FC = () => {
           if (business.offering_type === 'products' || business.offering_type === 'both') {
             const rawProducts = await apiService.getBusinessProducts(business.id);
             productsData = rawProducts.map(product => ({
-              id: product.id,
-              name: product.name,
-              description: product.description || '',
-              price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
-              price_currency: product.price_currency || 'KSH',
-              product_image_url: product.product_image_url,
-              images: product.images || [],
-              is_active: product.is_active,
-              in_stock: product.in_stock,
-              created_at: product.created_at,
+            id: product.id,
+            name: product.name,
+            description: product.description || '',
+            price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
+            price_currency: product.price_currency || 'KSH',
+            product_image_url: product.product_image_url,
+            images: product.images || [],
+            is_active: product.is_active,
+            in_stock: product.in_stock,
+            created_at: product.created_at,
               business: typeof product.business === 'string' ? product.business : (product.business as any)?.id || ''
             }));
+            
+            // Fetch reviews for all products
+            const allProductReviews: any[] = [];
+            for (const product of rawProducts) {
+              try {
+                const reviewsResponse = await apiService.getProductReviewsVSet(product.id.toString());
+                const reviews = reviewsResponse.results || [];
+                reviews.forEach((review: any) => {
+                  allProductReviews.push({
+                    ...review,
+                    product_id: product.id,
+                    product_name: product.name
+                  });
+                });
+              } catch (error) {
+                console.error(`Error fetching reviews for product ${product.id}:`, error);
+              }
+            }
+            // Sort by created_at (most recent first) and limit to 10
+            allProductReviews.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            setProductReviews(allProductReviews.slice(0, 10));
+          }
+          
+          // Fetch reviews for all services
+          if (business.offering_type === 'services' || business.offering_type === 'both') {
+            const allServiceReviews: any[] = [];
+            for (const service of servicesData) {
+              try {
+                const reviewsResponse = await apiService.getServiceReviewsVSet(service.id.toString());
+                const reviews = reviewsResponse.results || [];
+                reviews.forEach((review: any) => {
+                  allServiceReviews.push({
+                    ...review,
+                    service_id: service.id,
+                    service_name: service.name
+                  });
+                });
+              } catch (error) {
+                console.error(`Error fetching reviews for service ${service.id}:`, error);
+              }
+            }
+            // Sort by created_at (most recent first) and limit to 10
+            allServiceReviews.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            setServiceReviews(allServiceReviews.slice(0, 10));
           }
 
           console.log('BusinessManagementPage: Services data received (from API):', servicesData);
@@ -295,6 +381,19 @@ export const BusinessManagementPage: React.FC = () => {
           setServices(servicesData);
           setProducts(productsData);
           setBusinessHours(hoursData);
+          setEditableHours(
+            hoursData && hoursData.length
+              ? hoursData
+              : [
+                  { day_of_week: 1, open_time: '09:00', close_time: '17:00', is_closed: false },
+                  { day_of_week: 2, open_time: '09:00', close_time: '17:00', is_closed: false },
+                  { day_of_week: 3, open_time: '09:00', close_time: '17:00', is_closed: false },
+                  { day_of_week: 4, open_time: '09:00', close_time: '17:00', is_closed: false },
+                  { day_of_week: 5, open_time: '09:00', close_time: '17:00', is_closed: false },
+                  { day_of_week: 6, open_time: '10:00', close_time: '14:00', is_closed: false },
+                  { day_of_week: 0, open_time: null, close_time: null, is_closed: true },
+                ]
+          );
           setAnalytics(analyticsData);
         } catch (error) {
           console.error('Error fetching business details:', error);
@@ -376,6 +475,19 @@ export const BusinessManagementPage: React.FC = () => {
       const hoursData = await apiService.getBusinessHours(businessData.id);
       console.log('Refreshed business hours:', hoursData);
       setBusinessHours(hoursData);
+      setEditableHours(
+        hoursData && hoursData.length
+          ? hoursData
+          : [
+              { day_of_week: 1, open_time: '09:00', close_time: '17:00', is_closed: false },
+              { day_of_week: 2, open_time: '09:00', close_time: '17:00', is_closed: false },
+              { day_of_week: 3, open_time: '09:00', close_time: '17:00', is_closed: false },
+              { day_of_week: 4, open_time: '09:00', close_time: '17:00', is_closed: false },
+              { day_of_week: 5, open_time: '09:00', close_time: '17:00', is_closed: false },
+              { day_of_week: 6, open_time: '10:00', close_time: '14:00', is_closed: false },
+              { day_of_week: 0, open_time: null, close_time: null, is_closed: true },
+            ]
+      );
     } catch (error) {
       console.error('Error fetching business hours:', error);
       setBusinessHours([]);
@@ -390,6 +502,42 @@ export const BusinessManagementPage: React.FC = () => {
     } catch (error) {
       console.error('Error fetching professional service requests:', error);
       setProfessionalServiceRequests([]);
+    }
+  };
+
+  const handleSaveBusinessHours = async () => {
+    if (!businessData) return;
+    try {
+      setIsSavingHours(true);
+      const normalizedHours = editableHours
+        .slice()
+        .sort((a, b) => a.day_of_week - b.day_of_week)
+        .map((hour) => ({
+          day_of_week: hour.day_of_week,
+          is_closed: hour.is_closed,
+          open_time: hour.is_closed ? null : hour.open_time,
+          close_time: hour.is_closed ? null : hour.close_time,
+        }));
+
+      const updated = await apiService.updateBusinessHours(businessData.id, normalizedHours);
+      setBusinessHours(updated);
+      setEditableHours(updated);
+      setIsEditingHours(false);
+      toast({
+        title: 'Business hours updated',
+        description: 'Your opening hours have been saved successfully.',
+      });
+    } catch (error: any) {
+      console.error('Error updating business hours:', error);
+      toast({
+        title: 'Failed to update hours',
+        description:
+          error?.response?.data?.message ||
+          'We could not save your hours. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingHours(false);
     }
   };
 
@@ -934,6 +1082,45 @@ export const BusinessManagementPage: React.FC = () => {
                        <Clock className="h-5 w-5" />
                        <span>Business Hours</span>
                      </CardTitle>
+                     <div className="flex items-center gap-2">
+                       {isEditingHours ? (
+                         <>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => {
+                               setIsEditingHours(false);
+                               setEditableHours(businessHours);
+                             }}
+                             className="text-xs"
+                           >
+                             Cancel
+                           </Button>
+                           <Button
+                             variant="default"
+                             size="sm"
+                             onClick={handleSaveBusinessHours}
+                             disabled={isSavingHours}
+                             className="text-xs bg-fem-terracotta hover:bg-fem-terracotta/90"
+                           >
+                             {isSavingHours ? 'Saving...' : 'Save'}
+                           </Button>
+                         </>
+                       ) : (
+                         <>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => {
+                               if (!businessHours.length) {
+                                 loadBusinessHours();
+                               }
+                               setIsEditingHours(true);
+                             }}
+                             className="text-xs"
+                           >
+                             Edit
+                           </Button>
                      <Button 
                        variant="outline" 
                        size="sm" 
@@ -943,24 +1130,115 @@ export const BusinessManagementPage: React.FC = () => {
                        <Clock className="h-4 w-4 mr-1" />
                        Refresh
                      </Button>
+                         </>
+                       )}
+                     </div>
                    </div>
                  </CardHeader>
                 <CardContent>
-                  {businessHours.length > 0 ? (
+                  {isEditingHours ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {editableHours
+                        .slice()
+                        .sort((a, b) => a.day_of_week - b.day_of_week)
+                        .map((hour) => {
+                          const dayName = [
+                            'Sunday',
+                            'Monday',
+                            'Tuesday',
+                            'Wednesday',
+                            'Thursday',
+                            'Friday',
+                            'Saturday',
+                          ][hour.day_of_week];
+
+                          const formatTime = (timeString: string | null | undefined) => {
+                            if (!timeString) return '';
+                            return timeString.split(':').slice(0, 2).join(':');
+                          };
+
+                          const openTime = formatTime(hour.open_time) || '09:00';
+                          const closeTime = formatTime(hour.close_time) || '17:00';
+
+                          return (
+                            <div
+                              key={hour.day_of_week}
+                              className="flex flex-col gap-2 p-3 rounded-xl border border-gray-200 bg-gray-50"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-gray-900">{dayName}</span>
+                                <button
+                                  type="button"
+                                  className={`text-xs px-2 py-1 rounded-full border ${
+                                    hour.is_closed
+                                      ? 'bg-gray-200 text-gray-700 border-gray-300'
+                                      : 'bg-green-50 text-green-700 border-green-300'
+                                  }`}
+                                  onClick={() =>
+                                    setEditableHours(prev =>
+                                      prev.map(h =>
+                                        h.day_of_week === hour.day_of_week
+                                          ? { ...h, is_closed: !h.is_closed }
+                                          : h
+                                      )
+                                    )
+                                  }
+                                >
+                                  {hour.is_closed ? 'Closed' : 'Open'}
+                                </button>
+                              </div>
+                              {!hour.is_closed && (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="time"
+                                    value={openTime}
+                                    onChange={e =>
+                                      setEditableHours(prev =>
+                                        prev.map(h =>
+                                          h.day_of_week === hour.day_of_week
+                                            ? { ...h, open_time: e.target.value }
+                                            : h
+                                        )
+                                      )
+                                    }
+                                    className="h-9 w-full rounded-lg border border-gray-300 px-2 text-sm text-gray-900 focus:border-fem-terracotta focus:ring-fem-terracotta"
+                                  />
+                                  <span className="text-xs text-gray-500">to</span>
+                                  <input
+                                    type="time"
+                                    value={closeTime}
+                                    onChange={e =>
+                                      setEditableHours(prev =>
+                                        prev.map(h =>
+                                          h.day_of_week === hour.day_of_week
+                                            ? { ...h, close_time: e.target.value }
+                                            : h
+                                        )
+                                      )
+                                    }
+                                    className="h-9 w-full rounded-lg border border-gray-300 px-2 text-sm text-gray-900 focus:border-fem-terracotta focus:ring-fem-terracotta"
+                                  />
+                                </div>
+                              )}
+                              {hour.is_closed && (
+                                <p className="text-xs text-gray-500">
+                                  Customers will see this day as <span className="font-medium">Closed</span>.
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  ) : businessHours.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
                       {businessHours.map((hour) => {
-                        // Helper function to format time without seconds
                         const formatTime = (timeString: string | null | undefined) => {
                           if (!timeString) return 'N/A';
-                          // Remove seconds and format as HH:MM
                           return timeString.split(':').slice(0, 2).join(':');
                         };
 
-                        // Check if times are valid (open time should be before close time)
                         const openTime = formatTime(hour.open_time);
                         const closeTime = formatTime(hour.close_time);
-                        const isValidTimeRange = hour.open_time && hour.close_time && 
-                          hour.open_time < hour.close_time;
 
                         return (
                           <div key={hour.day_of_week} className="text-center p-3 bg-gray-50 rounded-lg">
@@ -968,9 +1246,7 @@ export const BusinessManagementPage: React.FC = () => {
                               {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][hour.day_of_week]}
                             </div>
                             <div className="text-sm text-gray-600">
-                              {hour.is_closed ? 'Closed' : 
-                                (isValidTimeRange ? `${openTime} - ${closeTime}` : 'Invalid Hours')
-                              }
+                              {hour.is_closed ? 'Closed' : `${openTime} - ${closeTime}`}
                             </div>
                           </div>
                         );
@@ -1232,13 +1508,13 @@ export const BusinessManagementPage: React.FC = () => {
               {analytics ? (
                 <>
                   {/* Overview Stats */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
                       <CardContent className="p-6 text-center">
                         <div className="text-3xl font-bold text-blue-600 mb-2">
                           {analytics.average_rating.toFixed(1)}
                         </div>
-                        <div className="text-sm text-gray-600">Average Rating</div>
+                        <div className="text-sm text-gray-700 font-medium">Average Rating</div>
                         <div className="flex justify-center mt-2">
                           {[1, 2, 3, 4, 5].map((star) => (
                             <Star
@@ -1254,21 +1530,36 @@ export const BusinessManagementPage: React.FC = () => {
                       </CardContent>
                     </Card>
                     
-                    <Card>
+                    <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
                       <CardContent className="p-6 text-center">
                         <div className="text-3xl font-bold text-green-600 mb-2">
                           {analytics.total_reviews}
                         </div>
-                        <div className="text-sm text-gray-600">Total Reviews</div>
+                        <div className="text-sm text-gray-700 font-medium">Total Business Reviews</div>
                       </CardContent>
                     </Card>
                     
-                    <Card>
+                    <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
                       <CardContent className="p-6 text-center">
                         <div className="text-3xl font-bold text-purple-600 mb-2">
                           {services.length + products.length}
                         </div>
-                        <div className="text-sm text-gray-600">Total Offerings</div>
+                        <div className="text-sm text-gray-700 font-medium">Total Offerings</div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {services.length} Services • {products.length} Products
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+                      <CardContent className="p-6 text-center">
+                        <div className="text-3xl font-bold text-orange-600 mb-2">
+                          {businessData?.review_count || 0}
+                        </div>
+                        <div className="text-sm text-gray-700 font-medium">Business Rating Count</div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          Based on customer feedback
+                        </div>
                       </CardContent>
                     </Card>
                   </div>
@@ -1303,13 +1594,16 @@ export const BusinessManagementPage: React.FC = () => {
                     </CardContent>
                   </Card>
 
-                  {/* Recent Reviews */}
+                  {/* Recent Reviews - Business Reviews */}
+                  {analytics.recent_reviews.length > 0 && (
                   <Card>
                     <CardHeader>
-                      <CardTitle>Recent Reviews</CardTitle>
+                        <CardTitle className="flex items-center gap-2">
+                          <MessageSquare className="w-5 h-5 text-fem-terracotta" />
+                          Recent Business Reviews
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {analytics.recent_reviews.length > 0 ? (
                         <div className="space-y-4">
                           {analytics.recent_reviews.map((review) => (
                             <div key={review.id} className="border-b border-gray-200 pb-4 last:border-b-0">
@@ -1346,13 +1640,167 @@ export const BusinessManagementPage: React.FC = () => {
                             </div>
                           ))}
                         </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Product Reviews */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="w-5 h-5 text-fem-terracotta" />
+                        Product Reviews
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {productReviews.length > 0 ? (
+                        <div className="space-y-4">
+                          {productReviews.map((review) => (
+                            <div key={`product-${review.id}`} className="border-l-4 border-fem-terracotta pl-4 py-3 bg-gradient-to-r from-orange-50/50 to-transparent rounded-r-lg">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                      <Package className="w-3 h-3 mr-1" />
+                                      {review.product_name}
+                                    </Badge>
+                                    <div className="flex items-center space-x-1">
+                                      {[1, 2, 3, 4, 5].map((star) => (
+                                        <Star
+                                          key={star}
+                                          className={`h-3 w-3 ${
+                                            star <= review.rating
+                                              ? 'text-yellow-400 fill-current'
+                                              : 'text-gray-300'
+                                          }`}
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                  <span className="text-sm font-medium text-gray-900">
+                                    {review.user}
+                                  </span>
+                                  {review.is_verified && (
+                                    <Badge variant="default" className="bg-green-100 text-green-800 text-xs ml-2">
+                                      Verified
+                                    </Badge>
+                                  )}
+                                </div>
+                                <span className="text-xs text-gray-500">
+                                  {formatToBritishDate(review.created_at)}
+                                </span>
+                              </div>
+                              {review.review_text && (
+                                <p className="text-gray-700 text-sm mt-2">{review.review_text}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       ) : (
-                        <p className="text-gray-500 text-center py-8">
-                          No reviews yet. Encourage your customers to leave reviews!
-                        </p>
+                        <div className="text-center py-12 px-4">
+                          <div className="relative mb-6">
+                            <div className="w-24 h-24 bg-gradient-to-br from-fem-terracotta/10 to-fem-gold/10 rounded-full mx-auto flex items-center justify-center">
+                              <div className="w-16 h-16 bg-gradient-to-br from-fem-terracotta/20 to-fem-gold/20 rounded-full flex items-center justify-center">
+                                <Package className="h-8 w-8 text-fem-terracotta/60" />
+                              </div>
+                            </div>
+                            <div className="absolute -top-2 -right-2 w-8 h-8 bg-fem-gold rounded-full flex items-center justify-center shadow-lg">
+                              <Star className="w-4 h-4 text-white fill-white" />
+                            </div>
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Product Reviews Yet</h3>
+                          <p className="text-gray-600 mb-4 max-w-md mx-auto">
+                            Your products haven't received any reviews yet. Encourage your customers to share their experience!
+                          </p>
+                          <div className="flex flex-wrap gap-2 justify-center text-xs text-gray-500">
+                            <span className="px-3 py-1 bg-gray-100 rounded-full">💬 Share your products</span>
+                            <span className="px-3 py-1 bg-gray-100 rounded-full">⭐ Ask for feedback</span>
+                            <span className="px-3 py-1 bg-gray-100 rounded-full">🎯 Build trust</span>
+                          </div>
+                        </div>
                       )}
                     </CardContent>
                   </Card>
+
+                  {/* Service Reviews */}
+                  {(businessData?.offering_type === 'services' || businessData?.offering_type === 'both') && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Settings className="w-5 h-5 text-fem-terracotta" />
+                          Service Reviews
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {serviceReviews.length > 0 ? (
+                          <div className="space-y-4">
+                            {serviceReviews.map((review) => (
+                              <div key={`service-${review.id}`} className="border-l-4 border-fem-gold pl-4 py-3 bg-gradient-to-r from-yellow-50/50 to-transparent rounded-r-lg">
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                                        <Settings className="w-3 h-3 mr-1" />
+                                        {review.service_name}
+                                      </Badge>
+                                      <div className="flex items-center space-x-1">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                          <Star
+                                            key={star}
+                                            className={`h-3 w-3 ${
+                                              star <= review.rating
+                                                ? 'text-yellow-400 fill-current'
+                                                : 'text-gray-300'
+                                            }`}
+                                          />
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {review.user}
+                                    </span>
+                                    {review.is_verified && (
+                                      <Badge variant="default" className="bg-green-100 text-green-800 text-xs ml-2">
+                                        Verified
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <span className="text-xs text-gray-500">
+                                    {formatToBritishDate(review.created_at)}
+                                  </span>
+                                </div>
+                                {review.review_text && (
+                                  <p className="text-gray-700 text-sm mt-2">{review.review_text}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-12 px-4">
+                            <div className="relative mb-6">
+                              <div className="w-24 h-24 bg-gradient-to-br from-fem-gold/10 to-fem-terracotta/10 rounded-full mx-auto flex items-center justify-center">
+                                <div className="w-16 h-16 bg-gradient-to-br from-fem-gold/20 to-fem-terracotta/20 rounded-full flex items-center justify-center">
+                                  <Settings className="h-8 w-8 text-fem-gold/60" />
+                                </div>
+                              </div>
+                              <div className="absolute -top-2 -right-2 w-8 h-8 bg-fem-terracotta rounded-full flex items-center justify-center shadow-lg">
+                                <Star className="w-4 h-4 text-white fill-white" />
+                              </div>
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Service Reviews Yet</h3>
+                            <p className="text-gray-600 mb-4 max-w-md mx-auto">
+                              Your services haven't received any reviews yet. Encourage your customers to share their experience!
+                            </p>
+                            <div className="flex flex-wrap gap-2 justify-center text-xs text-gray-500">
+                              <span className="px-3 py-1 bg-gray-100 rounded-full">💬 Share your services</span>
+                              <span className="px-3 py-1 bg-gray-100 rounded-full">⭐ Ask for feedback</span>
+                              <span className="px-3 py-1 bg-gray-100 rounded-full">🎯 Build trust</span>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
                 </>
               ) : (
                 <Card>

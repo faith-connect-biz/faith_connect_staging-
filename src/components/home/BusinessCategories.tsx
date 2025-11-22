@@ -99,13 +99,12 @@ export const BusinessCategories = () => {
     return (
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-fem-navy mb-4">
+          <div className="text-center mb-6">
+            <h2 className="text-xl md:text-2xl font-bold text-fem-navy mb-2">
               Explore Business Categories
             </h2>
-            <p className="text-fem-darkgray max-w-2xl mx-auto">
-              Discover trusted businesses within our faith community. From restaurants to tech services, 
-              find everything you need while supporting fellow believers.
+            <p className="text-fem-darkgray max-w-2xl mx-auto text-sm">
+              Discover trusted businesses within our faith community. From restaurants to tech services, find everything you need while supporting fellow believers.
             </p>
           </div>
           
@@ -150,117 +149,61 @@ export const BusinessCategories = () => {
   return (
     <section className="py-16 bg-white">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-fem-navy mb-4">
+        <div className="text-center mb-6">
+          <h2 className="text-xl md:text-2xl font-bold text-fem-navy mb-2">
             Explore Business Categories
           </h2>
-          <p className="text-fem-darkgray max-w-2xl mx-auto">
-            Discover trusted businesses within our faith community. From restaurants to tech services, 
-            find everything you need while supporting fellow believers.
+          <p className="text-fem-darkgray max-w-2xl mx-auto text-sm">
+            Discover trusted businesses within our faith community. From restaurants to tech services, find everything you need while supporting fellow believers.
           </p>
         </div>
         
         {categoryStats.length > 0 ? (
           <>
-            {/* Enhanced Mobile App Style Grid */}
-            <div className="grid grid-cols-4 gap-3 max-w-md mx-auto mb-8 md:hidden">
-              {categoryStats.slice(0, 16).map((category, index) => (
-                <motion.div
-                  key={category.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <Link 
-                  to={`/directory?category=${category.slug}`}
-                  className="block"
-                >
-                    <div className={`flex flex-col items-center justify-between gap-2 p-3 rounded-xl ${category.color.split(' ')[1]} hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl border-2 ${category.color.split(' ')[2]} cursor-pointer backdrop-blur-sm h-20`}>
-                      <span className="text-2xl drop-shadow-sm flex-shrink-0">{category.icon}</span>
-                    <span className="text-[9px] font-semibold text-center leading-tight drop-shadow-sm line-clamp-2 flex-grow flex items-center justify-center">{category.name}</span>
-                  </div>
-                </Link>
-                </motion.div>
-              ))}
-            </div>
-            
-            {/* Enhanced Desktop Grid - 5 Columns */}
-            <div className="hidden lg:grid grid-cols-5 gap-4 mb-8">
-              {categoryStats.slice(0, 15).map((category, index) => (
-                <motion.div
-                  key={category.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  whileHover={{ y: -8 }}
-                >
-                  <Link 
-                  to={`/directory?category=${category.slug}`}
-                  className="block h-full"
-                >
-                    <Card className={`cursor-pointer transition-all duration-300 hover:shadow-xl border-2 h-[200px] ${category.color.split(' ')[2]} hover:border-opacity-100`}>
-                    <CardContent className="p-6 text-center h-full flex flex-col justify-between">
-                      <div className="flex flex-col items-center h-full">
-                          <div className={`mx-auto w-20 h-20 mb-4 flex items-center justify-center rounded-2xl ${category.color.split(' ')[1]} shadow-lg`}>
-                            <span className="text-4xl">{category.icon}</span>
-                          </div>
-                          <div className="flex-grow flex flex-col justify-center">
-                            <h3 className="font-semibold text-fem-navy mb-1 text-sm line-clamp-2 leading-tight">
-                              {category.name}
-                            </h3>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {category.subcategoryCount} {category.subcategoryCount === 1 ? 'subcategory' : 'subcategories'}
-                            </p>
-                          </div>
+            {/* Animated horizontal scrolling carousel */}
+            <div className="relative overflow-hidden mb-6">
+              {/* Gradient overlays for fade effect */}
+              <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
+              <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
+              
+              {/* Scrolling container */}
+              <div className="flex gap-4 animate-scroll-categories hover:animate-paused">
+                {/* Duplicate categories for seamless loop */}
+                {[...categoryStats, ...categoryStats].map((category, index) => (
+                  <motion.div
+                    key={`${category.id}-${index}`}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: (index % categoryStats.length) * 0.05 }}
+                    whileHover={{ scale: 1.15, y: -8, zIndex: 20 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex-shrink-0"
+                  >
+                    <Link 
+                      to={`/directory?category=${category.slug}`}
+                      className="block"
+                    >
+                      <div className="cursor-pointer transition-all duration-300 p-4 w-24 md:w-28 group relative">
+                        <div className="flex flex-col items-center justify-center">
+                          <span className="text-3xl md:text-4xl mb-2 group-hover:scale-125 group-hover:rotate-6 transition-all duration-300">{category.icon}</span>
+                          <span className="text-xs font-semibold text-center leading-tight line-clamp-2 text-fem-navy group-hover:text-fem-terracotta transition-colors duration-300">{category.name}</span>
+                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-                </motion.div>
-              ))}
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
             </div>
             
-            {/* Medium Screen Grid - 3 Columns */}
-            <div className="hidden md:grid lg:hidden grid-cols-3 gap-4 mb-8">
-              {categoryStats.slice(0, 15).map((category, index) => (
-                <motion.div
-                  key={category.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  whileHover={{ y: -8 }}
-                >
-                  <Link 
-                  to={`/directory?category=${category.slug}`}
-                  className="block h-full"
-                >
-                    <Card className={`cursor-pointer transition-all duration-300 hover:shadow-xl border-2 h-[180px] ${category.color.split(' ')[2]} hover:border-opacity-100`}>
-                    <CardContent className="p-5 text-center h-full flex flex-col justify-between">
-                      <div className="flex flex-col items-center h-full">
-                          <div className={`mx-auto w-16 h-16 mb-3 flex items-center justify-center rounded-xl ${category.color.split(' ')[1]} shadow-lg`}>
-                            <span className="text-3xl">{category.icon}</span>
-                          </div>
-                          <div className="flex-grow flex flex-col justify-center">
-                            <h3 className="font-semibold text-fem-navy mb-1 text-sm line-clamp-2 leading-tight">
-                              {category.name}
-                            </h3>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {category.subcategoryCount} {category.subcategoryCount === 1 ? 'subcategory' : 'subcategories'}
-                            </p>
-                          </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-                </motion.div>
-              ))}
-            </div>
-            
-            <div className="text-center mt-8">
+            <div className="text-center mt-6">
               <Link to="/directory">
-                <button className="bg-gradient-to-r from-fem-gold to-fem-terracotta hover:from-fem-gold/90 hover:to-fem-terracotta/90 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                <motion.button 
+                  className="bg-gradient-to-r from-fem-gold to-fem-terracotta hover:from-fem-gold/90 hover:to-fem-terracotta/90 text-white px-6 py-2 rounded-lg font-semibold text-sm transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
                   View All Categories
-                </button>
+                </motion.button>
               </Link>
             </div>
           </>

@@ -8,7 +8,6 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
-import { useBusiness } from '@/contexts/BusinessContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Upload, X, Image as ImageIcon, Plus, Trash2, Camera, FileImage } from 'lucide-react';
 
@@ -29,7 +28,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   product,
   onSuccess
 }) => {
-  const { deleteProduct } = useBusiness();
   const { isAuthenticated } = useAuth();
   const [formData, setFormData] = useState<Product>({
     business: businessId,
@@ -299,7 +297,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     }
 
     try {
-      await deleteProduct(product.id);
+      await apiService.deleteProductVSet(product.id.toString());
       toast({
         title: "Product Deleted",
         description: "Product has been deleted successfully.",

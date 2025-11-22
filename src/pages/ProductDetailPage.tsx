@@ -29,6 +29,9 @@ import { toast } from '@/hooks/use-toast';
 import { BookingModal } from '@/components/modals/BookingModal';
 import { ContactModal } from '@/components/modals/ContactModal';
 import { analytics } from '@/services/analytics';
+import type { BusinessHour } from '@/services/api';
+import { ReviewSection } from '@/components/ReviewSection';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const ProductDetailPage: React.FC = () => {
   const { id, categorySlug, productSlug } = useParams<{ 
@@ -37,6 +40,7 @@ export const ProductDetailPage: React.FC = () => {
     productSlug?: string; 
   }>();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [business, setBusiness] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,12 +48,46 @@ export const ProductDetailPage: React.FC = () => {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [contactDetails, setContactDetails] = useState<any>(null);
+  const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
+  const [isLoadingHours, setIsLoadingHours] = useState(false);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to view product details.",
+        variant: "default"
+      });
+      navigate('/login', { state: { from: `/product/${id || (categorySlug && productSlug ? `${categorySlug}/${productSlug}` : '')}` } });
+      return;
+    }
+  }, [isAuthenticated, navigate, id, categorySlug, productSlug]);
 
   useEffect(() => {
-    if (id || (categorySlug && productSlug)) {
+    if (isAuthenticated && (id || (categorySlug && productSlug))) {
       loadProductDetails();
     }
-  }, [id, categorySlug, productSlug]);
+  }, [id, categorySlug, productSlug, isAuthenticated]);
+
+  // Load business hours when business info is available
+  useEffect(() => {
+    const loadHours = async () => {
+      if (!business?.id) return;
+      try {
+        setIsLoadingHours(true);
+        const hoursData = await apiService.getBusinessHoursPublic(String(business.id));
+        setBusinessHours(hoursData || []);
+      } catch (err) {
+        console.error('Error loading business hours for product view:', err);
+        setBusinessHours([]);
+      } finally {
+        setIsLoadingHours(false);
+      }
+    };
+
+    loadHours();
+  }, [business?.id]);
 
   const loadProductDetails = async () => {
     try {
@@ -506,49 +544,138 @@ export const ProductDetailPage: React.FC = () => {
               </Card>
 
               {/* Provider Quick Info */}
-              {business && (
-                <Card className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Provider Details</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center">
-                        <span className="text-white font-bold">
-                          {business.business_name?.charAt(0).toUpperCase()}
+                    {business && (
+                <Card className="p-6 space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Provider Details</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-r from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center">
+                          <span className="text-white font-bold">
+                            {business.business_name?.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{business.business_name}</p>
+                          <p className="text-sm text-gray-600">Verified Provider</p>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <MapPin className="h-4 w-4 text-fem-terracotta" />
+                          <span>{business.city}, {business.county}</span>
+                        </div>
+                        {business.phone && (
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <Phone className="h-4 w-4 text-fem-terracotta" />
+                            <span>{business.phone}</span>
+                          </div>
+                        )}
+                        {business.email && (
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <Mail className="h-4 w-4 text-fem-terracotta" />
+                            <span>{business.email}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Business Hours */}
+                  <div className="pt-3 border-t border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-fem-terracotta" />
+                        <span className="text-sm font-semibold text-gray-900">
+                          Business Hours
                         </span>
                       </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{business.business_name}</p>
-                        <p className="text-sm text-gray-600">Verified Provider</p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <MapPin className="h-4 w-4 text-fem-terracotta" />
-                        <span>{business.city}, {business.county}</span>
-                      </div>
-                      {business.phone && (
-                        <div className="flex items-center gap-2 text-gray-700">
-                          <Phone className="h-4 w-4 text-fem-terracotta" />
-                          <span>{business.phone}</span>
-                        </div>
-                      )}
-                      {business.email && (
-                        <div className="flex items-center gap-2 text-gray-700">
-                          <Mail className="h-4 w-4 text-fem-terracotta" />
-                          <span>{business.email}</span>
-                        </div>
+                      {isLoadingHours && (
+                        <span className="text-xs text-gray-500">Loading...</span>
                       )}
                     </div>
+                    {businessHours && businessHours.length > 0 ? (
+                      <div className="space-y-2 text-sm">
+                        {/* Today chip */}
+                        {(() => {
+                          const todayIdx = new Date().getDay();
+                          const today = businessHours.find(h => h.day_of_week === todayIdx);
+                          const fmt = (t?: string | null) =>
+                            t ? t.split(':').slice(0, 2).join(':') : '';
+                          const label = !today
+                            ? 'Hours not available'
+                            : today.is_closed
+                            ? 'Closed today'
+                            : `Open today ${fmt(today.open_time)} - ${fmt(today.close_time)}`;
+                          return (
+                            <div className="inline-flex items-center gap-2 rounded-full bg-fem-terracotta/5 px-3 py-1 border border-fem-terracotta/20 text-fem-terracotta">
+                              <span className="text-xs font-semibold uppercase tracking-wide">
+                                Today
+                              </span>
+                              <span className="text-xs font-medium">{label}</span>
+                            </div>
+                          );
+                        })()}
 
-                    <div className="pt-3 border-t border-gray-200">
-                      <Link to={`/business/${business.id}`} className="block">
-                        <Button className="w-full bg-fem-terracotta hover:bg-fem-terracotta/90 text-white">
-                          <Building2 className="h-4 w-4 mr-2" />
-                          View Business Profile
-                        </Button>
-                      </Link>
-                    </div>
+                        {/* Condensed weekly summary */}
+                        {(() => {
+                          const daysShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                          const fmt = (t?: string | null) =>
+                            t ? t.split(':').slice(0, 2).join(':') : '';
+
+                          const sorted = businessHours
+                            .slice()
+                            .sort((a, b) => a.day_of_week - b.day_of_week);
+
+                          type Segment = { start: number; end: number; label: string };
+                          const segments: Segment[] = [];
+
+                          sorted.forEach(h => {
+                            const label = h.is_closed
+                              ? 'Closed'
+                              : `${fmt(h.open_time)}-${fmt(h.close_time)}`;
+                            const last = segments[segments.length - 1];
+                            if (last && last.label === label && last.end === h.day_of_week - 1) {
+                              last.end = h.day_of_week;
+                            } else {
+                              segments.push({ start: h.day_of_week, end: h.day_of_week, label });
+                            }
+                          });
+
+                          const summary = segments
+                            .map(seg => {
+                              const dayRange =
+                                seg.start === seg.end
+                                  ? daysShort[seg.start]
+                                  : `${daysShort[seg.start]}–${daysShort[seg.end]}`;
+                              return seg.label === 'Closed'
+                                ? `${dayRange}: Closed`
+                                : `${dayRange}: ${seg.label.replace('-', '–')}`;
+                            })
+                            .join(' • ');
+
+                          return (
+                            <p className="text-xs text-gray-700 leading-relaxed">
+                              {summary}
+                            </p>
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500">
+                        Business hours have not been added yet.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="pt-3 border-t border-gray-200">
+                    <Link to={`/business/${business.id}`} className="block">
+                      <Button className="w-full bg-fem-terracotta hover:bg-fem-terracotta/90 text-white">
+                        <Building2 className="h-4 w-4 mr-2" />
+                        View Business Profile
+                      </Button>
+                    </Link>
                   </div>
                 </Card>
               )}
@@ -556,64 +683,14 @@ export const ProductDetailPage: React.FC = () => {
           </div>
 
           {/* Product Reviews Section */}
-          <Card className="mt-8">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="w-8 h-8 bg-gradient-to-r from-fem-terracotta to-fem-gold rounded-full flex items-center justify-center">
-                  <Star className="h-4 w-4 text-white" />
-                </div>
-                <h2 className="text-xl font-semibold text-gray-900">Product Reviews</h2>
-                <Badge variant="outline" className="ml-auto bg-gradient-to-r from-fem-terracotta/10 to-fem-gold/10 text-fem-terracotta border-fem-terracotta/30">
-                  0 Reviews
-                </Badge>
-              </div>
-
-              {/* Creative Empty State */}
-              <div className="text-center py-12">
-                <div className="relative mb-6">
-                  <div className="w-24 h-24 bg-gradient-to-br from-fem-terracotta/10 to-fem-gold/10 rounded-full mx-auto flex items-center justify-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-fem-terracotta/20 to-fem-gold/20 rounded-full flex items-center justify-center">
-                      <Star className="h-8 w-8 text-fem-terracotta/60" />
-                    </div>
-                  </div>
-                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-fem-gold rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">!</span>
-                  </div>
-                </div>
-                
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Reviews Yet</h3>
-                <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                  Be the first to share your experience with this product! Your review helps others make informed decisions.
-                </p>
-                
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button className="bg-gradient-to-r from-fem-terracotta to-fem-gold hover:from-fem-terracotta/90 hover:to-fem-gold/90 text-white">
-                    <Star className="h-4 w-4 mr-2" />
-                    Write First Review
-                  </Button>
-                  <Button variant="outline" className="border-fem-terracotta text-fem-terracotta hover:bg-fem-terracotta hover:text-white">
-                    <Heart className="h-4 w-4 mr-2" />
-                    Save for Later
-                  </Button>
-                </div>
-              </div>
-
-              {/* Review Guidelines */}
-              <div className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
-                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs">i</span>
-                  </div>
-                  Review Guidelines
-                </h4>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Share your honest experience with the product</li>
-                  <li>• Include details about quality, delivery, and seller communication</li>
-                  <li>• Help other buyers make informed decisions</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
+          {product && (
+            <ReviewSection
+              type="product"
+              itemId={product.id.toString()}
+              itemName={product.name}
+              canReview={true}
+            />
+          )}
         </div>
       </main>
       <Footer />

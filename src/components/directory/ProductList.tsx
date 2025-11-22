@@ -13,6 +13,7 @@ import LikeButton from "@/components/LikeButton";
 import ShareModal from "@/components/ui/ShareModal";
 import { type ShareData } from "@/utils/sharing";
 import { getProductImageUrl, getProductImages } from '@/utils/imageUtils';
+import { toast } from 'sonner';
 
 interface ProductListProps {
   filters: {
@@ -114,6 +115,13 @@ export const ProductList: React.FC<ProductListProps> = ({
   };
 
   const handleProductClick = (product: Product) => {
+    // Check authentication first
+    if (!isAuthenticated) {
+      toast.error("Please log in to view product details.");
+      navigate('/login', { state: { from: `/product/${product.id}` } });
+      return;
+    }
+    
     // Navigate to product detail page using category-based URL if available
     const business = typeof product.business === 'string' 
       ? businesses.find(b => b.id === product.business)

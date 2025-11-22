@@ -8,8 +8,15 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      className="relative w-full overflow-x-auto rounded-md border md:border-0"
+      style={{
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'thin',
+      }}
     >
+      {/* Mobile scroll indicator */}
+      <div className="md:hidden sticky left-0 top-0 h-full w-8 bg-gradient-to-r from-background/80 to-transparent pointer-events-none z-10" aria-hidden="true" />
+      <div className="md:hidden sticky right-0 top-0 h-full w-8 bg-gradient-to-l from-background/80 to-transparent pointer-events-none z-10 float-right" aria-hidden="true" />
       <table
         data-slot="table"
         className={cn("w-full caption-bottom text-sm", className)}

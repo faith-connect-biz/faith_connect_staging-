@@ -224,6 +224,14 @@ export default {
 						transform: 'translateX(-33.333%)',
 					}
 				},
+				'scroll-categories': {
+					'0%': {
+						transform: 'translateX(0)',
+					},
+					'100%': {
+						transform: 'translateX(-50%)',
+					}
+				},
 				'shimmer': {
 					'0%': {
 						'background-position': '-200% 0',
@@ -250,11 +258,25 @@ export default {
 				'scale-in': 'scale-in 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
 				'scroll-left': 'scroll-left 30s linear infinite',
 				'scroll-stats': 'scroll-stats 20s linear infinite',
+				'scroll-categories': 'scroll-categories 40s linear infinite',
 				'shimmer': 'shimmer 2s ease-in-out infinite'
 			},
 			animationPlayState: {
 				'paused': 'paused',
 				'running': 'running'
+			},
+			zIndex: {
+				'base': '10',
+				'dropdown': '20',
+				'sticky': '30',
+				'fixed': '40',
+				'navbar': '50',
+				'overlay': '50',
+				'modal': '60',
+				'popover': '70',
+				'tooltip': '80',
+				'notification': '90',
+				'max': '100'
 			}
 		},
 		utilities: {

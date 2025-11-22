@@ -16,10 +16,11 @@ export const UserActivitySection: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       loadUserActivity();
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const loadUserActivity = async () => {
     try {

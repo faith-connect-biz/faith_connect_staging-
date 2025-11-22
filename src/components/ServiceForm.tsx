@@ -8,7 +8,6 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
-import { useBusiness } from '@/contexts/BusinessContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Upload, X, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
 
@@ -29,7 +28,6 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
   service,
   onSuccess
 }) => {
-  const { deleteService } = useBusiness();
   const { isAuthenticated } = useAuth();
   const [formData, setFormData] = useState<Service>({
     business: businessId,
@@ -325,7 +323,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({
     }
 
     try {
-      await deleteService(service.id?.toString() || '');
+      await apiService.deleteServiceVSet(service.id?.toString() || '');
       toast({
         title: "Service Deleted",
         description: "Service has been deleted successfully.",
